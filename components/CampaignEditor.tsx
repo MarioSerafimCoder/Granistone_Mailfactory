@@ -20,6 +20,7 @@ import type { ImageSlot } from '@/lib/images';
 import ContentFields from './ContentFields';
 import { ExportDialog } from './ExportDialog';
 import type { SaveState } from '@/lib/use-studio';
+import { renderEmail } from '@/export/render';
 export default function CampaignEditor({
   campaign,
   brand,
@@ -45,29 +46,31 @@ export default function CampaignEditor({
   const signature = JSON.stringify({ campaign, language, brand });
   const ready = preview.signature === signature && !!preview.html;
   useEffect(() => {
-    const abort = new AbortController();
+    let cancelled = false;
     const timer = setTimeout(() => {
-      fetch('/api/render', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: signature,
-        signal: abort.signal,
-      })
-        .then(async (r) => {
-          const data = await r.json();
-          if (!r.ok) throw new Error(data.error);
-          return data;
+      Promise.all([
+        renderEmail(campaign, language, brand),
+        renderEmail(campaign, language, brand, true),
+      ])
+        .then(([html, editorHtml]) => {
+          if (!cancelled) setPreview({ html, editorHtml, signature, error: '' });
         })
-        .then((data) => setPreview({ html: data.html, editorHtml: data.editorHtml, signature, error: '' }))
-        .catch((e) => {
-          if (!abort.signal.aborted) setPreview({ html: '', editorHtml: '', signature, error: e.message });
+        .catch((error: Error) => {
+          if (!cancelled) {
+            setPreview({
+              html: '',
+              editorHtml: '',
+              signature,
+              error: error.message || 'Não foi possível gerar o preview.',
+            });
+          }
         });
     }, 250);
     return () => {
+      cancelled = true;
       clearTimeout(timer);
-      abort.abort();
     };
-  }, [signature]);
+  }, [brand, campaign, language, signature]);
   const update = (patch: Partial<Campaign>) => onChange(editCampaign(campaign, patch));
   const imageField = imageSlot === 'application' ? 'applicationImage' : 'heroImage';
   const altField = imageSlot === 'application' ? 'applicationAlt' : 'heroAlt';

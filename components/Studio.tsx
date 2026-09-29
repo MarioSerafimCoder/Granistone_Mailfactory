@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutGrid,
   Mail,
@@ -34,6 +34,70 @@ export default function Studio() {
   const [name, setName] = useState('');
   const [feedback, setFeedback] = useState('');
   const active = data?.campaigns.find((c) => c.id === activeId);
+
+  useEffect(() => {
+    if (!data) return;
+    const context = document.modelContext;
+    if (!context?.registerTool) return;
+    const lifecycle = new AbortController();
+    const allowedTemplates: TemplateId[] = [
+      'institutional',
+      'product-architect',
+      'product-commercial',
+      'newsletter',
+      'notice',
+    ];
+    void Promise.resolve(
+      context.registerTool(
+        {
+          name: 'create_campaign',
+          title: 'Criar campanha de e-mail',
+          description:
+            'Cria uma campanha no Granistone Mail Studio e abre o editor com o template escolhido.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', minLength: 1, maxLength: 120 },
+              template: { type: 'string', enum: allowedTemplates },
+            },
+            required: ['title', 'template'],
+            additionalProperties: false,
+          },
+          annotations: { readOnlyHint: false, untrustedContentHint: false },
+          execute(input: unknown) {
+            if (!input || typeof input !== 'object') throw new Error('Dados da campanha inválidos.');
+            const value = input as { title?: unknown; template?: unknown };
+            const title = typeof value.title === 'string' ? value.title.trim() : '';
+            if (!title || title.length > 120 || !allowedTemplates.includes(value.template as TemplateId)) {
+              throw new Error('Informe um título e um template válido.');
+            }
+            const current = data;
+            const template = value.template as TemplateId;
+            const campaignType: Campaign['campaignType'] = template.startsWith('product')
+              ? 'Produto'
+              : template === 'newsletter'
+                ? 'Newsletter'
+                : template === 'notice'
+                  ? 'Aviso'
+                  : 'Institucional';
+            const campaign = createCampaign({
+              title,
+              template,
+              campaignType,
+              content: templateContent(template, title),
+            });
+            save({ ...current, campaigns: [campaign, ...current.campaigns] }, true);
+            setView('campaigns');
+            setActiveId(campaign.id);
+            setFeedback('Campanha criada.');
+            return { id: campaign.id, title: campaign.title, template: campaign.template };
+          },
+        },
+        { signal: lifecycle.signal },
+      ),
+    ).catch(() => {});
+    return () => lifecycle.abort();
+  }, [data, save]);
   function start(template: TemplateId = 'institutional') {
     setName('');
     setNewTemplate(template);
