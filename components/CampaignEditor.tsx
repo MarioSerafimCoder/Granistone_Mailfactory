@@ -1,0 +1,432 @@
+'use client';
+import { useEffect, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Download,
+  Monitor,
+  Smartphone,
+} from 'lucide-react';
+import type { BrandSettings, Campaign, Language, TemplateId } from '@/types/campaign';
+import { campaignTypes, statuses } from '@/types/campaign';
+import { changeTemplate, editCampaign } from '@/campaigns/model';
+import { templates, getTemplate, blockLabels, suggestTemplate } from '@/templates/registry';
+import { Field, Select, TextArea, Modal } from './ui';
+import ImagePicker from './ImagePicker';
+import type { ImageSlot } from '@/lib/images';
+import ContentFields from './ContentFields';
+import { ExportDialog } from './ExportDialog';
+import type { SaveState } from '@/lib/use-studio';
+export default function CampaignEditor({
+  campaign,
+  brand,
+  onChange,
+  onBack,
+  onSettings,
+  saveState,
+}: {
+  campaign: Campaign;
+  brand: BrandSettings;
+  onChange: (c: Campaign) => void;
+  onBack: () => void;
+  onSettings: () => void;
+  saveState: SaveState;
+}) {
+  const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : 'pt');
+  const [tab, setTab] = useState('content');
+  const [mobile, setMobile] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [imageSlot, setImageSlot] = useState<ImageSlot>();
+  const [editImages, setEditImages] = useState(true);
+  const [preview, setPreview] = useState({ html: '', editorHtml: '', signature: '', error: '' });
+  const signature = JSON.stringify({ campaign, language, brand });
+  const ready = preview.signature === signature && !!preview.html;
+  useEffect(() => {
+    const abort = new AbortController();
+    const timer = setTimeout(() => {
+      fetch('/api/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: signature,
+        signal: abort.signal,
+      })
+        .then(async (r) => {
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.error);
+          return data;
+        })
+        .then((data) => setPreview({ html: data.html, editorHtml: data.editorHtml, signature, error: '' }))
+        .catch((e) => {
+          if (!abort.signal.aborted) setPreview({ html: '', editorHtml: '', signature, error: e.message });
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      abort.abort();
+    };
+  }, [signature]);
+  const update = (patch: Partial<Campaign>) => onChange(editCampaign(campaign, patch));
+  const imageField = imageSlot === 'application' ? 'applicationImage' : 'heroImage';
+  const altField = imageSlot === 'application' ? 'applicationAlt' : 'heroAlt';
+  const resolvedIssues = (field: NonNullable<Campaign['importIssues']>[number]['field']) =>
+    campaign.importIssues?.filter((issue) => issue.field !== field);
+  function reorder(index: number, direction: number) {
+    const blocks = [...campaign.blocks];
+    [blocks[index], blocks[index + direction]] = [blocks[index + direction], blocks[index]];
+    update({ blocks });
+  }
+  return (
+    <div className="editor-page">
+      <div className="editor-heading">
+        <div className="editor-name">
+          <button className="icon-button" aria-label="Voltar às campanhas" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <span className="eyebrow">CAMPANHA {campaign.demo ? '· DEMONSTRAÇÃO' : ''}</span>
+            <h1>{campaign.title}</h1>
+          </div>
+        </div>
+        <div className="actions">
+          <span className={`save-indicator ${saveState === 'error' ? 'unsaved' : ''}`} role="status">
+            <Check size={14} />
+            {saveState === 'saving'
+              ? 'Salvando…'
+              : saveState === 'error'
+                ? 'Alterações não salvas'
+                : 'Salvo neste navegador'}
+          </span>
+          <select
+            aria-label="Status da campanha"
+            value={campaign.status}
+            onChange={(e) => update({ status: e.target.value as Campaign['status'] })}
+          >
+            {statuses.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+          <button className="button primary" disabled={!ready} onClick={() => setExportOpen(true)}>
+            <Download size={16} />
+            Exportar
+          </button>
+        </div>
+      </div>
+      {!!campaign.importIssues?.length && (
+        <div className="import-issue-banner" role="status">
+          <AlertCircle size={17} />
+          <div>
+            <strong>Revise os dados trazidos da planilha</strong>
+            <span>{campaign.importIssues.map((issue) => issue.message).join(' ')}</span>
+          </div>
+        </div>
+      )}
+      <div className="editor-workspace">
+        <div className="edit-panel">
+          <div className="language-tabs" aria-label="Idioma do conteúdo">
+            <button className={language === 'pt' ? 'active' : ''} onClick={() => setLanguage('pt')}>
+              PORTUGUÊS
+            </button>
+            <button className={language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')}>
+              ENGLISH
+            </button>
+          </div>
+          <div className="editor-tabs">
+            <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>
+              Conteúdo
+            </button>
+            <button
+              className={tab === 'planning' ? 'active' : ''}
+              onClick={() => setTab('planning')}
+            >
+              Planejamento
+            </button>
+            <button className={tab === 'blocks' ? 'active' : ''} onClick={() => setTab('blocks')}>
+              Estrutura
+            </button>
+          </div>
+          <div className="editor-fields">
+            {tab === 'content' && (
+              <ContentFields campaign={campaign} language={language} onChange={update} />
+            )}
+            {tab === 'planning' && (
+              <>
+                <section className="form-section">
+                  <h3>Planejamento da campanha</h3>
+                  <Field
+                    label="Nome da campanha"
+                    value={campaign.title}
+                    onChange={(e) => update({ title: e.target.value })}
+                  />
+                  <Field
+                    label="Data de disparo"
+                    type="date"
+                    value={campaign.date}
+                    onChange={(e) =>
+                      update({
+                        date: e.target.value,
+                        importIssues: e.target.value
+                          ? resolvedIssues('date')
+                          : campaign.importIssues,
+                      })
+                    }
+                  />
+                  <Select
+                    label="Tipo de conteúdo"
+                    value={campaign.campaignType}
+                    onChange={(e) => {
+                      const campaignType = e.target.value as Campaign['campaignType'];
+                      update({
+                        ...changeTemplate(
+                          campaign,
+                          suggestTemplate(campaignType, campaign.audience),
+                        ),
+                        campaignType,
+                        importIssues: resolvedIssues('campaignType'),
+                        status: undefined,
+                      });
+                    }}
+                  >
+                    {campaignTypes.map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
+                  </Select>
+                  <Field
+                    label="Público"
+                    value={campaign.audience}
+                    onChange={(e) => {
+                      const audience = e.target.value;
+                      update({
+                        ...changeTemplate(
+                          campaign,
+                          suggestTemplate(campaign.campaignType, audience),
+                        ),
+                        audience,
+                        importIssues: audience
+                          ? resolvedIssues('audience')
+                          : campaign.importIssues,
+                        status: undefined,
+                      });
+                    }}
+                  />
+                  <TextArea
+                    label="Objetivo"
+                    value={campaign.objective}
+                    onChange={(e) => update({ objective: e.target.value })}
+                  />
+                  <Select
+                    label="Idiomas planejados"
+                    value={campaign.language}
+                    onChange={(e) =>
+                      update({
+                        language: e.target.value as Campaign['language'],
+                        importIssues: resolvedIssues('language'),
+                      })
+                    }
+                  >
+                    <option>PT</option>
+                    <option>EN</option>
+                    <option>PT / EN</option>
+                  </Select>
+                  <TextArea
+                    label="Observações internas"
+                    value={campaign.notes}
+                    onChange={(e) => update({ notes: e.target.value })}
+                  />
+                </section>
+              </>
+            )}
+            {tab === 'blocks' && (
+              <>
+                <section className="form-section">
+                  <h3>Template Granistone</h3>
+                  <Select
+                    label="Template"
+                    value={campaign.template}
+                    onChange={(e) =>
+                      update({
+                        ...changeTemplate(campaign, e.target.value as TemplateId),
+                        status: undefined,
+                      })
+                    }
+                  >
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="muted">{getTemplate(campaign.template).description}</p>
+                  <Select
+                    label="Alinhamento"
+                    value={campaign.alignment}
+                    onChange={(e) => update({ alignment: e.target.value as Campaign['alignment'] })}
+                  >
+                    <option value="left">À esquerda</option>
+                    <option value="center">Centralizado</option>
+                  </Select>
+                </section>
+                <section className="form-section">
+                  <h3>Blocos do e-mail</h3>
+                  <div className="fixed-block">
+                    Cabeçalho Granistone <span>Fixo</span>
+                  </div>
+                  {campaign.blocks.map((b, i) => (
+                    <div className="block-control" key={b.id}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={b.enabled}
+                          onChange={(e) =>
+                            update({
+                              blocks: campaign.blocks.map((block) =>
+                                block.id === b.id ? { ...block, enabled: e.target.checked } : block,
+                              ),
+                            })
+                          }
+                        />
+                        {blockLabels[b.id]}
+                      </label>
+                      {getTemplate(campaign.template).reorder && (
+                        <div>
+                          <button
+                            className="icon-button"
+                            disabled={i === 0}
+                            aria-label={`Subir ${blockLabels[b.id]}`}
+                            onClick={() => reorder(i, -1)}
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            className="icon-button"
+                            disabled={i === campaign.blocks.length - 1}
+                            aria-label={`Descer ${blockLabels[b.id]}`}
+                            onClick={() => reorder(i, 1)}
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div className="fixed-block">
+                    Rodapé Granistone <span>Fixo</span>
+                  </div>
+                  <button className="text-button" onClick={onSettings}>
+                    Configurar marca e rodapé →
+                  </button>
+                </section>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="preview-panel">
+          <div className="canvas-mode">
+            <div>
+              <button className={editImages ? 'active' : ''} onClick={() => setEditImages(true)}>Montar e-mail</button>
+              <button className={!editImages ? 'active' : ''} onClick={() => setEditImages(false)}>Visualizar final</button>
+            </div>
+            <span>{editImages ? 'Clique nas áreas de imagem para adicionar ou trocar fotos' : 'HTML final, sem os controles de edição'}</span>
+          </div>
+          <div className="preview-toolbar">
+            <div>
+              <span className="eyebrow">PREVIEW DO E-MAIL</span>
+              <span className="preview-size">{mobile ? '375' : '600'} px</span>
+            </div>
+            <div className="device-tabs">
+              <button
+                className={!mobile ? 'active' : ''}
+                aria-label="Preview desktop"
+                onClick={() => setMobile(false)}
+              >
+                <Monitor size={16} />
+                <span>Desktop</span>
+              </button>
+              <button
+                className={mobile ? 'active' : ''}
+                aria-label="Preview mobile"
+                onClick={() => setMobile(true)}
+              >
+                <Smartphone size={16} />
+                <span>Mobile</span>
+              </button>
+            </div>
+          </div>
+          <div className="preview-stage">
+            <div className="mail-envelope">
+              <span>Assunto</span>
+              <strong>{campaign.content[language].subject || 'Seu assunto aparece aqui'}</strong>
+              <small>{campaign.content[language].preheader || 'Preheader do e-mail'}</small>
+            </div>
+            {preview.error ? (
+              <p className="alert" role="alert">
+                {preview.error}
+              </p>
+            ) : preview.html ? (
+              <iframe
+                title={`Preview ${mobile ? 'mobile' : 'desktop'} do e-mail`}
+                sandbox="allow-same-origin"
+                srcDoc={editImages ? preview.editorHtml : preview.html}
+                onLoad={(event) => {
+                  const document = event.currentTarget.contentDocument;
+                  if (!document) return;
+                  const choose = (target: EventTarget | null) => {
+                    const element = target as HTMLElement | null;
+                    const slot = element?.closest?.('[data-image-slot]')?.getAttribute('data-image-slot');
+                    if (slot === 'hero' || slot === 'application') setImageSlot(slot);
+                  };
+                  document.addEventListener('click', (click) => { click.preventDefault(); if (editImages) choose(click.target); });
+                  document.addEventListener('keydown', (key) => {
+                    if (editImages && (key.key === 'Enter' || key.key === ' ')) {
+                      if ((key.target as HTMLElement)?.closest?.('[data-image-slot]')) {
+                        key.preventDefault(); choose(key.target);
+                      }
+                    }
+                  });
+                }}
+                style={{ width: mobile ? 375 : 600 }}
+              />
+            ) : (
+              <div className="preview-loading">Preparando seu e-mail…</div>
+            )}
+            <div className="preview-caption">
+              {ready ? editImages ? 'Layout editável · Atualizado' : 'HTML final · Atualizado' : 'Atualizando preview…'}
+              <span>{getTemplate(campaign.template).name}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {imageSlot && <Modal title={imageSlot === 'hero' ? 'Imagem principal' : 'Imagem de aplicação'} onClose={() => setImageSlot(undefined)}>
+        <ImagePicker
+          key={`${imageSlot}-${language}`}
+          label={imageSlot === 'hero' ? 'Imagem principal' : 'Imagem de aplicação'}
+          value={campaign.content[language][imageField]}
+          alt={campaign.content[language][altField]}
+          recommended={imageSlot === 'hero' ? '1200 × 700 px' : '1200 × 800 px'}
+          onChange={(value) => update({ content: {
+            pt: { ...campaign.content.pt, [imageField]: value },
+            en: { ...campaign.content.en, [imageField]: value },
+          } })}
+          onAlt={(value) => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], [altField]: value } } })}
+        />
+        <div className="modal-actions"><button className="button primary" onClick={() => setImageSlot(undefined)}>Concluir</button></div>
+      </Modal>}
+      {exportOpen && (
+        <ExportDialog
+          campaign={campaign}
+          language={language}
+          brand={brand}
+          html={ready ? preview.html : ''}
+          onClose={() => setExportOpen(false)}
+          onExported={() => update({ status: 'Exportado' })}
+          onSettings={() => {
+            setExportOpen(false);
+            onSettings();
+          }}
+        />
+      )}
+    </div>
+  );
+}
