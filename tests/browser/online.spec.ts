@@ -5,6 +5,19 @@ import { defaultBrand } from '../../data/brand';
 // Local Worker test identity. Production identities are supplied by Sites dispatch.
 const origin = 'https://studio.example.com';
 const auth = { 'oai-authenticated-user-id': 'local-editor', 'oai-authenticated-user-email': 'local@studio.test', Origin: origin };
+test('publication dialog explains sign-in and blocks anonymous writes', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
+  await page.getByLabel('Nome da campanha', { exact: true }).fill('Publicação sem sessão');
+  await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByRole('button', { name: 'Publicar online', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Publicar e-mail · PT' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Entrar com ChatGPT para publicar' })).toHaveAttribute('href', '/signin-with-chatgpt?return_to=/');
+  await expect(dialog.getByRole('button', { name: 'Hospedar fotos locais' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Executar pré-flight' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Publicar nova versão' })).toBeDisabled();
+});
 test('large transparent logos preserve alpha after client optimization', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();

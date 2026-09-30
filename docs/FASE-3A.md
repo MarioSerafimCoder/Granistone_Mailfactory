@@ -58,7 +58,7 @@ Todas as APIs abaixo, inclusive listagens, exigem editor autorizado. Respostas u
 - Vigente: `/emails/<titulo-normalizado>-<hash-da-campanha>/<pt|en>`, GET/HEAD, revalidação de cache.
 - Versão fixa: `/emails/<slug>/<pt|en>/v/<numero>`, GET/HEAD, ETag/cache imutável.
 
-O slug é fixado na primeira publicação e preservado quando o título muda. PT e EN têm sequências independentes. O HTML público contém somente o e-mail, com CSP sem scripts, sem cookies, editor ou dependência de IndexedDB. Assets de marca embarcados são fotografados no R2 durante publicação para que alterações futuras da logo não alterem v1.
+O slug é fixado na primeira publicação e preservado quando o título muda. PT e EN têm sequências independentes. O HTML público contém somente o e-mail, com CSP sem scripts, sem cookies, editor ou dependência de IndexedDB. Assets de marca embarcados são copiados para versões fixas no R2 durante publicação para que alterações futuras da logo não alterem v1.
 
 ## Pré-flight e RD Station
 
@@ -80,6 +80,17 @@ Descadastro tem duas opções explícitas: `link` exige URL real fornecida pelo 
 Para a suíte completa de navegador, iniciar o Worker com `pnpm exec wrangler dev --ip 127.0.0.1 --port 3000 --var SITE_ORIGIN:https://studio.example.com`. Essa origem virtual é interceptada apenas nos testes. A identidade simulada nos testes locais não deve ser usada como mecanismo de login em produção. Sites encaminha a identidade real.
 
 Validação exigida: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm exec playwright test`. Testes usam SQLite com as migrações reais, além do Worker local com D1/R2 e Playwright. Cobrem retenção, autorização, MIME, corrupção, transparência, deduplicação, SSRF, redirects, fallback de HEAD, pré-flight, idempotência e publicação imutável PT/EN.
+
+### Resultado em 30/09/2026
+
+- Typecheck, lint e build: aprovados.
+- Testes de domínio/servidor: 17 aprovados.
+- Playwright: suíte original de 8 cenários aprovada, mais 1 cenário adicional aprovado para abertura do diálogo de publicação e bloqueio de escrita anônima (9 cenários cobertos).
+- O teste integrado local usa o Worker, D1 e R2 reais do emulador: upload, URL HTTPS virtual, pré-flight, PT v1/v2, EN v1, carregamento anônimo de todas as imagens, retenção e comparação integral do HTML de v1 após v2.
+- Publicação GPT Sites versão 2 concluída, com variáveis de ambiente revisão 1 e fonte `02fb5175f80f1b67b656e9a44d7c8732d36a5afd`.
+- Produção: `/` retorna 200 sem sessão; `/api/session` e `/api/assets` retornam 401 sem sessão. Cabeçalhos de identidade forjados também retornam 401. Consulta a e-mail inexistente retorna 404, sem erro de banco.
+- **Pendente de sessão válida:** repetir upload/publicação autenticados no domínio real. O login do ChatGPT retornou erro 400 do provedor (`Invalid content type`) e, na repetição, permaneceu na verificação de segurança. A autenticação não foi contornada. Isso limita a homologação em produção, não substituída pelos testes locais.
+- Uma campanha local identificada como `Homologação técnica · Fase 3A` foi criada para essa verificação; nenhum e-mail dessa campanha foi publicado ou enviado.
 
 ## Limites conhecidos
 
