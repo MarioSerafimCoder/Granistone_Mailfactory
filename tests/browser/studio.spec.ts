@@ -131,3 +131,28 @@ test('template library, creation, newsletter reorder and narrow screen', async (
   expect(overflow).toBe(false);
   expect(errors).toEqual([]);
 });
+
+test('translation keeps Portuguese and creates Spanish, while visual library stays image-first', async ({ page }) => {
+  await page.route('**/api/assets**', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/materials**', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/translate', async (route) => {
+    const body = route.request().postDataJSON() as { target: string; items: { id: string; text: string }[] };
+    await route.fulfill({ json: { target: body.target, items: body.items.map((item) => ({ ...item, text: item.id === 'headline' ? 'Piedra natural' : `ES: ${item.text}` })) } });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
+  await page.getByLabel('Nome da campanha', { exact: true }).fill('Campanha trilíngue');
+  await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByLabel('Headline', { exact: true }).fill('Pedra natural');
+  await page.getByRole('button', { name: 'Converter para espanhol', exact: true }).click();
+  await page.getByRole('button', { name: 'Gerar em espanhol', exact: true }).click();
+  await expect(page.getByLabel('Headline', { exact: true })).toHaveValue('Piedra natural');
+  await page.getByRole('button', { name: 'PORTUGUÊS', exact: true }).click();
+  await expect(page.getByLabel('Headline', { exact: true })).toHaveValue('Pedra natural');
+  await page.getByRole('button', { name: 'Voltar às campanhas', exact: true }).click();
+  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Biblioteca visual' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Enviar imagem' })).toBeVisible();
+  await page.getByRole('button', { name: 'Materiais' }).click();
+  await expect(page.getByText('Nenhum material cadastrado')).toBeVisible();
+});

@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { materials } from '@/data/materials';
 import type { CampaignContent, StoneMaterial } from '@/types/campaign';
 import { plainText } from '@/campaigns/model';
+import { online } from '@/lib/online';
+import type { MediaAsset, OnlineMaterial } from '@/types/online';
+import { materials as sampleMaterials } from '@/data/materials';
 
 export default function MaterialSelector({
   content,
@@ -17,12 +19,31 @@ export default function MaterialSelector({
 }) {
   const [query, setQuery] = useState('');
   const [pending, setPending] = useState<StoneMaterial>();
+  const [materials, setMaterials] = useState<StoneMaterial[]>(sampleMaterials);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    online.session().then((session) => session.editor ? Promise.all([online.materials.list(), online.assets.list()]) : null).then((response) => {
+      if (!response) return;
+      const [items, assets] = response;
+      if (!active) return;
+      const byId = new Map<string, MediaAsset>(assets.map((asset) => [asset.id, asset]));
+      setMaterials(items.filter((item) => item.active).map((item: OnlineMaterial) => ({
+        id: item.id, name: item.name, slug: item.slug, category: item.category,
+        description: item.description, features: item.features, applications: item.applications,
+        images: item.assetIds.map((id) => byId.get(id)?.url).filter(Boolean) as string[],
+        heroImage: byId.get(item.heroAssetId || item.assetIds[0])?.url || '',
+        slabImage: byId.get(item.slabAssetId || item.applicationAssetId || item.assetIds[1] || item.assetIds[0])?.url || '',
+      })));
+    }).catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : 'Materiais indisponíveis.'); });
+    return () => { active = false; };
+  }, []);
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return materials.filter((material) =>
       `${material.name} ${material.category}`.toLowerCase().includes(normalized),
     );
-  }, [query]);
+  }, [query, materials]);
   const hasEditedContent = Boolean(
     content.materialName ||
       content.features ||
@@ -67,6 +88,7 @@ export default function MaterialSelector({
         ))}
         {!results.length && <p>Nenhum material encontrado.</p>}
       </div>
+      {error && <p className="alert" role="alert">{error}</p>}
       {pending && (
         <div className="material-confirm" role="alert">
           <strong>Como aplicar {pending.name}?</strong>

@@ -72,11 +72,15 @@ export function normalizeRow(row: Record<string, unknown>): {
           ? 'Promocional'
           : 'Institucional';
   const lang = normalizeKey(get('language'));
-  const language = /pt.*en|en.*pt|portug.*ingl|biling/.test(lang)
-    ? 'PT / EN'
-    : /en|english|ingles/.test(lang)
-      ? 'EN'
-      : 'PT';
+  const hasPt = /\bpt\b|portug/.test(lang);
+  const hasEn = /\ben\b|english|ingles/.test(lang);
+  const hasEs = /\bes\b|spanish|espanhol/.test(lang);
+  const language: Campaign['language'] = hasPt && hasEn && hasEs ? 'PT / EN / ES'
+    : hasPt && hasEn || /biling/.test(lang) ? 'PT / EN'
+      : hasPt && hasEs ? 'PT / ES'
+        : hasEn && hasEs ? 'EN / ES'
+          : hasEs ? 'ES'
+            : hasEn ? 'EN' : 'PT';
   const rawDate = get('date');
   const date = parseDate(getRaw('date'));
   const warnings: string[] = [];
@@ -117,8 +121,9 @@ export function normalizeRow(row: Record<string, unknown>): {
       status,
       template: suggestTemplate(campaignType, audience),
       content: {
-        pt: language === 'EN' ? emptyContent() : content,
+        pt: ['EN', 'ES', 'EN / ES'].includes(language) ? emptyContent() : content,
         en: language === 'EN' ? content : emptyContent(),
+        es: language === 'ES' ? content : emptyContent(),
       },
     }),
     warnings,

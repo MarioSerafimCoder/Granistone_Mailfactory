@@ -9,6 +9,7 @@ import {
   Download,
   Monitor,
   Smartphone,
+  Languages,
 } from 'lucide-react';
 import type { BrandSettings, Campaign, Language, TemplateId } from '@/types/campaign';
 import { campaignTypes, statuses } from '@/types/campaign';
@@ -22,6 +23,7 @@ import { ExportDialog } from './ExportDialog';
 import PublishDialog from './PublishDialog';
 import type { SaveState } from '@/lib/use-studio';
 import { renderEmail } from '@/export/render';
+import TranslateDialog from './TranslateDialog';
 export default function CampaignEditor({
   campaign,
   brand,
@@ -37,7 +39,8 @@ export default function CampaignEditor({
   onSettings: () => void;
   saveState: SaveState;
 }) {
-  const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : 'pt');
+  const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
+  const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
   const [tab, setTab] = useState('content');
   const [mobile, setMobile] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -138,6 +141,16 @@ export default function CampaignEditor({
             <button className={language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')}>
               ENGLISH
             </button>
+            <button className={language === 'es' ? 'active' : ''} onClick={() => setLanguage('es')}>
+              ESPAÑOL
+            </button>
+          </div>
+          <div className="translation-bar">
+            <span><Languages size={14} /> Tradução a partir do português</span>
+            <div>
+              <button type="button" disabled={language === 'en'} onClick={() => setTranslateTarget('en')}>Converter para inglês</button>
+              <button type="button" disabled={language === 'es'} onClick={() => setTranslateTarget('es')}>Converter para espanhol</button>
+            </div>
           </div>
           <div className="editor-tabs">
             <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>
@@ -234,7 +247,11 @@ export default function CampaignEditor({
                   >
                     <option>PT</option>
                     <option>EN</option>
+                    <option>ES</option>
                     <option>PT / EN</option>
+                    <option>PT / ES</option>
+                    <option>EN / ES</option>
+                    <option>PT / EN / ES</option>
                   </Select>
                   <TextArea
                     label="Observações internas"
@@ -391,8 +408,11 @@ export default function CampaignEditor({
                       }
                     }
                   });
+                  event.currentTarget.style.pointerEvents = 'auto';
+                  event.currentTarget.setAttribute('aria-busy', 'false');
                 }}
-                style={{ width: mobile ? 375 : 600 }}
+                aria-busy="true"
+                style={{ width: mobile ? 375 : 600, pointerEvents: 'none' }}
               />
             ) : (
               <div className="preview-loading">Preparando seu e-mail…</div>
@@ -411,15 +431,23 @@ export default function CampaignEditor({
           value={campaign.content[language][imageField]}
           alt={campaign.content[language][altField]}
           recommended={imageSlot === 'hero' ? '1200 × 700 px' : '1200 × 800 px'}
+          materialId={campaign.materialId}
           onChange={(value) => update({ content: {
             pt: { ...campaign.content.pt, [imageField]: value },
             en: { ...campaign.content.en, [imageField]: value },
+            es: { ...campaign.content.es, [imageField]: value },
           } })}
           onAlt={(value) => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], [altField]: value } } })}
         />
         <div className="modal-actions"><button className="button primary" onClick={() => setImageSlot(undefined)}>Concluir</button></div>
       </Modal>}
       {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} onChange={onChange} onClose={() => setPublishOpen(false)} />}
+      {translateTarget && <TranslateDialog
+        campaign={campaign}
+        target={translateTarget}
+        onApply={(next, selected) => { onChange(next); setLanguage(selected); }}
+        onClose={() => setTranslateTarget(undefined)}
+      />}
       {exportOpen && (
         <ExportDialog
           campaign={campaign}

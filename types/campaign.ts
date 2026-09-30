@@ -1,4 +1,4 @@
-export type Language = 'pt' | 'en';
+export type Language = 'pt' | 'en' | 'es';
 export const statuses = ['Pendente', 'Em produção', 'Revisão', 'Aprovado', 'Exportado'] as const;
 export type Status = (typeof statuses)[number];
 export type ImportIssueSeverity = 'warning' | 'error';
@@ -67,7 +67,7 @@ export interface Campaign {
   campaignType: CampaignType;
   audience: string;
   objective: string;
-  language: 'PT' | 'EN' | 'PT / EN';
+  language: 'PT' | 'EN' | 'ES' | 'PT / EN' | 'PT / ES' | 'EN / ES' | 'PT / EN / ES';
   notes: string;
   status: Status;
   template: TemplateId;

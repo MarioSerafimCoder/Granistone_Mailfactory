@@ -1,8 +1,8 @@
 import { emptyContent, richText } from '@/campaigns/model';
-import type { CampaignContent, TemplateId } from '@/types/campaign';
+import type { CampaignContent, Language, TemplateId } from '@/types/campaign';
 import { defaultBrand } from '@/data/brand';
 
-export function templateContent(template: TemplateId, title: string): Record<'pt' | 'en', CampaignContent> {
+export function templateContent(template: TemplateId, title: string): Record<Language, CampaignContent> {
   const common = {
     ...emptyContent(), subject: title, kicker: 'GRANISTONE A ROCHA',
     cta: 'Conheça as possibilidades', ctaUrl: defaultBrand.website,
@@ -44,5 +44,5 @@ export function templateContent(template: TemplateId, title: string): Record<'pt
       body: richText('Escreva aqui as informações de atendimento, horários ou orientações para clientes e parceiros.\nAgradecemos pela compreensão.'),
     },
   };
-  return { pt: { ...common, ...variants[template] }, en: emptyContent() };
+  return { pt: { ...common, ...variants[template] }, en: emptyContent(), es: emptyContent() };
 }

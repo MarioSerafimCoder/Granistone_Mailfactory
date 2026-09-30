@@ -28,6 +28,7 @@ export default function ContentFields({
       content: {
         pt: { ...campaign.content.pt, [field]: value },
         en: { ...campaign.content.en, [field]: value },
+        es: { ...campaign.content.es, [field]: value },
       },
     });
   function applyMaterial(material: StoneMaterial, replace: boolean) {
@@ -47,6 +48,7 @@ export default function ContentFields({
         ...campaign.content,
         pt: { ...campaign.content.pt, heroImage: next.heroImage, applicationImage: next.applicationImage },
         en: { ...campaign.content.en, heroImage: next.heroImage, applicationImage: next.applicationImage },
+        es: { ...campaign.content.es, heroImage: next.heroImage, applicationImage: next.applicationImage },
         [language]: next,
       },
     });
@@ -119,6 +121,7 @@ export default function ContentFields({
             value={c.heroImage}
             alt={c.heroAlt}
             recommended="1200 × 700 px"
+            materialId={campaign.materialId}
             onChange={(heroImage) => editSharedImage('heroImage', heroImage)}
             onAlt={(heroAlt) => edit({ heroAlt })}
           />
@@ -129,6 +132,7 @@ export default function ContentFields({
             value={c.applicationImage}
             alt={c.applicationAlt}
             recommended="1200 × 800 px"
+            materialId={campaign.materialId}
             onChange={(applicationImage) => editSharedImage('applicationImage', applicationImage)}
             onAlt={(applicationAlt) => edit({ applicationAlt })}
           />

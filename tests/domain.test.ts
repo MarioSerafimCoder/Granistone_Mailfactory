@@ -12,6 +12,7 @@ import { decodeBackup, isCampaign } from '../lib/storage';
 import { sanitizeRichText } from '../lib/safety';
 import { campaignFileName } from '../export/download';
 import { campaignFingerprint } from '../campaigns/identity';
+import { applyTranslation, translationItems } from '../lib/translation';
 
 test('normalizes Portuguese headings, dates, audience and bilingual planning', () => {
   const { campaign, warnings } = normalizeRow({
@@ -71,6 +72,19 @@ test('template mapping, language isolation and stale approval reset', () => {
   assert.equal(edited.status, 'Em produção');
   assert.equal(edited.content.en.headline, '');
   assert.equal(changeTemplate(edited, 'notice').blocks.length, 2);
+});
+
+test('Spanish translation preserves Portuguese, rich formatting, links and shared images', () => {
+  const campaign = createCampaign();
+  campaign.content.pt = { ...campaign.content.pt, headline: 'Pedra natural', cta: 'Conheça', ctaUrl: 'https://example.com', heroImage: 'https://example.com/a.jpg', body: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Uma história', marks: [{ type: 'bold' }] }] }] } };
+  const translated = translationItems(campaign.content.pt).map((item) => ({ id: item.id, text: item.text === 'Pedra natural' ? 'Piedra natural' : item.text === 'Conheça' ? 'Descubra' : item.text === 'Uma história' ? 'Una historia' : item.text }));
+  const spanish = applyTranslation(campaign.content.pt, campaign.content.es, { target: 'es', items: translated });
+  assert.equal(campaign.content.pt.headline, 'Pedra natural');
+  assert.equal(spanish.headline, 'Piedra natural');
+  assert.equal(spanish.ctaUrl, campaign.content.pt.ctaUrl);
+  assert.equal(spanish.heroImage, campaign.content.pt.heroImage);
+  assert.deepEqual(spanish.body.content?.[0].content?.[0].marks, [{ type: 'bold' }]);
+  assert.equal(spanish.body.content?.[0].content?.[0].text, 'Una historia');
 });
 test('import identity and export filenames stay stable across repeated runs', () => {
   const first = normalizeRow({

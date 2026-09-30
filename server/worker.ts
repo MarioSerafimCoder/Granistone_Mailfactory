@@ -5,6 +5,7 @@ import { publicationInput, runPreflight } from './preflight';
 import { requireEditor, HttpError, jsonBody, limitedBody, type Env } from './platform';
 import { MAX_UPLOAD } from './images';
 import { renderEmail } from '@/export/render';
+import { translateContent } from './translation';
 const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url); const path = url.pathname;
@@ -14,13 +15,18 @@ const worker = {
       if (['GET', 'HEAD'].includes(request.method)) {
         const asset = path.match(/^\/assets\/([a-f0-9]{64})$/);
         if (asset) return await assets.serve(asset[1], request);
-        const email = path.match(/^\/emails\/([a-z0-9-]+)\/(pt|en)(?:\/v\/([1-9]\d{0,8}))?$/);
+        const email = path.match(/^\/emails\/([a-z0-9-]+)\/(pt|en|es)(?:\/v\/([1-9]\d{0,8}))?$/);
         if (email) return await publications.serve(email[1], email[2], email[3] ? Number(email[3]) : undefined, request);
       }
       if (path.startsWith('/assets/') || path.startsWith('/emails/')) throw new HttpError(404, 'Recurso não encontrado.');
       if (!path.startsWith('/api/')) return await env.ASSETS.fetch(request as never) as unknown as Response;
-      const editor = requireEditor(request, env);
-      if (path === '/api/session' && request.method === 'GET') return json({ editor: true, email: editor.email, origin: env.SITE_ORIGIN });
+      if (path === '/api/session' && request.method === 'GET') {
+        const email = request.headers.get('oai-authenticated-user-email')?.toLowerCase() || '';
+        const id = request.headers.get('oai-authenticated-user-id');
+        const editor = Boolean(id && email && env.EDITOR_EMAILS?.toLowerCase().split(',').map((item) => item.trim()).includes(email));
+        return json({ editor, email: editor ? email : '', origin: env.SITE_ORIGIN });
+      }
+      requireEditor(request, env);
       if (path === '/api/assets') {
         if (request.method === 'GET') return json(await assets.list(url.searchParams.get('q') || '', url.searchParams.get('category') || '', Math.max(0, Math.min(100000, Number(url.searchParams.get('offset')) || 0))));
         if (request.method === 'POST') {
@@ -47,6 +53,7 @@ const worker = {
         if (request.method === 'PUT') return json(await materials.save(await jsonBody(request), materialApi[1]));
       }
       if (path === '/api/preflight' && request.method === 'POST') return json(await runPreflight(publicationInput(await jsonBody(request)), env));
+      if (path === '/api/translate' && request.method === 'POST') return json(await translateContent(await jsonBody(request), env));
       if (path === '/api/render' && request.method === 'POST') {
         const input = publicationInput(await jsonBody(request));
         return json({ html: await renderEmail(input.campaign, input.language, input.brand) });

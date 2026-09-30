@@ -9,7 +9,7 @@ import { HttpError, type Env } from './platform';
 export function publicationInput(raw: unknown): PublicationInput {
   if (!raw || typeof raw !== 'object') throw new HttpError(400, 'Campanha inválida.');
   const value = raw as PublicationInput;
-  if (!isCampaign(value.campaign) || !isBrand(value.brand) || !['pt', 'en'].includes(value.language) || value.campaign.id.length > 100)
+  if (!isCampaign(value.campaign) || !isBrand(value.brand) || !['pt', 'en', 'es'].includes(value.language) || value.campaign.id.length > 100)
     throw new HttpError(400, 'Campanha, marca ou idioma inválido.');
   return value;
 }

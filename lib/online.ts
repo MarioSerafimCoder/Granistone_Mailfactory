@@ -1,4 +1,4 @@
-import type { EmailPublication, MediaAsset, OnlineMaterial, PreflightResult, PublicationInput } from '@/types/online';
+import type { EmailPublication, MediaAsset, OnlineMaterial, PreflightResult, PublicationInput, TranslationRequest, TranslationResult } from '@/types/online';
 export class OnlineError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
@@ -26,6 +26,7 @@ export const online = {
     save: (material: Partial<OnlineMaterial>) => api<OnlineMaterial>(material.id ? `/api/materials/${encodeURIComponent(material.id)}` : '/api/materials', { method: material.id ? 'PUT' : 'POST', ...json(material) }),
   },
   preflight: (input: PublicationInput) => api<PreflightResult & { html: string }>('/api/preflight', { method: 'POST', ...json(input) }),
+  translate: (input: TranslationRequest) => api<TranslationResult>('/api/translate', { method: 'POST', ...json(input) }),
   versions: (campaignId: string) => api<EmailPublication[]>(`/api/publications?campaignId=${encodeURIComponent(campaignId)}`),
   publish: async (input: PublicationInput, key: string) => {
     const response = await fetch('/api/publications', { method: 'POST', ...json(input), headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key } });

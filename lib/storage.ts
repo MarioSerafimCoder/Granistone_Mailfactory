@@ -14,7 +14,7 @@ export interface StudioData {
   brand: BrandSettings;
 }
 
-type ImageReference = { id: string; language: 'pt' | 'en'; field: 'heroImage' | 'applicationImage' };
+type ImageReference = { id: string; language: 'pt' | 'en' | 'es'; field: 'heroImage' | 'applicationImage' };
 
 /** A small synchronous journal protects the last debounce interval during reload.
  * Photos already committed in IndexedDB are referenced, not copied into localStorage. */
@@ -22,8 +22,8 @@ export function saveRecovery(next: StudioData, committed: StudioData | null) {
   const references: ImageReference[] = [];
   const campaigns = next.campaigns.map((campaign) => {
     const previous = committed?.campaigns.find((item) => item.id === campaign.id);
-    const content = { pt: { ...campaign.content.pt }, en: { ...campaign.content.en } };
-    for (const language of ['pt', 'en'] as const) {
+    const content = { pt: { ...campaign.content.pt }, en: { ...campaign.content.en }, es: { ...campaign.content.es } };
+    for (const language of ['pt', 'en', 'es'] as const) {
       for (const field of ['heroImage', 'applicationImage'] as const) {
         if (content[language][field].startsWith('data:') && content[language][field] === previous?.content[language][field]) {
           references.push({ id: campaign.id, language, field });
@@ -82,7 +82,7 @@ export function isCampaign(value: unknown): value is Campaign {
     !campaignTypes.includes(value.campaignType as Campaign['campaignType']) ||
     !statuses.includes(value.status as Campaign['status']) ||
     !templates.some((template) => template.id === value.template) ||
-    !['PT', 'EN', 'PT / EN'].includes(String(value.language)) ||
+    !['PT', 'EN', 'ES', 'PT / EN', 'PT / ES', 'EN / ES', 'PT / EN / ES'].includes(String(value.language)) ||
     !['left', 'center'].includes(String(value.alignment))
   )
     return false;
@@ -148,7 +148,11 @@ export function decodeBackup(text: string): StudioData {
         (id) => !campaign.blocks.some((block) => block.id === id),
       );
       // Preserve existing layouts; new image slots are optional in saved campaigns.
-      return { ...campaign, blocks: [...campaign.blocks, ...missing.map((id) => ({ id, enabled: false }))] };
+      return {
+        ...campaign,
+        content: { ...campaign.content, es: campaign.content.es ?? emptyContent() },
+        blocks: [...campaign.blocks, ...missing.map((id) => ({ id, enabled: false }))],
+      };
     }),
     brand: migrateBrand(value.brand, Number(value.version) === 1),
   };

@@ -24,3 +24,6 @@ export interface EmailPublication {
   id: string; campaignId: string; language: Language; slug: string; version: number;
   html: string; publishedAt: string; url: string; latestUrl: string;
 }
+export interface TranslationItem { id: string; text: string }
+export interface TranslationRequest { target: 'en' | 'es'; items: TranslationItem[] }
+export interface TranslationResult { target: 'en' | 'es'; items: TranslationItem[] }

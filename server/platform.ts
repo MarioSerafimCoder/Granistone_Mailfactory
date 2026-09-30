@@ -2,6 +2,7 @@ import type { D1Database, R2Bucket, Fetcher } from '@cloudflare/workers-types';
 export interface Env {
   DB: D1Database; BUCKET: R2Bucket; ASSETS: Fetcher;
   SITE_ORIGIN: string; EDITOR_EMAILS: string; REMOTE_HOSTS?: string;
+  GEMINI_API_KEY?: string; GEMINI_MODEL?: string;
 }
 export class HttpError extends Error {
   constructor(public status: number, message: string) { super(message); }

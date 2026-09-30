@@ -1,19 +1,20 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ImagePlus, Upload, Link as LinkIcon } from 'lucide-react';
+import { ImagePlus, Upload, Link as LinkIcon, Images, Crop } from 'lucide-react';
 import { Field } from './ui';
 import { prepareImage } from '@/lib/images';
 import { uploadLocalImage } from '@/lib/online';
 import AssetLibrary from './AssetLibrary';
+import ImageCropEditor from './ImageCropEditor';
 
-export default function ImagePicker({ label, value, alt, recommended, onChange, onAlt }: {
-  label: string; value: string; alt: string; recommended: string;
+export default function ImagePicker({ label, value, alt, recommended, materialId, onChange, onAlt }: {
+  label: string; value: string; alt: string; recommended: string; materialId?: string;
   onChange: (value: string) => void; onAlt: (value: string) => void;
 }) {
   const [error, setError] = useState('');
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<'file' | 'web'>('file');
+  const [mode, setMode] = useState<'library' | 'file' | 'web'>('library');
   const [url, setUrl] = useState(value.startsWith('http') ? value : '');
   const [feedback, setFeedback] = useState('');
   const [broken, setBroken] = useState(false);
@@ -57,10 +58,11 @@ export default function ImagePicker({ label, value, alt, recommended, onChange, 
   return <div className="image-field image-picker">
     <strong>{label}</strong>
     <div className="image-source-tabs">
+      <button type="button" disabled={busy} className={mode === 'library' ? 'active' : ''} onClick={() => setMode('library')}><Images size={14} /> Biblioteca</button>
       <button type="button" disabled={busy} className={mode === 'file' ? 'active' : ''} onClick={() => setMode('file')}><Upload size={14} /> Computador</button>
       <button type="button" disabled={busy} className={mode === 'web' ? 'active' : ''} onClick={() => setMode('web')}><LinkIcon size={14} /> Link da web</button>
     </div>
-    {mode === 'file' ? <button type="button" className="image-dropzone" disabled={busy}
+    {mode === 'library' ? <AssetLibrary embedded lazy materialId={materialId} preferredOrientation="horizontal" onSelect={asset => { onChange(asset.url); if (!alt && asset.alt) onAlt(asset.alt); setFeedback('Imagem da biblioteca aplicada.'); }} /> : mode === 'file' ? <button type="button" className="image-dropzone" disabled={busy}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => { event.preventDefault(); void upload(event.dataTransfer.files[0]); }}
       onClick={() => input.current?.click()}>
@@ -74,9 +76,9 @@ export default function ImagePicker({ label, value, alt, recommended, onChange, 
     </div>}
     <input ref={input} type="file" className="sr-only" aria-label={`Carregar ${label.toLowerCase()}`} accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy}
       onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ''; }} />
-    <small className="image-hint">{recommended} · Compartilhada entre PT e EN. Fotos grandes são otimizadas automaticamente.</small>
+    <small className="image-hint">{recommended} · Compartilhada entre PT, EN e ES. Fotos grandes são otimizadas automaticamente.</small>
     <div className="actions">
-      <button type="button" className="text-button" disabled={busy} onClick={() => setLibraryOpen(true)}>Escolher da biblioteca online</button>
+      {value && <button type="button" className="text-button" disabled={busy} onClick={() => setCropOpen(true)}><Crop size={14} /> Editar corte e tamanho</button>}
       {value.startsWith('data:') && <button type="button" className="text-button" disabled={busy} onClick={async () => {
         setBusy(true); setError('');
         try { const asset = await uploadLocalImage(value, alt); onChange(asset.url); setFeedback('Imagem hospedada com URL pública.'); }
@@ -84,7 +86,7 @@ export default function ImagePicker({ label, value, alt, recommended, onChange, 
         finally { setBusy(false); }
       }}>Hospedar esta imagem</button>}
     </div>
-    {libraryOpen && <AssetLibrary onClose={() => setLibraryOpen(false)} onSelect={asset => { onChange(asset.url); setLibraryOpen(false); }} />}
+    {cropOpen && <ImageCropEditor src={value} alt={alt} width={Number(recommended.match(/\d+/)?.[0]) || 1200} height={Number(recommended.match(/×\s*(\d+)/)?.[1]) || 700} onApply={onChange} onClose={() => setCropOpen(false)} />}
     {value && <button type="button" className="text-button" disabled={busy} onClick={() => { revision.current++; onChange(''); setFeedback(''); setUrl(''); }}>Remover imagem</button>}
     <Field label={`Texto alternativo · ${label.toLowerCase()}`} value={alt} placeholder="Descreva o que aparece na imagem" onChange={(event) => onAlt(event.target.value)} />
     {error && <p role="alert" className="alert">{error}</p>}

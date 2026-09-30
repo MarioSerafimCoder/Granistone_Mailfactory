@@ -16,7 +16,7 @@ test('publication dialog explains sign-in and blocks anonymous writes', async ({
   await expect(dialog.getByRole('link', { name: 'Entrar com ChatGPT para publicar' })).toHaveAttribute('href', '/signin-with-chatgpt?return_to=/');
   await expect(dialog.getByRole('button', { name: 'Hospedar fotos locais' })).toBeDisabled();
   await expect(dialog.getByRole('button', { name: 'Executar pré-flight' })).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: 'Publicar nova versão' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'PUBLICAR PARA RD' })).toBeDisabled();
 });
 test('large transparent logos preserve alpha after client optimization', async ({ page }) => {
   await page.goto('/');
@@ -24,12 +24,13 @@ test('large transparent logos preserve alpha after client optimization', async (
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Logo transparente');
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
   await page.frameLocator('.preview-stage iframe').getByRole('button', { name: 'Adicionar capa editorial' }).click();
+  await page.getByRole('dialog', { name: 'Imagem principal' }).getByRole('button', { name: 'Computador', exact: true }).click();
   const base64 = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 1800; canvas.height = 900;
     const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#111'; ctx.fillRect(300, 100, 900, 600);
     return canvas.toDataURL().split(',')[1];
   });
-  await page.locator('dialog input[type=file]').setInputFiles({ name: 'logo-transparente.png', mimeType: 'image/png', buffer: Buffer.from(base64, 'base64') });
+  await page.locator('dialog input[aria-label="Carregar imagem principal"]').setInputFiles({ name: 'logo-transparente.png', mimeType: 'image/png', buffer: Buffer.from(base64, 'base64') });
   await expect(page.getByText('logo-transparente.png · imagem pronta')).toBeVisible();
   const src = await page.locator('dialog .image-dropzone img').getAttribute('src'); expect(src).toMatch(/^data:image\/png/);
   const alpha = await page.evaluate(async uri => { const image = new Image(); image.src = uri!; await image.decode(); const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height; const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0); return ctx.getImageData(0, 0, 1, 1).data[3]; }, src);

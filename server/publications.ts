@@ -2,7 +2,7 @@ import type { EmailPublication, PublicationInput } from '@/types/online';
 import { runPreflight, imageUrls } from './preflight';
 import { AssetRepository, hashBytes } from './assets';
 import { HttpError, identifier, type Env } from './platform';
-interface Row { id: string; campaign_id: string; language: 'pt' | 'en'; slug: string; version: number; html: string; published_at: string }
+interface Row { id: string; campaign_id: string; language: 'pt' | 'en' | 'es'; slug: string; version: number; html: string; published_at: string }
 export class PublicationRepository {
   constructor(private env: Env) {}
   private model(row: Row): EmailPublication {

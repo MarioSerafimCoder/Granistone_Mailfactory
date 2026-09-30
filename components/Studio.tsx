@@ -9,6 +9,7 @@ import {
   Plus,
   ArrowUpRight,
   CircleHelp,
+  Images,
 } from 'lucide-react';
 import { useStudio } from '@/lib/use-studio';
 import { createCampaign } from '@/campaigns/model';
@@ -23,9 +24,10 @@ import TemplateLibrary from './TemplateLibrary';
 import { ImportDialog } from './ImportDialog';
 import { BrandSettings } from './BrandSettings';
 import { Modal, Field } from './ui';
+import LibraryPage from './LibraryPage';
 export default function Studio() {
   const { data, save, saveState, error } = useStudio();
-  const [view, setView] = useState<'campaigns' | 'templates'>('campaigns');
+  const [view, setView] = useState<'campaigns' | 'templates' | 'library'>('campaigns');
   const [activeId, setActiveId] = useState<string>();
   const [importOpen, setImportOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
@@ -202,6 +204,13 @@ export default function Studio() {
             <LayoutGrid size={18} />
             Templates<span className="nav-count">5</span>
           </button>
+          <button
+            className={view === 'library' ? 'active' : ''}
+            onClick={() => { setActiveId(undefined); setView('library'); }}
+          >
+            <Images size={18} />
+            Biblioteca
+          </button>
           <button onClick={() => setImportOpen(true)}>
             <Upload size={18} />
             Importar planejamento
@@ -247,7 +256,7 @@ export default function Studio() {
           </button>
           <div className="local-note">
             <span className="local-dot" />
-            Armazenamento local<small>Granistone Mail Studio · MVP</small>
+            Rascunhos locais<small>Biblioteca e publicações online</small>
           </div>
         </div>
       </aside>
@@ -255,7 +264,7 @@ export default function Studio() {
         <header className="topbar">
           <div>
             Granistone <span>/</span> Mail Studio <span>/</span>
-            <strong>{active ? 'Editor' : view === 'templates' ? 'Templates' : 'Campanhas'}</strong>
+            <strong>{active ? 'Editor' : view === 'templates' ? 'Templates' : view === 'library' ? 'Biblioteca' : 'Campanhas'}</strong>
           </div>
           <span className="topbar-note">Feito para a sua marca.</span>
         </header>
@@ -289,6 +298,8 @@ export default function Studio() {
           />
         ) : view === 'templates' ? (
           <TemplateLibrary onUse={start} />
+        ) : view === 'library' ? (
+          <LibraryPage />
         ) : (
           <CampaignList
             campaigns={data.campaigns}
@@ -366,8 +377,8 @@ export default function Studio() {
             <li>
               <strong>Edite a campanha</strong>
               <p>
-                Revise o template sugerido, preencha assunto, textos e imagens. Português e inglês
-                são conteúdos independentes; não há tradução automática.
+                Revise o template sugerido, preencha assunto, textos e imagens. Gere versões em
+                inglês e espanhol sem apagar o original em português.
               </p>
             </li>
             <li>
@@ -380,8 +391,7 @@ export default function Studio() {
             <li>
               <strong>Prepare a exportação</strong>
               <p>
-                Configure URLs públicas para imagens, links sociais e descadastro em Marca e rodapé.
-                Copie ou baixe o HTML e faça um disparo de teste no RD Station.
+                Execute o pré-flight, publique a versão online e copie o HTML final para o RD Station.
               </p>
             </li>
           </ol>

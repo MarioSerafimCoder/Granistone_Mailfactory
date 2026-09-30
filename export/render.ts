@@ -10,6 +10,7 @@ import { AvailabilityPanel, CommercialSpecs, CTA, EditorialSection, NoticeBody, 
 export async function renderEmail(campaign: Campaign, language: Language, brand: BrandSettings, editor = false): Promise<string> {
   const c = campaign.content[language];
   const en = language === 'en';
+  const es = language === 'es';
   const has = (id: string) => campaign.blocks.some((block) => block.id === id && block.enabled);
   const renderer = new Maily(sanitizeRichText(c.body));
   renderer.setTheme({ colors: { paragraph: t.colors.text }, fontSize: { paragraph: `${t.body}px` } });
@@ -37,20 +38,20 @@ export async function renderEmail(campaign: Campaign, language: Language, brand:
       visible = row(photo('hero', 600, 300, 'Capa editorial'), true) + row(heading('center')) + row(has('body') ? body : '') + row(button);
       break;
     case 'product-architect':
-      visible = row(photo('hero', 528, 310, 'Foto do material')) + row(heading()) + row(has('body') ? body : '') + row(columns(photo('application', 250, 330, 'Foto de aplicação'), has('specs') ? StoneSpecs('', c.features, c.applications, en) : '', 48)) + row(button);
+      visible = row(photo('hero', 528, 310, 'Foto do material')) + row(heading()) + row(has('body') ? body : '') + row(columns(photo('application', 250, 330, 'Foto de aplicação'), has('specs') ? StoneSpecs('', c.features, c.applications, language) : '', 48)) + row(button);
       break;
     case 'product-commercial':
-      visible = row(columns(photo('hero', 260, 340, 'Foto do produto'), heading('left', true) + (has('body') ? body : '') + button, 49)) + row(has('specs') ? CommercialSpecs(c.materialName, c.features, c.applications, en) : '') + row(has('availability') ? AvailabilityPanel(c.availability, en) : '');
+      visible = row(columns(photo('hero', 260, 340, 'Foto do produto'), heading('left', true) + (has('body') ? body : '') + button, 49)) + row(has('specs') ? CommercialSpecs(c.materialName, c.features, c.applications, language) : '') + row(has('availability') ? AvailabilityPanel(c.availability, language) : '');
       break;
     case 'newsletter': {
       const modules: Record<string, string> = {
         hero: photo('hero', 528, 220, 'Capa da edição'),
         body: body,
         application: photo('application', 250, 210, 'Foto de destaque'),
-        article: EditorialSection(en ? 'Reading' : 'Leitura', c.articleTitle, c.articleText, c.articleUrl),
-        specs: StoneSpecs(c.materialName, c.features, c.applications, en),
+        article: EditorialSection(en ? 'Reading' : es ? 'Lectura' : 'Leitura', c.articleTitle, c.articleText, c.articleUrl),
+        specs: StoneSpecs(c.materialName, c.features, c.applications, language),
         event: EditorialSection('Agenda', c.eventTitle, c.eventText),
-        project: EditorialSection(en ? 'Project' : 'Projeto', c.projectTitle, c.projectText),
+        project: EditorialSection(en ? 'Project' : es ? 'Proyecto' : 'Projeto', c.projectTitle, c.projectText),
         cta: button,
       };
       visible = row(heading('left'));

@@ -35,8 +35,10 @@ export function emptyContent(): CampaignContent {
     projectText: '',
   };
 }
-export function createCampaign(partial: Partial<Campaign> = {}): Campaign {
+type CampaignDraft = Omit<Partial<Campaign>, 'content'> & { content?: Partial<Record<Language, CampaignContent>> };
+export function createCampaign(partial: CampaignDraft = {}): Campaign {
   const template = partial.template ?? 'institutional';
+  const supplied = partial.content;
   return {
     id: crypto.randomUUID(),
     date: '',
@@ -48,11 +50,15 @@ export function createCampaign(partial: Partial<Campaign> = {}): Campaign {
     notes: '',
     status: 'Pendente',
     template,
-    content: { pt: emptyContent(), en: emptyContent() },
     blocks: getTemplate(template).blocks.map((id) => ({ id, enabled: true })),
     alignment: 'left',
     updatedAt: new Date().toISOString(),
     ...partial,
+    content: {
+      pt: supplied?.pt ?? emptyContent(),
+      en: supplied?.en ?? emptyContent(),
+      es: supplied?.es ?? emptyContent(),
+    },
   };
 }
 export function changeTemplate(c: Campaign, template: TemplateId): Campaign {
@@ -66,7 +72,10 @@ export function changeTemplate(c: Campaign, template: TemplateId): Campaign {
   };
 }
 export function languages(c: Campaign): Language[] {
-  return c.language === 'PT / EN' ? ['pt', 'en'] : [c.language === 'EN' ? 'en' : 'pt'];
+  const planned = c.language.split(' / ');
+  return (['PT', 'EN', 'ES'] as const)
+    .filter((code) => planned.includes(code))
+    .map((code) => code.toLowerCase() as Language);
 }
 export function editCampaign(c: Campaign, update: Partial<Campaign>): Campaign {
   return {

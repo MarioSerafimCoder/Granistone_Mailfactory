@@ -14,8 +14,22 @@ import { createCampaign, richText } from '../campaigns/model';
 import { defaultBrand } from '../data/brand';
 import worker from '../server/worker';
 import type { PublicationInput } from '../types/online';
+import { translateContent } from '../server/translation';
 
 const png = new Uint8Array(readFileSync('public/brand/granistone-logo.png'));
+test('Gemini translation validates and returns every requested field', async () => {
+  const fixture = platformFixture(); fixture.env.GEMINI_API_KEY = 'test-secret';
+  const original = globalThis.fetch; let header = '';
+  globalThis.fetch = async (_url, init) => {
+    header = new Headers(init?.headers).get('x-goog-api-key') || '';
+    return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify([{ id: 'headline', text: 'Natural stone' }]) }] } }] });
+  };
+  try {
+    const result = await translateContent({ target: 'en', items: [{ id: 'headline', text: 'Pedra natural' }] }, fixture.env);
+    assert.equal(result.items[0].text, 'Natural stone'); assert.equal(header, 'test-secret');
+    await assert.rejects(translateContent({ target: 'fr', items: [] }, fixture.env), /inválido/);
+  } finally { globalThis.fetch = original; fixture.close(); }
+});
 function validInput(origin: string, image: string): PublicationInput {
   const campaign = createCampaign({ title: 'Amazon Green · Arquitetos' });
   campaign.content.pt = { ...campaign.content.pt, subject: 'Campanha teste', headline: 'Conteúdo para homologação', preheader: 'Prévia de teste', body: richText('Texto de teste.'), heroImage: image, heroAlt: 'Logo Granistone', cta: 'Acessar', ctaUrl: origin };

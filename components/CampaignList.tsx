@@ -157,6 +157,7 @@ export default function CampaignList({
           <option value="">Todos os idiomas</option>
           <option>PT</option>
           <option>EN</option>
+          <option>ES</option>
         </select>
         <select
           aria-label="Filtrar status"
