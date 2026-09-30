@@ -180,3 +180,15 @@ test('campaign list deletes an email only after confirmation and persists the ch
   await page.reload();
   await expect(rows).toHaveCount(initialCount - 1);
 });
+
+test('new campaign dialog creates the email with the selected template', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
+  await expect(page.getByLabel('Template inicial', { exact: true })).toHaveValue('institutional');
+  await page.getByLabel('Template inicial', { exact: true }).selectOption('product-commercial');
+  await expect(page.getByText('Vitrine em duas colunas: fotografia à esquerda e chamada comercial à direita.')).toBeVisible();
+  await page.getByLabel('Nome da campanha', { exact: true }).fill('Campanha comercial');
+  await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByRole('button', { name: 'Estrutura', exact: true }).click();
+  await expect(page.getByLabel('Template', { exact: true })).toHaveValue('product-commercial');
+});

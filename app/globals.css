@@ -789,11 +789,14 @@ td:first-child {
   font-size: 12px;
   color: var(--granistone-gray);
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
+  line-height: 1.5;
+  border-left: 2px solid var(--granistone-black);
 }
 .new-template-note strong {
   color: var(--granistone-black);
-  font-weight: 400;
+  font-weight: 500;
 }
 .upload-zone {
   border: 1px dashed var(--granistone-gray);

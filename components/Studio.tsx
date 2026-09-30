@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useStudio } from '@/lib/use-studio';
 import { createCampaign } from '@/campaigns/model';
-import { getTemplate } from '@/templates/registry';
+import { getTemplate, templates } from '@/templates/registry';
 import { templateContent } from '@/templates/starter';
 import { downloadFile } from '@/export/download';
 import { decodeBackup, isCampaign, STORAGE_KEY } from '@/lib/storage';
@@ -24,7 +24,7 @@ import CampaignEditor from './CampaignEditor';
 import TemplateLibrary from './TemplateLibrary';
 import { ImportDialog } from './ImportDialog';
 import { BrandSettings } from './BrandSettings';
-import { Modal, Field } from './ui';
+import { Modal, Field, Select } from './ui';
 import LibraryPage from './LibraryPage';
 export default function Studio() {
   const { data, save, saveState, error } = useStudio();
@@ -343,7 +343,7 @@ export default function Studio() {
             }}
           >
             <p className="muted">
-              Comece pelo nome. Você pode ajustar o planejamento e o template no editor.
+              Escolha o nome e a estrutura que melhor representam este e-mail.
             </p>
             <Field
               label="Nome da campanha"
@@ -353,8 +353,20 @@ export default function Studio() {
               placeholder="Ex.: Crystal Palace · Outubro"
               onChange={(e) => setName(e.target.value)}
             />
+            <Select
+              label="Template inicial"
+              value={newTemplate}
+              onChange={(e) => setNewTemplate(e.target.value as TemplateId)}
+            >
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.label}
+                </option>
+              ))}
+            </Select>
             <div className="new-template-note">
-              Template inicial <strong>{getTemplate(newTemplate).name}</strong>
+              <strong>{getTemplate(newTemplate).label}</strong>
+              <span>{getTemplate(newTemplate).description}</span>
             </div>
             <div className="modal-actions">
               <button type="button" className="button" onClick={() => setNewTemplate(undefined)}>
