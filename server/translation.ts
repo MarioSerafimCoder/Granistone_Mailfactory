@@ -44,6 +44,8 @@ export async function translateContent(value: unknown, env: Env): Promise<Transl
     }),
   });
   if (!response.ok) {
+    const upstream = (await response.text()).slice(0, 2_000);
+    console.error('Gemini translation failed', { status: response.status, upstream });
     if (response.status === 429) throw new HttpError(429, 'O limite gratuito de tradução foi atingido. Aguarde um pouco e tente novamente.');
     if (response.status === 401 || response.status === 403) throw new HttpError(503, 'A chave de tradução precisa ser renovada.');
     throw new HttpError(503, 'O serviço de tradução está temporariamente indisponível.');
