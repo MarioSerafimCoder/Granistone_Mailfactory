@@ -22,7 +22,7 @@ export async function translateContent(value: unknown, env: Env): Promise<Transl
   const request = input(value);
   if (!request.items.length) return request;
   const language = request.target === 'en' ? 'English' : 'Spanish';
-  const model = env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+  const model = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
