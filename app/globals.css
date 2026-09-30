@@ -488,6 +488,20 @@ td:first-child {
 .campaign-table tr:hover td {
   background: var(--granistone-surface);
 }
+.campaign-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.delete-campaign {
+  color: var(--granistone-gray);
+}
+.delete-campaign:hover {
+  color: var(--granistone-red);
+  background: #fff1f1;
+}
 .date-cell strong {
   font-size: 23px;
   font-weight: 400;

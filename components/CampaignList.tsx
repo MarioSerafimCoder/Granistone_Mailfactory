@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Search, ArrowUpRight, Plus, Upload, ArrowRight, Mail } from 'lucide-react';
+import { Search, ArrowUpRight, Plus, Upload, ArrowRight, Mail, Trash2 } from 'lucide-react';
 import { campaignTypes, statuses, type Campaign } from '@/types/campaign';
 export function StatusBadge({ status }: { status: Campaign['status'] }) {
   return (
@@ -13,11 +13,13 @@ export function StatusBadge({ status }: { status: Campaign['status'] }) {
 export default function CampaignList({
   campaigns,
   onOpen,
+  onDelete,
   onCreate,
   onImport,
 }: {
   campaigns: Campaign[];
   onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
   onCreate: () => void;
   onImport: () => void;
 }) {
@@ -196,7 +198,7 @@ export default function CampaignList({
               <th>IDIOMA</th>
               <th>STATUS</th>
               <th>
-                <span className="sr-only">Abrir</span>
+                <span className="sr-only">Ações</span>
               </th>
             </tr>
           </thead>
@@ -235,13 +237,23 @@ export default function CampaignList({
                   <StatusBadge status={c.status} />
                 </td>
                 <td>
-                  <button
-                    className="icon-button"
-                    aria-label={`Abrir ${c.title}`}
-                    onClick={() => onOpen(c.id)}
-                  >
-                    <ArrowUpRight size={19} />
-                  </button>
+                  <div className="campaign-actions">
+                    <button
+                      className="icon-button"
+                      aria-label={`Abrir ${c.title}`}
+                      onClick={() => onOpen(c.id)}
+                    >
+                      <ArrowUpRight size={19} />
+                    </button>
+                    <button
+                      className="icon-button delete-campaign"
+                      aria-label={`Excluir ${c.title}`}
+                      title="Excluir e-mail"
+                      onClick={() => onDelete(c.id)}
+                    >
+                      <Trash2 size={17} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

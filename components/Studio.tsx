@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   CircleHelp,
   Images,
+  Trash2,
 } from 'lucide-react';
 import { useStudio } from '@/lib/use-studio';
 import { createCampaign } from '@/campaigns/model';
@@ -35,7 +36,9 @@ export default function Studio() {
   const [newTemplate, setNewTemplate] = useState<TemplateId>();
   const [name, setName] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [deleteCampaignId, setDeleteCampaignId] = useState<string>();
   const active = data?.campaigns.find((c) => c.id === activeId);
+  const deleteCampaign = data?.campaigns.find((c) => c.id === deleteCampaignId);
 
   useEffect(() => {
     if (!data) return;
@@ -304,6 +307,7 @@ export default function Studio() {
           <CampaignList
             campaigns={data.campaigns}
             onOpen={setActiveId}
+            onDelete={setDeleteCampaignId}
             onCreate={() => start()}
             onImport={() => setImportOpen(true)}
           />
@@ -362,6 +366,33 @@ export default function Studio() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+      {deleteCampaign && (
+        <Modal title="Excluir e-mail" onClose={() => setDeleteCampaignId(undefined)}>
+          <p>
+            Excluir <strong>{deleteCampaign.title}</strong> do seu planejamento?
+          </p>
+          <p className="muted">
+            O rascunho será removido deste Studio. Versões já publicadas permanecem disponíveis.
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="button" onClick={() => setDeleteCampaignId(undefined)}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="button danger"
+              onClick={() => {
+                save({ ...data, campaigns: data.campaigns.filter((campaign) => campaign.id !== deleteCampaign.id) }, true);
+                setDeleteCampaignId(undefined);
+                setFeedback('E-mail excluído do planejamento.');
+              }}
+            >
+              <Trash2 size={16} />
+              Excluir e-mail
+            </button>
+          </div>
         </Modal>
       )}
       {helpOpen && (

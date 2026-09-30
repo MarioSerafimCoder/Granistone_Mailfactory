@@ -154,3 +154,29 @@ test('translation keeps Portuguese and creates Spanish, while visual library sta
   await page.getByRole('button', { name: 'Materiais' }).click();
   await expect(page.getByText('Nenhum material cadastrado')).toBeVisible();
 });
+
+test('campaign list deletes an email only after confirmation and persists the change', async ({ page }) => {
+  await page.goto('/');
+  const rows = page.locator('.campaign-table tbody tr');
+  const initialCount = await rows.count();
+  expect(initialCount).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Excluir Crystal Palace · Arquitetura' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Excluir e-mail' });
+  await expect(dialog.getByText('Crystal Palace · Arquitetura')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Excluir e-mail', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Crystal Palace · Arquitetura', exact: true })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('granistone-mail-studio', 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return await new Promise<boolean>((resolve, reject) => {
+      const request = database.transaction('workspace', 'readonly').objectStore('workspace').get('studio');
+      request.onsuccess = () => resolve(request.result.campaigns.some((campaign: { title: string }) => campaign.title === 'Crystal Palace · Arquitetura'));
+      request.onerror = () => reject(request.error);
+    });
+  })).toBe(false);
+  await page.reload();
+  await expect(rows).toHaveCount(initialCount - 1);
+});
