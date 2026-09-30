@@ -103,7 +103,10 @@ test('publication runs server preflight, has immutable v1/v2, independent PT/EN,
   try {
     const assets = new AssetRepository(fixture.env);
     const asset = await assets.create(png, 'image/png', 'logo.png');
-    const input = publicationInput(validInput(fixture.env.SITE_ORIGIN, asset.url));
+    const legacyInput = validInput(fixture.env.SITE_ORIGIN, asset.url);
+    delete legacyInput.brand.unsubscribeMode;
+    legacyInput.brand.unsubscribeUrl = '';
+    const input = publicationInput(legacyInput);
     assert.equal(input.brand.unsubscribeMode, 'link');
     assert.equal(input.brand.unsubscribeUrl, GRANISTONE_UNSUBSCRIBE_URL);
     const preflight = await runPreflight(input, fixture.env);

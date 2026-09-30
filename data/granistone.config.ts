@@ -13,7 +13,6 @@ export const granistoneConfig: BrandSettings = {
   instagram: 'https://www.instagram.com/granistonearocha/',
   website: 'https://www.granistone.com.br/',
   whatsapp: 'https://wa.me/5585986221574',
-  unsubscribeMode: 'link',
   unsubscribeUrl: GRANISTONE_UNSUBSCRIBE_URL,
   address: 'R. Vicente Linhares, 500 - Aldeota, 60135-270 - Fortaleza - Ceará, Brasil',
   phone: '+55 85 98622-1574',
