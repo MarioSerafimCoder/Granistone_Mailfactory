@@ -3,6 +3,7 @@ import type { PreflightCheck, PreflightResult } from '@/types/online';
 import { publicHttpsUrl as isPublicUrl } from '@/lib/public-url';
 import { assetUrl } from '@/components/email/brand';
 import { plainText } from '@/campaigns/model';
+import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
 export const preflightLimits = { subject: 60, preheader: 140, htmlBytes: 102_400, imageBytes: 500_000 };
 export function result(checks: PreflightCheck[]): PreflightResult {
   return { checks, hasErrors: checks.some(c => c.severity === 'error'), warnings: checks.filter(c => c.severity === 'warning') };
@@ -29,19 +30,20 @@ export function contentChecks(c: Campaign, lang: Language, brand: BrandSettings)
     add(id, 'images', isPublicUrl(url) ? 'pass' : 'error', isPublicUrl(url) ? `${id}: URL válida.` : `Configure uma URL HTTPS pública para ${id} em Marca e rodapé.`);
   for (const [id, url] of [['Facebook', brand.facebook], ['Instagram', brand.instagram], ['Site', brand.website], ['WhatsApp', brand.whatsapp]])
     add(id, 'links', isPublicUrl(url) ? 'pass' : 'error', isPublicUrl(url) ? `${id}: link válido.` : `Configure um link válido para ${id} no rodapé.`);
-  if (brand.unsubscribeMode === 'rd-managed')
-    add('unsubscribe', 'compatibility', brand.unsubscribeUrl ? 'error' : 'warning', brand.unsubscribeUrl ? 'Apague o link manual ao usar descadastro gerenciado pelo RD Station.' : 'O RD Station deverá inserir seu próprio descadastro; homologar com um disparo real.');
-  else add('unsubscribe', 'links', isPublicUrl(brand.unsubscribeUrl) ? 'pass' : 'error', isPublicUrl(brand.unsubscribeUrl) ? 'Link de descadastro configurado.' : 'Configure o link real de descadastro ou selecione o gerenciamento pelo RD Station.');
+  add('unsubscribe', 'links', 'pass', 'Link oficial de descadastro aplicado automaticamente.');
   return checks;
 }
-export function htmlChecks(html: string): PreflightCheck[] {
+export function htmlChecks(html: string, allowedHttpLinks: string[] = [GRANISTONE_UNSUBSCRIBE_URL]): PreflightCheck[] {
   const checks: PreflightCheck[] = [];
   const add = (id: string, bad: boolean, message: string) => checks.push({ id, category: 'compatibility', severity: bad ? 'error' : 'pass', message } as PreflightCheck);
   add('html.active', /<(script|iframe|object|embed|form|input|link)\b|\son[a-z]+\s*=|javascript\s*:|vbscript\s*:|data-image-slot|contenteditable|srcdoc\s*=/i.test(html), 'HTML sem scripts, eventos, formulários ou controles do editor.');
   const images = [...html.matchAll(/<img\b[^>]*>/gi)].map(m => m[0]);
   add('html.images', images.some(tag => !isPublicUrl(tag.match(/\bsrc="([^"]*)"/i)?.[1]?.replace(/&amp;/g, '&') || '')), 'Todas as imagens precisam usar HTTPS público absoluto.');
   add('html.alt', images.some(tag => !tag.match(/\balt="([^"]+)"/i)?.[1].trim()), 'Todas as imagens precisam de ALT.');
-  add('html.urls', [...html.matchAll(/\b(?:href|background|src)="([^"]*)"/gi)].some(m => !/^(mailto:|tel:)/i.test(m[1]) && !isPublicUrl(m[1].replace(/&amp;/g, '&'))), 'Links e recursos do HTML devem ser públicos.');
+  add('html.urls', [...html.matchAll(/\b(?:href|background|src)="([^"]*)"/gi)].some((match) => {
+    const url = match[1].replace(/&amp;/g, '&');
+    return !/^(mailto:|tel:)/i.test(url) && !isPublicUrl(url) && !allowedHttpLinks.includes(url);
+  }), 'Links e recursos do HTML devem ser públicos.');
   add('html.css', /url\s*\(|@import|expression\s*\(/i.test(html), 'O HTML não pode conter recursos CSS externos ou código ativo.');
   add('html.viewport', !/<meta[^>]+name="viewport"/i.test(html), 'Viewport responsivo presente.');
   add('html.structure', !/role="presentation"/.test(html) || !/class="email-container"/.test(html) || !/width="600"/.test(html), 'Estrutura principal de e-mail com largura de 600 px.');

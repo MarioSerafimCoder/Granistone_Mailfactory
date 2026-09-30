@@ -62,17 +62,10 @@ export function BrandSettings({
             {field('instagram', 'Instagram')}
             {field('website', 'Site')}
             {field('whatsapp', 'WhatsApp')}
-            <label className="field">Descadastro
-              <select value={value.unsubscribeMode || 'link'} onChange={e => setValue({ ...value, unsubscribeMode: e.target.value as 'link' | 'rd-managed', unsubscribeUrl: e.target.value === 'rd-managed' ? '' : value.unsubscribeUrl })}>
-                <option value="link">Link real fornecido pelo RD Station</option>
-                <option value="rd-managed">Inserido pelo RD Station no disparo</option>
-              </select>
-            </label>
-            {field(
-              'unsubscribeUrl',
-              'URL de descadastro',
-              'Use o link válido ou confirme a substituição pelo RD Station no disparo de teste.',
-            )}
+            <h3>Descadastro</h3>
+            <p className="muted">
+              O link oficial da Granistone já é aplicado automaticamente em todos os e-mails.
+            </p>
             {field('address', 'Endereço')}
             {field('phone', 'Telefone exibido')}
           </section>

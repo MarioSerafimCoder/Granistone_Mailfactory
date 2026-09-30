@@ -1,6 +1,7 @@
 import type { BrandSettings, Language } from '@/types/campaign';
 import { emailTokens as t } from '@/lib/tokens/email';
 import { escapeHtml as e, safeUrl } from '@/lib/safety';
+import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
 export function assetUrl(brand: BrandSettings, file: string) {
   return brand.assetBaseUrl
     ? `${brand.assetBaseUrl.replace(/\/$/, '')}/brand/${file}`
@@ -26,8 +27,7 @@ export function GranistoneFooter(brand: BrandSettings, lang: Language) {
     .join('');
   const email = safeUrl(brand.email ? `mailto:${brand.email}` : '');
   const phone = safeUrl(brand.phone ? `tel:${brand.phone.replace(/[^+\d]/g, '')}` : '');
-  const unsubscribe = brand.unsubscribeMode === 'rd-managed' ? '' : safeUrl(brand.unsubscribeUrl)
-    ? `<br/>${en ? 'If you no longer wish to receive these emails,' : es ? 'Si ya no desea recibir estos correos,' : 'Caso não queira mais receber estes e-mails,'} <a href="${e(safeUrl(brand.unsubscribeUrl))}" style="color:${t.colors.text};text-decoration:underline">${en ? 'unsubscribe.' : es ? 'cancele su suscripción.' : 'cancele sua inscrição.'}</a>` : '';
+  const unsubscribe = `<br/>${en ? 'If you no longer wish to receive these emails,' : es ? 'Si ya no desea recibir estos correos,' : 'Caso não queira mais receber estes e-mails,'} <a href="${e(GRANISTONE_UNSUBSCRIBE_URL)}" style="color:${t.colors.text};text-decoration:underline">${en ? 'unsubscribe.' : es ? 'cancele su suscripción.' : 'cancele sua inscrição.'}</a>`;
   return `<tr><td align="center" bgcolor="${t.colors.footer}" style="padding:28px 28px 32px;color:${t.colors.text};font-family:${t.typography.body};text-align:center">
     <p style="font-size:13px;line-height:1.4;margin:0 auto 24px;max-width:420px">${en ? 'Thank you for your presence and your trust in being part of our story.' : es ? 'Gracias por su presencia y por la confianza en formar parte de nuestra historia.' : 'Agradecemos pela sua presença e pela confiança em fazer parte da nossa história.'}</p>
     <table align="center" role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 28px"><tr>${icons}</tr></table>

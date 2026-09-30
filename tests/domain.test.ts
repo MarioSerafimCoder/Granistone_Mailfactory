@@ -13,6 +13,7 @@ import { sanitizeRichText } from '../lib/safety';
 import { campaignFileName } from '../export/download';
 import { campaignFingerprint } from '../campaigns/identity';
 import { applyTranslation, translationItems } from '../lib/translation';
+import { GRANISTONE_UNSUBSCRIBE_URL } from '../data/granistone.config';
 
 test('normalizes Portuguese headings, dates, audience and bilingual planning', () => {
   const { campaign, warnings } = normalizeRow({
@@ -170,7 +171,7 @@ test('unsafe URLs, arbitrary CSS and HTML nodes cannot pass to exported email', 
   assert.ok(!html.includes('color:red'));
   assert.equal(sanitizeRichText(c.content.pt.body).content?.[1].attrs, undefined);
 });
-test('export blocks local images and missing unsubscribe, then accepts a fully configured campaign', () => {
+test('export blocks local images and always renders the official unsubscribe link', async () => {
   const c = createCampaign();
   c.content.pt = {
     ...c.content.pt,
@@ -181,17 +182,18 @@ test('export blocks local images and missing unsubscribe, then accepts a fully c
     ctaUrl: 'https://example.com',
     heroImage: 'data:image/png;base64,AAAA',
   };
-  assert.ok(exportIssues(c, 'pt', defaultBrand).length >= 4);
+  assert.ok(exportIssues(c, 'pt', defaultBrand).length >= 3);
   c.content.pt.heroImage = 'https://example.com/image.png';
   c.content.pt.heroAlt = 'Detalhe da pedra natural';
   const brand = {
     ...defaultBrand,
     assetBaseUrl: 'https://assets.example.com',
-    unsubscribeUrl: 'https://example.com/unsubscribe',
     facebook: 'https://facebook.com/example',
     instagram: 'https://instagram.com/example',
   };
   assert.equal(exportIssues(c, 'pt', brand).length, 0);
+  assert.equal(defaultBrand.unsubscribeUrl, GRANISTONE_UNSUBSCRIBE_URL);
+  assert.ok((await renderEmail(c, 'pt', brand)).includes('clickemailmkt.granistone.com.br/ls/click'));
 });
 test('JSON persistence round-trips complete campaigns and rejects corrupt backups', () => {
   const c = createCampaign();

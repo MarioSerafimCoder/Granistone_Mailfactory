@@ -15,7 +15,7 @@ export async function inspectRemote(input: string, policy: RemotePolicy, image =
     const parsed = new URL(url);
     if (!policy.hosts.includes(parsed.hostname)) throw new HttpError(400, 'Domínio não autorizado para consulta remota. Envie a imagem ao catálogo ou solicite autorização do domínio.');
     for (const type of ['A', 'AAAA']) {
-      const dns = await fetcher(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(parsed.hostname)}&type=${type}`, { headers: { Accept: 'application/dns-json' }, signal, redirect: 'error' });
+      const dns = await fetcher(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(parsed.hostname)}&type=${type}`, { headers: { Accept: 'application/dns-json' }, signal, redirect: 'manual' });
       if (!dns.ok) throw new Error('Não foi possível verificar o DNS.');
       const data = await dns.json() as { Status: number; Answer?: { type: number; data: string }[] };
       if (data.Status !== 0 || data.Answer?.some(a => [1, 28].includes(a.type) && !publicAddress(a.data))) throw new HttpError(400, 'DNS privado ou inválido.');

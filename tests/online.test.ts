@@ -9,12 +9,13 @@ import { optimizeImage, MAX_UPLOAD } from '../server/images';
 import { publicHttpsUrl } from '../lib/public-url';
 import { inspectRemote } from '../server/remote';
 import { contentChecks, htmlChecks } from '../export/preflight';
-import { runPreflight } from '../server/preflight';
+import { publicationInput, runPreflight } from '../server/preflight';
 import { createCampaign, richText } from '../campaigns/model';
 import { defaultBrand } from '../data/brand';
 import worker from '../server/worker';
 import type { PublicationInput } from '../types/online';
 import { translateContent } from '../server/translation';
+import { GRANISTONE_UNSUBSCRIBE_URL } from '../data/granistone.config';
 
 const png = new Uint8Array(readFileSync('public/brand/granistone-logo.png'));
 test('Gemini translation validates and returns every requested field', async () => {
@@ -102,9 +103,12 @@ test('publication runs server preflight, has immutable v1/v2, independent PT/EN,
   try {
     const assets = new AssetRepository(fixture.env);
     const asset = await assets.create(png, 'image/png', 'logo.png');
-    const input = validInput(fixture.env.SITE_ORIGIN, asset.url);
+    const input = publicationInput(validInput(fixture.env.SITE_ORIGIN, asset.url));
+    assert.equal(input.brand.unsubscribeMode, 'link');
+    assert.equal(input.brand.unsubscribeUrl, GRANISTONE_UNSUBSCRIBE_URL);
     const preflight = await runPreflight(input, fixture.env);
     assert.equal(preflight.hasErrors, false, JSON.stringify(preflight.checks.filter(c => c.severity === 'error')));
+    assert.ok(!preflight.checks.some(c => /Invalid redirect|Dimensões externas não confirmadas/.test(c.message)));
     const publications = new PublicationRepository(fixture.env);
     const first = (await publications.publish(input, 'request-1')).publication!;
     assert.equal(first.version, 1); assert.ok(!first.html.includes('/brand/'));

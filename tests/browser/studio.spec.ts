@@ -68,9 +68,7 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   await page
     .getByLabel('Endereço público dos arquivos', { exact: true })
     .fill('https://assets.example.com');
-  await page
-    .getByLabel('URL de descadastro', { exact: true })
-    .fill('https://example.com/unsubscribe');
+  await expect(page.getByText('O link oficial da Granistone já é aplicado automaticamente em todos os e-mails.')).toBeVisible();
   await page.getByLabel('Facebook', { exact: true }).fill('https://facebook.com/example');
   await page.getByLabel('Instagram', { exact: true }).fill('https://instagram.com/example');
   await page.getByRole('button', { name: 'Salvar configurações' }).click();

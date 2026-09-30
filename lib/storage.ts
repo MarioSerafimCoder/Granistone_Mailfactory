@@ -1,4 +1,5 @@
 import { defaultBrand } from '@/data/brand';
+import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
 import { demoCampaigns } from '@/data/demo';
 import { emptyContent } from '@/campaigns/model';
 import { templates, getTemplate } from '@/templates/registry';
@@ -126,6 +127,8 @@ function migrateBrand(value: unknown, legacy: boolean): BrandSettings {
     for (const key of ['facebook', 'instagram', 'website', 'whatsapp'] as const)
       if (!String(migrated[key]).trim()) migrated[key] = defaultBrand[key];
   }
+  migrated.unsubscribeMode = 'link';
+  migrated.unsubscribeUrl = GRANISTONE_UNSUBSCRIBE_URL;
   if (!isBrand(migrated)) throw new Error('Configuração de marca inválida.');
   return migrated;
 }

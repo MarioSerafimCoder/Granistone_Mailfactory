@@ -32,7 +32,7 @@ O script `Iniciar Studio.ps1` permite iniciar o projeto no Windows com as depend
 3. Preencha assunto, preheader, conteúdo, imagens e CTA. **Português / English** alterna conteúdos independentes. Não existe tradução automática.
 4. Use **Estrutura** para exibir/ocultar blocos. A newsletter permite mudar a ordem. Cabeçalho e rodapé são fixos; largura, fontes e espaçamentos não são livres.
 5. Confira o preview desktop/mobile. Ele recebe o HTML real da mesma função usada na exportação.
-6. Abra **Marca e rodapé** e configure os links da empresa, descadastro e endereço público das imagens.
+6. Abra **Marca e rodapé** e configure os links da empresa e o endereço público das imagens. O descadastro oficial já é aplicado automaticamente.
 7. Exporte HTML, JSON, assunto ou preheader. Faça um disparo de teste no RD Station antes de publicar.
 
 As cinco campanhas iniciais são **demonstrações**. Os materiais Crystal Palace, Speranza e Amazon Green contêm textos de exemplo, sem fotos nem propriedades técnicas atribuídas a materiais reais. Confira tudo com a equipe antes de usar comercialmente.
@@ -133,7 +133,7 @@ Os downloads usam nomes previsíveis, como `granistone-crystal-palace-arquitetos
 
 `StoneMaterial` prepara a biblioteca para dezenas de itens com `id`, `slug`, categoria, descrição, características, aplicações e imagens. A busca funciona por nome ou categoria. Ao selecionar um material em uma campanha já editada, a interface exige escolher entre preencher apenas campos vazios ou substituir o conteúdo; nada é sobrescrito silenciosamente. Crystal Palace, Speranza e Amazon Green continuam como dados demonstrativos, sem alegações técnicas reais.
 
-Enquanto existirem pendências, **Baixar HTML com fotos locais** permite uma conferência local com os arquivos da marca embutidos. Esse arquivo recebe o sufixo `-local` e é destinado à visualização no computador. O link de descadastro deve ser validado no RD Station; o MVP não inventa uma variável de integração nem remove a necessidade de descadastro.
+Enquanto existirem pendências, **Baixar HTML com fotos locais** permite uma conferência local com os arquivos da marca embutidos. Esse arquivo recebe o sufixo `-local` e é destinado à visualização no computador. O link oficial de descadastro da Granistone é incluído automaticamente no rodapé.
 
 O HTML foi verificado estruturalmente e em navegador, mas não passou por uma matriz de clientes reais (Outlook, Gmail, Apple Mail e Yahoo) nem por testes no RD Station. WebP e GIF podem exigir conversão a JPG/PNG de acordo com os clientes da sua base.
 

@@ -64,13 +64,13 @@ O slug é fixado na primeira publicação e preservado quando o título muda. PT
 
 Checks extensíveis têm `id`, `category`, `severity` e `message`. Há conteúdo obrigatório, assunto/preheader e limites recomendados, slot ativo sem imagem, HTTPS, ALT, CTA, links do rodapé/editoriais, carregamento remoto, peso/formato/dimensões/orientação quando conhecidos e inspeção do HTML final (scripts/eventos/iframe, data URLs, paths relativos, endereços privados, viewport, tabelas, 600 px e peso).
 
-Descadastro tem duas opções explícitas: `link` exige URL real fornecida pelo operador; `rd-managed` exige URL manual vazia e omite o descadastro do HTML, avisando que o RD deve inseri-lo no disparo. Não existe token inventado, URL fictícia ou duplicação automática. A homologação de importação e disparo dentro de uma conta real do RD Station continua necessária.
+O link oficial de descadastro fornecido pela Granistone é fixo e incluído automaticamente em todos os idiomas. Backups antigos e entradas recebidas pelo servidor são normalizados para esse valor antes da publicação.
 
 ## Interface mínima
 
 - Editor: `Publicar online` abre hospedagem das fotos locais, pré-flight, publicação e links para versões.
 - Imagens: `Hospedar esta imagem` e `Escolher da biblioteca online`.
-- Marca e rodapé: opção explícita de descadastro.
+- Marca e rodapé: descadastro oficial aplicado automaticamente.
 - A camada de API permite gestão completa de assets e materiais para a próxima etapa visual. A UI geral não foi redesenhada.
 
 ## Desenvolvimento e testes
