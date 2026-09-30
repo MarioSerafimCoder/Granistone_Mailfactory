@@ -1,0 +1,66 @@
+import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { createCampaign, richText } from '../../campaigns/model';
+import { defaultBrand } from '../../data/brand';
+// Local Worker test identity. Production identities are supplied by Sites dispatch.
+const origin = 'https://studio.example.com';
+const auth = { 'oai-authenticated-user-id': 'local-editor', 'oai-authenticated-user-email': 'local@studio.test', Origin: origin };
+test('large transparent logos preserve alpha after client optimization', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
+  await page.getByLabel('Nome da campanha', { exact: true }).fill('Logo transparente');
+  await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.frameLocator('.preview-stage iframe').getByRole('button', { name: 'Adicionar capa editorial' }).click();
+  const base64 = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 1800; canvas.height = 900;
+    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#111'; ctx.fillRect(300, 100, 900, 600);
+    return canvas.toDataURL().split(',')[1];
+  });
+  await page.locator('dialog input[type=file]').setInputFiles({ name: 'logo-transparente.png', mimeType: 'image/png', buffer: Buffer.from(base64, 'base64') });
+  await expect(page.getByText('logo-transparente.png · imagem pronta')).toBeVisible();
+  const src = await page.locator('dialog .image-dropzone img').getAttribute('src'); expect(src).toMatch(/^data:image\/png/);
+  const alpha = await page.evaluate(async uri => { const image = new Image(); image.src = uri!; await image.decode(); const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height; const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0); return ctx.getImageData(0, 0, 1, 1).data[3]; }, src);
+  expect(alpha).toBe(0);
+});
+test('Worker + D1 + R2: upload, preflight, publication, anonymous images, immutable v1 and v2', async ({ request, page }) => {
+  expect((await request.post('/api/assets')).status()).toBe(401);
+  const uploaded = await request.post('/api/assets', { headers: { ...auth, 'Content-Type': 'image/png', 'X-Asset-Metadata': encodeURIComponent(JSON.stringify({ fileName: 'logo.png', name: 'Teste Playwright', alt: 'Logo Granistone' })) }, data: await readFile('public/brand/granistone-logo.png') });
+  expect(uploaded.status(), await uploaded.text()).toBe(201);
+  const asset = await uploaded.json();
+  const campaign = createCampaign({ title: `Homologação ${Date.now()}` });
+  campaign.content.pt = { ...campaign.content.pt, subject: 'Assunto de teste', headline: 'Versão um', preheader: 'Teste técnico', body: richText('Texto de homologação.'), heroImage: asset.url, heroAlt: 'Logo Granistone', cta: 'Abrir', ctaUrl: origin };
+  campaign.content.en = { ...campaign.content.pt, headline: 'Version one' };
+  const brand = { ...defaultBrand, assetBaseUrl: origin, unsubscribeMode: 'rd-managed', unsubscribeUrl: '', facebook: origin, instagram: origin, website: origin, whatsapp: origin };
+  const input = { campaign, brand, language: 'pt' };
+  const check = await request.post('/api/preflight', { headers: auth, data: input });
+  expect(check.status(), await check.text()).toBe(200);
+  expect((await check.json()).hasErrors, await check.text()).toBe(false);
+  const publish = async (language: string) => {
+    const response = await request.post('/api/publications', { headers: { ...auth, 'Idempotency-Key': crypto.randomUUID() }, data: { ...input, language } });
+    expect(response.status(), await response.text()).toBe(201);
+    return (await response.json()).publication;
+  };
+  const first = await publish('pt');
+  expect(first.version).toBe(1);
+  const anon = await request.get(new URL(first.url).pathname);
+  expect(anon.status()).toBe(200);
+  const firstHtml = await anon.text();
+  expect(firstHtml).not.toMatch(/<script|data-image-slot|sidebar|toolbar|data:image/);
+  await page.route(`${origin}/**`, async route => {
+    const response = await request.get(new URL(route.request().url()).pathname);
+    await route.fulfill({ response });
+  });
+  await page.goto(new URL(first.url).pathname);
+  await expect(page.getByRole('heading', { name: 'Versão um' })).toBeVisible();
+  for (const image of await page.locator('img').all()) expect(await image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  campaign.content.pt.headline = 'Versão dois';
+  const second = await publish('pt'); expect(second.version).toBe(2);
+  expect(await (await request.get(new URL(first.url).pathname)).text()).toBe(firstHtml);
+  expect(await (await request.get(new URL(second.url).pathname)).text()).toContain('Versão dois');
+  expect((await publish('en')).version).toBe(1);
+  expect((await request.delete(`/api/assets/${asset.id}`, { headers: auth })).status()).toBe(409);
+  campaign.content.pt.heroImage = '';
+  const invalid = await request.post('/api/publications', { headers: { ...auth, 'Idempotency-Key': crypto.randomUUID() }, data: input });
+  expect(invalid.status()).toBe(422);
+  expect((await invalid.json()).preflight.hasErrors).toBe(true);
+});

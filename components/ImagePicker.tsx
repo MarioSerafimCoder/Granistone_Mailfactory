@@ -3,12 +3,15 @@ import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Upload, Link as LinkIcon } from 'lucide-react';
 import { Field } from './ui';
 import { prepareImage } from '@/lib/images';
+import { uploadLocalImage } from '@/lib/online';
+import AssetLibrary from './AssetLibrary';
 
 export default function ImagePicker({ label, value, alt, recommended, onChange, onAlt }: {
   label: string; value: string; alt: string; recommended: string;
   onChange: (value: string) => void; onAlt: (value: string) => void;
 }) {
   const [error, setError] = useState('');
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<'file' | 'web'>('file');
   const [url, setUrl] = useState(value.startsWith('http') ? value : '');
@@ -72,6 +75,16 @@ export default function ImagePicker({ label, value, alt, recommended, onChange, 
     <input ref={input} type="file" className="sr-only" aria-label={`Carregar ${label.toLowerCase()}`} accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy}
       onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ''; }} />
     <small className="image-hint">{recommended} · Compartilhada entre PT e EN. Fotos grandes são otimizadas automaticamente.</small>
+    <div className="actions">
+      <button type="button" className="text-button" disabled={busy} onClick={() => setLibraryOpen(true)}>Escolher da biblioteca online</button>
+      {value.startsWith('data:') && <button type="button" className="text-button" disabled={busy} onClick={async () => {
+        setBusy(true); setError('');
+        try { const asset = await uploadLocalImage(value, alt); onChange(asset.url); setFeedback('Imagem hospedada com URL pública.'); }
+        catch (e) { setError(e instanceof Error ? e.message : 'Upload indisponível.'); }
+        finally { setBusy(false); }
+      }}>Hospedar esta imagem</button>}
+    </div>
+    {libraryOpen && <AssetLibrary onClose={() => setLibraryOpen(false)} onSelect={asset => { onChange(asset.url); setLibraryOpen(false); }} />}
     {value && <button type="button" className="text-button" disabled={busy} onClick={() => { revision.current++; onChange(''); setFeedback(''); setUrl(''); }}>Remover imagem</button>}
     <Field label={`Texto alternativo · ${label.toLowerCase()}`} value={alt} placeholder="Descreva o que aparece na imagem" onChange={(event) => onAlt(event.target.value)} />
     {error && <p role="alert" className="alert">{error}</p>}

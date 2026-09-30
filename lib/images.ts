@@ -26,7 +26,14 @@ export async function prepareImage(file: File): Promise<string> {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('O navegador não conseguiu preparar a imagem.');
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    // Keep small originals, including transparent PNGs. Larger photos become compact JPEGs.
+    // Keep alpha even when a large logo or WebP needs resizing.
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let transparent = false;
+    for (let i = 3; i < pixels.length; i += 4) {
+      if (pixels[i] < 255) { transparent = true; break; }
+    }
+    if (transparent) return canvas.toDataURL('image/png');
+    // Opaque photographs may use JPEG; small originals need no recompression.
     if (file.size <= 450_000 && scale === 1) return read();
     context.globalCompositeOperation = 'destination-over';
     context.fillStyle = '#ffffff';

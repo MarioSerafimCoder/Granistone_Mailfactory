@@ -116,7 +116,7 @@ export function isCampaign(value: unknown): value is Campaign {
 }
 
 export function isBrand(value: unknown): value is BrandSettings {
-  return record(value) && Object.keys(defaultBrand).every((key) => typeof value[key] === 'string');
+  return record(value) && Object.keys(defaultBrand).every((key) => typeof value[key] === 'string') && (value.unsubscribeMode === undefined || ['link', 'rd-managed'].includes(String(value.unsubscribeMode)));
 }
 
 function migrateBrand(value: unknown, legacy: boolean): BrandSettings {

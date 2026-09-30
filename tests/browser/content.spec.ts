@@ -34,7 +34,7 @@ test('material autofill, image preview and restricted rich formatting remain edi
   await expect(page.frameLocator('iframe').getByText(/Texto editável.*Preservado/)).toBeVisible();
   await page.getByRole('button', { name: 'Exportar', exact: true }).click();
   await expect(
-    page.getByText('A imagem principal precisa de uma URL HTTPS pública.'),
+    page.getByText(/A imagem principal precisa de uma URL HTTPS pública/),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Fechar', exact: true }).click();
   await page.getByRole('button', { name: 'Voltar às campanhas', exact: true }).click();

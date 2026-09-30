@@ -93,6 +93,7 @@ export interface StoneMaterial {
   slabImage: string;
 }
 export interface BrandSettings {
+  unsubscribeMode?: 'link' | 'rd-managed';
   brandName: string;
   email: string;
   assetBaseUrl: string;

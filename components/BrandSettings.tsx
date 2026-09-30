@@ -62,6 +62,12 @@ export function BrandSettings({
             {field('instagram', 'Instagram')}
             {field('website', 'Site')}
             {field('whatsapp', 'WhatsApp')}
+            <label className="field">Descadastro
+              <select value={value.unsubscribeMode || 'link'} onChange={e => setValue({ ...value, unsubscribeMode: e.target.value as 'link' | 'rd-managed', unsubscribeUrl: e.target.value === 'rd-managed' ? '' : value.unsubscribeUrl })}>
+                <option value="link">Link real fornecido pelo RD Station</option>
+                <option value="rd-managed">Inserido pelo RD Station no disparo</option>
+              </select>
+            </label>
             {field(
               'unsubscribeUrl',
               'URL de descadastro',

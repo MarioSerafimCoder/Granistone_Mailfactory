@@ -5,14 +5,16 @@
   "packageManager": "pnpm@11.25.0",
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
-    "build": "next build",
-    "start": "next start --hostname 127.0.0.1",
+    "build": "next build && node scripts/build-worker.mjs",
+    "start": "wrangler dev --ip 127.0.0.1 --port 3000",
+    "db:migrate:local": "wrangler d1 migrations apply granistone-local --local",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "tsx --test tests/*.test.ts",
     "test:browser": "playwright test"
   },
   "dependencies": {
+    "@cf-wasm/photon": "^0.4.0",
     "@maily-to/core": "0.3.7",
     "@maily-to/render": "0.2.3",
     "@react-email/render": "^1.4.0",
@@ -20,6 +22,9 @@
     "@tiptap/extension-link": "^2.27.3",
     "@tiptap/extension-underline": "^2.27.3",
     "@tiptap/starter-kit": "^2.27.3",
+    "drizzle-orm": "^0.45.3",
+    "image-size": "^2.0.4",
+    "ipaddr.js": "^2.5.0",
     "lucide-react": "^0.468.0",
     "next": "16.3.6",
     "react": "^19.2.0",
@@ -27,15 +32,19 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260928.1",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.28.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4.1.0",
     "tsx": "^4.20.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "wrangler": "^4.143.0"
   }
 }

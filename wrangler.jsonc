@@ -1,0 +1,12 @@
+{
+  "name": "granistone-mail-studio-local",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "no_bundle": true,
+  "rules": [{ "type": "CompiledWasm", "globs": ["**/*.wasm"], "fallthrough": true }],
+  "assets": { "directory": "dist/client", "binding": "ASSETS", "run_worker_first": true },
+  "d1_databases": [{ "binding": "DB", "database_name": "granistone-local", "database_id": "local-only", "migrations_dir": "drizzle" }],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "granistone-local-media" }],
+  "vars": { "SITE_ORIGIN": "http://127.0.0.1:3000", "EDITOR_EMAILS": "local@studio.test", "REMOTE_HOSTS": "" }
+}

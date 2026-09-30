@@ -19,6 +19,7 @@ import ImagePicker from './ImagePicker';
 import type { ImageSlot } from '@/lib/images';
 import ContentFields from './ContentFields';
 import { ExportDialog } from './ExportDialog';
+import PublishDialog from './PublishDialog';
 import type { SaveState } from '@/lib/use-studio';
 import { renderEmail } from '@/export/render';
 export default function CampaignEditor({
@@ -40,6 +41,7 @@ export default function CampaignEditor({
   const [tab, setTab] = useState('content');
   const [mobile, setMobile] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [imageSlot, setImageSlot] = useState<ImageSlot>();
   const [editImages, setEditImages] = useState(true);
   const [preview, setPreview] = useState({ html: '', editorHtml: '', signature: '', error: '' });
@@ -115,6 +117,7 @@ export default function CampaignEditor({
             <Download size={16} />
             Exportar
           </button>
+          <button className="button" onClick={() => setPublishOpen(true)}>Publicar online</button>
         </div>
       </div>
       {!!campaign.importIssues?.length && (
@@ -416,6 +419,7 @@ export default function CampaignEditor({
         />
         <div className="modal-actions"><button className="button primary" onClick={() => setImageSlot(undefined)}>Concluir</button></div>
       </Modal>}
+      {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} onChange={onChange} onClose={() => setPublishOpen(false)} />}
       {exportOpen && (
         <ExportDialog
           campaign={campaign}

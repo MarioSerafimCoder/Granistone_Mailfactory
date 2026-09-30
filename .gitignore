@@ -1,6 +1,10 @@
 node_modules/
 .next/
 out/
+dist/
+.wrangler/
+.sites-runtime/
+.dev.vars
 *.tsbuildinfo
 .env*
 !.env.example

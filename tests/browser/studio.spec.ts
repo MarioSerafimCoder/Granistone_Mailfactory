@@ -55,6 +55,7 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   await page.getByRole('button', { name: 'Estrutura', exact: true }).click();
   await expect(page.getByLabel('Template', { exact: true })).toHaveValue('product-architect');
   await page.getByLabel('Imagem de aplicação', { exact: true }).uncheck();
+  await page.getByLabel('Imagem principal', { exact: true }).uncheck();
   await page.getByRole('button', { name: 'Conteúdo', exact: true }).click();
   await page.getByRole('button', { name: 'Exportar', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Baixar HTML', exact: true })).toBeDisabled();
