@@ -55,7 +55,12 @@ export default function TranslateDialog({ campaign, target, onApply, onClose }: 
       <label><input type="radio" checked={!replace} onChange={() => setReplace(false)} /> Preencher apenas campos vazios</label>
     </fieldset>}
     <p className="muted">Revise nomes de materiais, medidas e termos técnicos antes de publicar.</p>
-    {error && <p className="alert" role="alert">{error}</p>}
+    {error && <p className="alert" role="alert">
+      {error}{' '}
+      {error.includes('Entre com ChatGPT') && (
+        <a href="/signin-with-chatgpt?return_to=/" target="_top">Entrar com ChatGPT</a>
+      )}
+    </p>}
     <div className="modal-actions">
       <button className="button" onClick={onClose} disabled={busy}>Cancelar</button>
       <button className="button primary" onClick={() => void generate()} disabled={busy || !items.length}>

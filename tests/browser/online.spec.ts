@@ -7,6 +7,7 @@ const origin = 'https://studio.example.com';
 const auth = { 'oai-authenticated-user-id': 'local-editor', 'oai-authenticated-user-email': 'local@studio.test', Origin: origin };
 test('publication dialog explains sign-in and blocks anonymous writes', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByRole('link', { name: /Entrar com ChatGPT/ })).toHaveAttribute('href', '/signin-with-chatgpt?return_to=/');
   await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Publicação sem sessão');
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();

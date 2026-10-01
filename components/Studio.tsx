@@ -11,6 +11,8 @@ import {
   CircleHelp,
   Images,
   Trash2,
+  LogIn,
+  CircleCheckBig,
 } from 'lucide-react';
 import { useStudio } from '@/lib/use-studio';
 import { createCampaign } from '@/campaigns/model';
@@ -26,6 +28,7 @@ import { ImportDialog } from './ImportDialog';
 import { BrandSettings } from './BrandSettings';
 import { Modal, Field, Select } from './ui';
 import LibraryPage from './LibraryPage';
+import { online } from '@/lib/online';
 export default function Studio() {
   const { data, save, saveState, error } = useStudio();
   const [view, setView] = useState<'campaigns' | 'templates' | 'library'>('campaigns');
@@ -37,8 +40,21 @@ export default function Studio() {
   const [name, setName] = useState('');
   const [feedback, setFeedback] = useState('');
   const [deleteCampaignId, setDeleteCampaignId] = useState<string>();
+  const [onlineEditor, setOnlineEditor] = useState(false);
   const active = data?.campaigns.find((c) => c.id === activeId);
   const deleteCampaign = data?.campaigns.find((c) => c.id === deleteCampaignId);
+
+  useEffect(() => {
+    let mounted = true;
+    online.session()
+      .then((session) => {
+        if (mounted) setOnlineEditor(session.editor);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!data) return;
@@ -223,6 +239,27 @@ export default function Studio() {
           <Plus size={16} />
           Nova campanha
         </button>
+        {onlineEditor ? (
+          <div className="sidebar-auth authenticated" role="status">
+            <CircleCheckBig size={17} />
+            <span>
+              ChatGPT conectado
+              <small>Tradução online liberada</small>
+            </span>
+          </div>
+        ) : (
+          <a
+            className="sidebar-auth"
+            href="/signin-with-chatgpt?return_to=/"
+            target="_top"
+          >
+            <LogIn size={17} />
+            <span>
+              Entrar com ChatGPT
+              <small>Necessário para usar a tradução</small>
+            </span>
+          </a>
+        )}
         <div className="sidebar-bottom">
           <button onClick={() => setBrandOpen(true)}>
             <Settings2 size={17} />

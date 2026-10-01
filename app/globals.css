@@ -178,6 +178,7 @@ small {
   height: 100vh;
   position: sticky;
   top: 0;
+  overflow-y: auto;
   border-right: 1px solid var(--granistone-line);
   background: var(--granistone-surface);
   padding: 37px 20px 0;
@@ -268,6 +269,41 @@ small {
   margin: 26px 8px;
   color: var(--granistone-gray);
   font-size: 12px;
+}
+.sidebar-auth {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 8px 14px;
+  padding: 11px 10px;
+  border: 1px solid var(--granistone-black);
+  border-radius: 4px;
+  background: var(--granistone-black);
+  color: white;
+  font-size: 12px;
+  line-height: 1.15;
+  text-decoration: none;
+}
+.sidebar-auth:hover {
+  background: #2a2a2a;
+}
+.sidebar-auth > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-auth small {
+  color: #c9c9c9;
+  font-size: 9px;
+  font-weight: 400;
+}
+.sidebar-auth.authenticated {
+  border-color: #d7e5d8;
+  background: #f1f6f1;
+  color: #305b34;
+}
+.sidebar-auth.authenticated small {
+  color: #58735b;
 }
 .sidebar-bottom {
   margin-top: auto;
@@ -1605,6 +1641,22 @@ td:first-child {
     width: 12px;
   }
   .sidebar-bottom > button:last-of-type {
+    display: none;
+  }
+  .sidebar-auth {
+    width: auto;
+    margin: 0;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    color: var(--granistone-gray);
+    font-size: 10px;
+  }
+  .sidebar-auth:hover {
+    background: transparent;
+    color: var(--granistone-black);
+  }
+  .sidebar-auth small {
     display: none;
   }
   .topbar {
