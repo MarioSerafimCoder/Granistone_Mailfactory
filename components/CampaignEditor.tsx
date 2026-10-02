@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import type { BrandSettings, Campaign, Language, TemplateId } from '@/types/campaign';
 import { campaignTypes, statuses } from '@/types/campaign';
-import { changeTemplate, editCampaign } from '@/campaigns/model';
+import { changeTemplate, editCampaign, languageStates } from '@/campaigns/model';
+import { saveLabels } from '@/lib/workspace-sync';
 import { templates, getTemplate, blockLabels, suggestTemplate } from '@/templates/registry';
 import { Field, Select, TextArea, Modal } from './ui';
 import ImagePicker from './ImagePicker';
@@ -31,6 +32,7 @@ export default function CampaignEditor({
   onBack,
   onSettings,
   saveState,
+  campaignRevision,
 }: {
   campaign: Campaign;
   brand: BrandSettings;
@@ -38,6 +40,7 @@ export default function CampaignEditor({
   onBack: () => void;
   onSettings: () => void;
   saveState: SaveState;
+  campaignRevision?: number;
 }) {
   const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
   const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
@@ -76,7 +79,7 @@ export default function CampaignEditor({
       clearTimeout(timer);
     };
   }, [brand, campaign, language, signature]);
-  const update = (patch: Partial<Campaign>) => onChange(editCampaign(campaign, patch));
+  const update = (patch: Partial<Campaign>) => onChange(editCampaign(campaign, patch, language));
   const imageField = imageSlot === 'application' ? 'applicationImage' : 'heroImage';
   const altField = imageSlot === 'application' ? 'applicationAlt' : 'heroAlt';
   const resolvedIssues = (field: NonNullable<Campaign['importIssues']>[number]['field']) =>
@@ -101,15 +104,12 @@ export default function CampaignEditor({
         <div className="actions">
           <span className={`save-indicator ${saveState === 'error' ? 'unsaved' : ''}`} role="status">
             <Check size={14} />
-            {saveState === 'saving'
-              ? 'Salvando…'
-              : saveState === 'error'
-                ? 'Alterações não salvas'
-                : 'Salvo neste navegador'}
+            {saveLabels[saveState]}
           </span>
           <select
             aria-label="Status da campanha"
-            value={campaign.status}
+            title={`Status de ${language.toUpperCase()}`}
+            value={languageStates(campaign)[language].status}
             onChange={(e) => update({ status: e.target.value as Campaign['status'] })}
           >
             {statuses.map((s) => (
@@ -120,7 +120,7 @@ export default function CampaignEditor({
             <Download size={16} />
             Exportar
           </button>
-          <button className="button" onClick={() => setPublishOpen(true)}>Publicar online</button>
+          <button className="button" disabled={['saving', 'conflict', 'offline', 'error'].includes(saveState)} onClick={() => setPublishOpen(true)}>Publicar online</button>
         </div>
       </div>
       {!!campaign.importIssues?.length && (
@@ -441,7 +441,7 @@ export default function CampaignEditor({
         />
         <div className="modal-actions"><button className="button primary" onClick={() => setImageSlot(undefined)}>Concluir</button></div>
       </Modal>}
-      {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} onChange={onChange} onClose={() => setPublishOpen(false)} />}
+      {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} campaignRevision={campaignRevision} onChange={onChange} onClose={() => setPublishOpen(false)} />}
       {translateTarget && <TranslateDialog
         campaign={campaign}
         target={translateTarget}

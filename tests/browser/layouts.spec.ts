@@ -64,7 +64,7 @@ test('real layouts, clickable slots, large local photo, web image and portable e
   expect(html).not.toContain('<script');
   expect(html).not.toContain('Clique para adicionar');
   await page.getByRole('button', { name: 'Fechar', exact: true }).click();
-  await expect(page.getByText('Salvo neste navegador', { exact: true })).toBeVisible();
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo localmente · ainda não compartilhado');
   await page.reload();
   await page.getByRole('button', { name: 'Layout com fotos', exact: true }).click();
   await expect(frame.getByRole('img', { name: 'Foto carregada do computador' })).toHaveAttribute('src', source!);
@@ -92,7 +92,7 @@ test('existing localStorage campaigns migrate to photo-capable storage without l
   await page.getByRole('button', { name: 'Campanha anterior', exact: true }).click();
   await expect(page.getByLabel('Headline', { exact: true })).toHaveValue('Texto preservado');
   await page.getByLabel('Headline', { exact: true }).fill('Texto novo preservado');
-  await expect(page.getByText('Salvo neste navegador', { exact: true })).toBeVisible();
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo localmente · ainda não compartilhado');
   await page.reload();
   await page.getByRole('button', { name: 'Campanha anterior', exact: true }).click();
   await expect(page.getByLabel('Headline', { exact: true })).toHaveValue('Texto novo preservado');

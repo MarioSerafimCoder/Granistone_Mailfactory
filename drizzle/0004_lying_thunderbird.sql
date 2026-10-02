@@ -1,0 +1,1 @@
+ALTER TABLE `publications` ADD `source_signature` text DEFAULT '' NOT NULL;

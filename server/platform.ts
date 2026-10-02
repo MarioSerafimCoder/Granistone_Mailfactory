@@ -10,9 +10,9 @@ export class HttpError extends Error {
 export function requireEditor(request: Request, env: Env) {
   const email = request.headers.get('oai-authenticated-user-email')?.toLowerCase();
   const id = request.headers.get('oai-authenticated-user-id');
-  if (!id || !email) throw new HttpError(401, 'Entre com ChatGPT para usar o armazenamento online.');
+  if (!id || !email) throw new HttpError(401, 'Entre com ChatGPT para acessar o workspace online.');
   if (!env.EDITOR_EMAILS?.toLowerCase().split(',').map(s => s.trim()).includes(email))
-    throw new HttpError(403, 'Esta conta não tem permissão para editar o catálogo.');
+    throw new HttpError(403, 'Esta conta não está autorizada no workspace Granistone.');
   if (!['GET', 'HEAD'].includes(request.method)) {
     if (request.headers.get('origin') !== env.SITE_ORIGIN || request.headers.get('sec-fetch-site') === 'cross-site')
       throw new HttpError(403, 'Origem da solicitação não autorizada.');

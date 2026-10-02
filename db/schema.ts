@@ -1,5 +1,25 @@
 import { sqliteTable, text, integer, uniqueIndex, primaryKey } from 'drizzle-orm/sqlite-core';
 
+export const campaigns = sqliteTable('campaigns', {
+  id: text('id').primaryKey(), title: text('title').notNull(), date: text('date').notNull(),
+  status: text('status').notNull(), language: text('language').notNull(), data: text('data').notNull(),
+  revision: integer('revision').notNull(), createdAt: text('created_at').notNull(), createdBy: text('created_by').notNull(),
+  updatedAt: text('updated_at').notNull(), updatedBy: text('updated_by').notNull(),
+  deletedAt: text('deleted_at'), deletedBy: text('deleted_by'), reason: text('reason').notNull(),
+});
+export const campaignRevisions = sqliteTable('campaign_revisions', {
+  campaignId: text('campaign_id').notNull().references(() => campaigns.id), revision: integer('revision').notNull(),
+  data: text('data').notNull(), changedBy: text('changed_by').notNull(), createdAt: text('created_at').notNull(), reason: text('reason').notNull(),
+}, t => [primaryKey({ columns: [t.campaignId, t.revision] })]);
+export const workspaceSettings = sqliteTable('workspace_settings', {
+  key: text('key').primaryKey(), data: text('data').notNull(), revision: integer('revision').notNull(),
+  updatedAt: text('updated_at').notNull(), updatedBy: text('updated_by').notNull(),
+});
+export const workspaceMutations = sqliteTable('workspace_mutations', {
+  id: text('id').primaryKey(), resource: text('resource').notNull(), actor: text('actor').notNull(),
+  fingerprint: text('fingerprint').notNull(), response: text('response').notNull(),
+});
+
 export const assets = sqliteTable('assets', {
   id: text('id').primaryKey(), objectKey: text('object_key').notNull(),
   hash: text('hash').notNull(), metadata: text('metadata').notNull(),
@@ -14,6 +34,7 @@ export const materialAssets = sqliteTable('material_assets', {
   assetId: text('asset_id').notNull().references(() => assets.id),
 }, t => [primaryKey({ columns: [t.materialId, t.assetId] })]);
 export const publications = sqliteTable('publications', {
+  sourceSignature: text('source_signature').notNull().default(''),
   id: text('id').primaryKey(), campaignId: text('campaign_id').notNull(),
   language: text('language').notNull(), slug: text('slug').notNull(),
   version: integer('version').notNull(), html: text('html').notNull(),

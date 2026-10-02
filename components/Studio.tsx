@@ -28,9 +28,10 @@ import { ImportDialog } from './ImportDialog';
 import { BrandSettings } from './BrandSettings';
 import { Modal, Field, Select } from './ui';
 import LibraryPage from './LibraryPage';
-import { online } from '@/lib/online';
+import WorkspacePanel from './WorkspacePanel';
+import { saveLabels } from '@/lib/workspace-sync';
 export default function Studio() {
-  const { data, save, saveState, error } = useStudio();
+  const { data, save, saveState, error, workspace } = useStudio();
   const [view, setView] = useState<'campaigns' | 'templates' | 'library'>('campaigns');
   const [activeId, setActiveId] = useState<string>();
   const [importOpen, setImportOpen] = useState(false);
@@ -40,21 +41,14 @@ export default function Studio() {
   const [name, setName] = useState('');
   const [feedback, setFeedback] = useState('');
   const [deleteCampaignId, setDeleteCampaignId] = useState<string>();
-  const [onlineEditor, setOnlineEditor] = useState(false);
+  const onlineEditor = workspace?.editor ?? false;
   const active = data?.campaigns.find((c) => c.id === activeId);
   const deleteCampaign = data?.campaigns.find((c) => c.id === deleteCampaignId);
+  function showBrand() {
+    workspace?.setBrandEditing(true);
+    setBrandOpen(true);
+  }
 
-  useEffect(() => {
-    let mounted = true;
-    online.session()
-      .then((session) => {
-        if (mounted) setOnlineEditor(session.editor);
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!data) return;
@@ -200,7 +194,7 @@ export default function Studio() {
           </span>
         </button>
         <div className="workspace-label">
-          WORKSPACE <span>LOCAL</span>
+          WORKSPACE <span>{onlineEditor ? 'GRANISTONE' : 'LOCAL'}</span>
         </div>
         <nav aria-label="Navegação principal">
           <button
@@ -244,7 +238,7 @@ export default function Studio() {
             <CircleCheckBig size={17} />
             <span>
               ChatGPT conectado
-              <small>Tradução online liberada</small>
+              <small>Workspace compartilhado</small>
             </span>
           </div>
         ) : (
@@ -256,12 +250,12 @@ export default function Studio() {
             <LogIn size={17} />
             <span>
               Entrar com ChatGPT
-              <small>Necessário para usar a tradução</small>
+              <small>Acessar campanhas e tradução</small>
             </span>
           </a>
         )}
         <div className="sidebar-bottom">
-          <button onClick={() => setBrandOpen(true)}>
+          <button onClick={showBrand}>
             <Settings2 size={17} />
             Marca e rodapé
           </button>
@@ -296,7 +290,7 @@ export default function Studio() {
           </button>
           <div className="local-note">
             <span className="local-dot" />
-            Rascunhos locais<small>Biblioteca e publicações online</small>
+            {saveLabels[saveState]}<small>Cache local para recuperação</small>
           </div>
         </div>
       </aside>
@@ -313,6 +307,7 @@ export default function Studio() {
             {error}
           </div>
         )}
+        {workspace && <WorkspacePanel workspace={workspace} activeId={activeId} />}
         {feedback && (
           <div className="feedback global-feedback" role="status">
             {feedback}
@@ -325,10 +320,11 @@ export default function Studio() {
           <CampaignEditor
             key={active.id}
             campaign={active}
+            campaignRevision={workspace?.meta.revisions[active.id]}
             brand={data.brand}
-            saveState={saveState}
+            saveState={workspace?.campaignState(active.id) ?? saveState}
             onBack={() => setActiveId(undefined)}
-            onSettings={() => setBrandOpen(true)}
+            onSettings={showBrand}
             onChange={(campaign) =>
               save({
                 ...data,
@@ -367,8 +363,9 @@ export default function Studio() {
           brand={data.brand}
           onSave={(brand) => {
             save({ ...data, brand });
+            workspace?.setBrandEditing(false);
           }}
-          onClose={() => setBrandOpen(false)}
+          onClose={() => { workspace?.setBrandEditing(false); setBrandOpen(false); }}
         />
       )}
       {newTemplate && (
@@ -423,7 +420,7 @@ export default function Studio() {
             Excluir <strong>{deleteCampaign.title}</strong> do seu planejamento?
           </p>
           <p className="muted">
-            O rascunho será removido deste Studio. Versões já publicadas permanecem disponíveis.
+            A campanha irá para a lixeira e poderá ser restaurada. Versões já publicadas permanecem disponíveis.
           </p>
           <div className="modal-actions">
             <button type="button" className="button" onClick={() => setDeleteCampaignId(undefined)}>
@@ -435,7 +432,7 @@ export default function Studio() {
               onClick={() => {
                 save({ ...data, campaigns: data.campaigns.filter((campaign) => campaign.id !== deleteCampaign.id) }, true);
                 setDeleteCampaignId(undefined);
-                setFeedback('E-mail excluído do planejamento.');
+                setFeedback('E-mail movido para a lixeira.');
               }}
             >
               <Trash2 size={16} />
@@ -476,7 +473,7 @@ export default function Studio() {
             </li>
           </ol>
           <p className="export-check">
-            Os dados ficam somente neste navegador. Baixe backups regularmente. Restaurar JSON
+            Campanhas compartilhadas ficam no workspace online, com cache neste navegador para recuperação. Baixe backups regularmente. Restaurar JSON
             adiciona campanhas ausentes sem substituir as que já existem.
           </p>
         </Modal>

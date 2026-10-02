@@ -5,6 +5,7 @@ import type { Campaign, Language } from '@/types/campaign';
 import { online } from '@/lib/online';
 import { applyTranslation, translationItems } from '@/lib/translation';
 import { Modal } from './ui';
+import { reconcileLanguageState } from '@/campaigns/model';
 
 export default function TranslateDialog({ campaign, target, onApply, onClose }: {
   campaign: Campaign;
@@ -31,14 +32,14 @@ export default function TranslateDialog({ campaign, target, onApply, onClose }: 
           return key === 'body' || (typeof current === 'string' && !current.trim() && typeof value === 'string');
         })),
       };
-      onApply({
+      onApply(reconcileLanguageState(campaign, {
         ...campaign,
         language: target === 'en'
           ? campaign.language.includes('ES') ? 'PT / EN / ES' : 'PT / EN'
           : campaign.language.includes('EN') ? 'PT / EN / ES' : 'PT / ES',
         content: { ...campaign.content, [target]: next },
         updatedAt: new Date().toISOString(),
-      }, target);
+      }), target);
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível traduzir agora.');

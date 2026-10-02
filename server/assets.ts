@@ -58,7 +58,7 @@ export class AssetRepository {
     try {
       await this.env.DB.prepare('UPDATE assets SET deleted_at=? WHERE id=?').bind(new Date().toISOString(), id).run();
     } catch (error) {
-      if (String(error).includes('asset_in_use')) throw new HttpError(409, 'Imagem utilizada por material ou publicação. Exclusão bloqueada.');
+      if (String(error).includes('asset_in_use')) throw new HttpError(409, 'Imagem utilizada por campanha, histórico, marca, material ou publicação. Exclusão bloqueada.');
       throw error;
     }
     // Retain bytes. Soft deletion + database guards eliminate publication/delete races.

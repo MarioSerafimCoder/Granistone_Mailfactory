@@ -61,6 +61,7 @@ export interface CampaignContent {
   projectText: string;
 }
 export interface Campaign {
+  languageState?: Record<Language, { status: Status; updatedAt: string; approvedAt?: string; approvedBy?: string }>;
   id: string;
   date: string;
   title: string;

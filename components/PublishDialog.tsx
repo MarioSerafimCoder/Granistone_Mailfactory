@@ -5,15 +5,17 @@ import type { EmailPublication, PreflightResult } from '@/types/online';
 import { online, uploadLocalImage } from '@/lib/online';
 import { Modal } from './ui';
 import { downloadFile } from '@/export/download';
-export default function PublishDialog({ campaign, brand, language, onChange, onClose }: {
-  campaign: Campaign; brand: BrandSettings; language: Language; onChange: (campaign: Campaign) => void; onClose: () => void;
+import { publicationSignature } from '@/lib/publication-signature';
+import { languageStates } from '@/campaigns/model';
+export default function PublishDialog({ campaign, brand, language, campaignRevision, onChange, onClose }: {
+  campaign: Campaign; brand: BrandSettings; language: Language; campaignRevision?: number; onChange: (campaign: Campaign) => void; onClose: () => void;
 }) {
   const [report, setReport] = useState<PreflightResult & { html?: string }>();
   const [versions, setVersions] = useState<EmailPublication[]>([]);
   const [message, setMessage] = useState(''); const [busy, setBusy] = useState(false);
   const [origin, setOrigin] = useState('');
   const key = useRef('');
-  const input = { campaign, language, brand: { ...brand, assetBaseUrl: brand.assetBaseUrl || origin } };
+  const input = { campaign, language, campaignRevision, brand: { ...brand, assetBaseUrl: brand.assetBaseUrl || origin } };
   const signature = JSON.stringify(input);
   const [checked, setChecked] = useState('');
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function PublishDialog({ campaign, brand, language, onChange, onC
     finally { setBusy(false); }
   }
   const latest = versions.find((version) => version.language === language);
-  const dirty = !latest || new Date(campaign.updatedAt).getTime() > new Date(latest.publishedAt).getTime();
+  const dirty = !latest || (latest.sourceSignature ? latest.sourceSignature !== publicationSignature(input) : new Date(languageStates(campaign)[language].updatedAt).getTime() > new Date(latest.publishedAt).getTime());
   const groups = report ? (['content', 'images', 'links', 'compatibility'] as const)
     .map((category) => ({ category, checks: report.checks.filter((check) => check.category === category && check.severity !== 'pass') }))
     .filter((group) => group.checks.length) : [];

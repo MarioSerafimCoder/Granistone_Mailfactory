@@ -19,8 +19,9 @@ export interface PreflightCheck {
 export interface PreflightResult {
   checks: PreflightCheck[]; hasErrors: boolean; warnings: PreflightCheck[];
 }
-export interface PublicationInput { campaign: Campaign; brand: BrandSettings; language: Language }
+export interface PublicationInput { campaign: Campaign; brand: BrandSettings; language: Language; campaignRevision?: number }
 export interface EmailPublication {
+  sourceSignature?: string;
   id: string; campaignId: string; language: Language; slug: string; version: number;
   html: string; publishedAt: string; url: string; latestUrl: string;
 }

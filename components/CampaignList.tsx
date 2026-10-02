@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Search, ArrowUpRight, Plus, Upload, ArrowRight, Mail, Trash2 } from 'lucide-react';
 import { campaignTypes, statuses, type Campaign } from '@/types/campaign';
+import { languages, languageStates } from '@/campaigns/model';
 export function StatusBadge({ status }: { status: Campaign['status'] }) {
   return (
     <span className={`status status-${statuses.indexOf(status)}`}>
@@ -37,7 +38,7 @@ export default function CampaignList({
         (!month || c.date.startsWith(month)) &&
         (!audience || c.audience === audience) &&
         (!language || c.language.includes(language)) &&
-        (!status || c.status === status),
+        (!status || languages(c).some(lang => languageStates(c)[lang].status === status)),
     )
     .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
   const inProgress = campaigns.filter(
@@ -234,7 +235,7 @@ export default function CampaignList({
                   <span className="language-badge">{c.language}</span>
                 </td>
                 <td>
-                  <StatusBadge status={c.status} />
+                  {languages(c).map(lang => <div key={lang}><small>{lang.toUpperCase()} </small><StatusBadge status={languageStates(c)[lang].status} /></div>)}
                 </td>
                 <td>
                   <div className="campaign-actions">
@@ -279,7 +280,7 @@ export default function CampaignList({
         <span>
           {filtered.length} de {campaigns.length} campanhas
         </span>
-        <span>Seu conteúdo fica salvo neste navegador.</span>
+        <span>Campanhas online compartilhadas · rascunhos locais identificados no editor.</span>
       </div>
     </div>
   );

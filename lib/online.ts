@@ -1,4 +1,6 @@
 import type { EmailPublication, MediaAsset, OnlineMaterial, PreflightResult, PublicationInput, TranslationRequest, TranslationResult } from '@/types/online';
+import type { Campaign, BrandSettings } from '@/types/campaign';
+import type { SharedCampaign, SharedBrand, CampaignRevision } from '@/types/workspace';
 export class OnlineError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
@@ -11,6 +13,20 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 }
 const json = (value: unknown) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
 export const online = {
+  campaigns: {
+    list: () => api<SharedCampaign[]>('/api/campaigns'),
+    get: (id: string) => api<SharedCampaign>(`/api/campaigns/${encodeURIComponent(id)}`),
+    create: (campaign: Campaign, requestId: string) => api<SharedCampaign>('/api/campaigns', { method: 'POST', ...json({ campaign, requestId }) }),
+    save: (campaign: Campaign, revision: number, requestId: string) => api<SharedCampaign>(`/api/campaigns/${encodeURIComponent(campaign.id)}`, { method: 'PUT', ...json({ campaign, revision, requestId }) }),
+    remove: (id: string, revision: number, requestId: string) => api<SharedCampaign>(`/api/campaigns/${encodeURIComponent(id)}`, { method: 'DELETE', ...json({ revision, requestId }) }),
+    restore: (id: string, revision: number) => api<SharedCampaign>(`/api/campaigns/${encodeURIComponent(id)}/restore`, { method: 'POST', ...json({ revision, requestId: crypto.randomUUID() }) }),
+    history: (id: string) => api<CampaignRevision[]>(`/api/campaigns/${encodeURIComponent(id)}/history`),
+    restoreRevision: (id: string, revision: number, historical: number) => api<SharedCampaign>(`/api/campaigns/${encodeURIComponent(id)}/history/${historical}/restore`, { method: 'POST', ...json({ revision, requestId: crypto.randomUUID() }) }),
+  },
+  settings: {
+    get: () => api<SharedBrand>('/api/workspace/settings'),
+    save: (brand: BrandSettings, revision: number, requestId: string) => api<SharedBrand>('/api/workspace/settings', { method: 'PUT', ...json({ brand, revision, requestId }) }),
+  },
   session: () => api<{ editor: boolean; email: string; origin: string }>('/api/session'),
   assets: {
     list: (q = '', category = '') => api<MediaAsset[]>(`/api/assets?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`),

@@ -77,8 +77,30 @@ export function languages(c: Campaign): Language[] {
     .filter((code) => planned.includes(code))
     .map((code) => code.toLowerCase() as Language);
 }
-export function editCampaign(c: Campaign, update: Partial<Campaign>): Campaign {
-  return {
+export function languageStates(c: Campaign): NonNullable<Campaign['languageState']> {
+  return Object.fromEntries((['pt', 'en', 'es'] as const).map(lang => [lang,
+    c.languageState?.[lang] ?? { status: languages(c).includes(lang) ? c.status : 'Pendente', updatedAt: c.updatedAt },
+  ])) as NonNullable<Campaign['languageState']>;
+}
+export function reconcileLanguageState(previous: Campaign, next: Campaign, actor?: string): Campaign {
+  const before = languageStates(previous), state = languageStates(next);
+  const sharedChanged = ['template', 'blocks', 'alignment', 'materialId'].some(key => JSON.stringify(previous[key as keyof Campaign]) !== JSON.stringify(next[key as keyof Campaign]));
+  const now = new Date().toISOString();
+  for (const lang of ['pt', 'en', 'es'] as const) {
+    const changed = sharedChanged || JSON.stringify(previous.content[lang]) !== JSON.stringify(next.content[lang]);
+    const status = changed && ['Aprovado', 'Exportado'].includes(state[lang].status) ? 'Em produção' : state[lang].status;
+    state[lang] = { ...state[lang], status, updatedAt: changed ? now : before[lang].updatedAt };
+    if (status === 'Aprovado') {
+      state[lang].approvedAt = before[lang].status === 'Aprovado' ? before[lang].approvedAt : now;
+      state[lang].approvedBy = before[lang].status === 'Aprovado' ? before[lang].approvedBy : actor;
+    } else { delete state[lang].approvedAt; delete state[lang].approvedBy; }
+  }
+  const planned = languages(next).map(lang => state[lang].status);
+  const status = planned.every(s => s === planned[0]) ? planned[0] : 'Em produção';
+  return { ...next, status, languageState: state };
+}
+export function editCampaign(c: Campaign, update: Partial<Campaign>, language?: Language): Campaign {
+  const next = {
     ...c,
     ...update,
     status:
@@ -86,4 +108,9 @@ export function editCampaign(c: Campaign, update: Partial<Campaign>): Campaign {
       (c.status === 'Aprovado' || c.status === 'Exportado' ? 'Em produção' : c.status),
     updatedAt: new Date().toISOString(),
   };
+  if (update.status) {
+    next.languageState = languageStates(c);
+    for (const lang of language ? [language] : languages(c)) next.languageState[lang] = { ...next.languageState[lang], status: update.status };
+  }
+  return reconcileLanguageState(c, next);
 }

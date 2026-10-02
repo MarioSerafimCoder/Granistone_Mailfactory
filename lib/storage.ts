@@ -1,7 +1,8 @@
 import { defaultBrand } from '@/data/brand';
 import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
 import { demoCampaigns } from '@/data/demo';
-import { emptyContent } from '@/campaigns/model';
+import { emptyContent, languageStates } from '@/campaigns/model';
+import type { SyncMetadata } from '@/types/workspace';
 import { templates, getTemplate } from '@/templates/registry';
 import { campaignTypes, statuses, type BrandSettings, type Campaign } from '@/types/campaign';
 
@@ -13,6 +14,7 @@ export interface StudioData {
   version: 2;
   campaigns: Campaign[];
   brand: BrandSettings;
+  sync?: SyncMetadata;
 }
 
 type ImageReference = { id: string; language: 'pt' | 'en' | 'es'; field: 'heroImage' | 'applicationImage' };
@@ -44,6 +46,7 @@ function recover(base: StudioData): StudioData {
   if (!raw) return base;
   const pending = JSON.parse(raw) as { data: StudioData; references: ImageReference[] };
   const recovered = decodeBackup(JSON.stringify(pending.data));
+  recovered.sync = pending.data.sync ?? base.sync;
   for (const reference of pending.references) {
     const target = recovered.campaigns.find((campaign) => campaign.id === reference.id);
     const source = base.campaigns.find((campaign) => campaign.id === reference.id);
@@ -89,7 +92,7 @@ export function isCampaign(value: unknown): value is Campaign {
     return false;
   if (
     !record(value.content) ||
-    !['pt', 'en'].every((language) => {
+    !['pt', 'en', ...(value.content.es === undefined ? [] : ['es'])].every((language) => {
       const content = (value.content as Record<string, unknown>)[language];
       return (
         record(content) &&
@@ -100,6 +103,10 @@ export function isCampaign(value: unknown): value is Campaign {
     })
   )
     return false;
+  if (value.languageState !== undefined && (!record(value.languageState) || !['pt', 'en', 'es'].every(lang => {
+    const state = (value.languageState as Record<string, unknown>)[lang];
+    return record(state) && statuses.includes(state.status as Campaign['status']) && typeof state.updatedAt === 'string';
+  }))) return false;
   const allowed = getTemplate(value.template as Campaign['template']).blocks;
   return (
     Array.isArray(value.blocks) &&
@@ -120,7 +127,7 @@ export function isBrand(value: unknown): value is BrandSettings {
   return record(value) && Object.keys(defaultBrand).every((key) => typeof value[key] === 'string') && (value.unsubscribeMode === undefined || ['link', 'rd-managed'].includes(String(value.unsubscribeMode)));
 }
 
-function migrateBrand(value: unknown, legacy: boolean): BrandSettings {
+export function migrateBrand(value: unknown, legacy = false): BrandSettings {
   if (!record(value)) throw new Error('Configuração de marca inválida.');
   const migrated = { ...defaultBrand, ...value };
   if (legacy) {
@@ -153,6 +160,7 @@ export function decodeBackup(text: string): StudioData {
       // Preserve existing layouts; new image slots are optional in saved campaigns.
       return {
         ...campaign,
+        languageState: languageStates(campaign),
         content: { ...campaign.content, es: campaign.content.es ?? emptyContent() },
         blocks: [...campaign.blocks, ...missing.map((id) => ({ id, enabled: false }))],
       };
@@ -189,7 +197,7 @@ export async function loadStudio(): Promise<StudioData> {
     request.onerror = () => reject(request.error);
     transaction.onabort = () => reject(transaction.error);
   });
-  if (current) return recover(decodeBackup(JSON.stringify(current)));
+  if (current) return recover({ ...decodeBackup(JSON.stringify(current)), sync: current.sync });
   const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
   return recover(saved
     ? decodeBackup(saved)

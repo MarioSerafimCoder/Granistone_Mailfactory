@@ -6,6 +6,7 @@ import { requireEditor, HttpError, jsonBody, limitedBody, type Env } from './pla
 import { MAX_UPLOAD } from './images';
 import { renderEmail } from '@/export/render';
 import { translateContent } from './translation';
+import { CampaignRepository } from './campaigns';
 const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url); const path = url.pathname;
@@ -26,7 +27,26 @@ const worker = {
         const editor = Boolean(id && email && env.EDITOR_EMAILS?.toLowerCase().split(',').map((item) => item.trim()).includes(email));
         return json({ editor, email: editor ? email : '', origin: env.SITE_ORIGIN });
       }
-      requireEditor(request, env);
+      const actor = requireEditor(request, env);
+      const campaigns = new CampaignRepository(env, actor);
+      if (path === '/api/campaigns') {
+        if (request.method === 'GET') return json(await campaigns.list());
+        if (request.method === 'POST') return json(await campaigns.create(await jsonBody(request)), 201);
+      }
+      const campaignApi = path.match(/^\/api\/campaigns\/([a-zA-Z0-9_-]{1,100})(?:\/(restore|history)(?:\/([1-9]\d*)\/restore)?)?$/);
+      if (campaignApi) {
+        const [, id, action, revision] = campaignApi;
+        if (!action && request.method === 'GET') return json(await campaigns.get(id));
+        if (!action && request.method === 'PUT') return json(await campaigns.update(id, await jsonBody(request)));
+        if (!action && request.method === 'DELETE') return json(await campaigns.update(id, await jsonBody(request), 'delete'));
+        if (action === 'restore' && request.method === 'POST') return json(await campaigns.update(id, await jsonBody(request), 'restore'));
+        if (action === 'history' && !revision && request.method === 'GET') return json(await campaigns.history(id));
+        if (action === 'history' && revision && request.method === 'POST') return json(await campaigns.update(id, await jsonBody(request), 'revision', Number(revision)));
+      }
+      if (path === '/api/workspace/settings') {
+        if (request.method === 'GET') return json(await campaigns.brand());
+        if (request.method === 'PUT') return json(await campaigns.saveBrand(await jsonBody(request)));
+      }
       if (path === '/api/assets') {
         if (request.method === 'GET') return json(await assets.list(url.searchParams.get('q') || '', url.searchParams.get('category') || '', Math.max(0, Math.min(100000, Number(url.searchParams.get('offset')) || 0))));
         if (request.method === 'POST') {
