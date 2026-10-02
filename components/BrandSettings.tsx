@@ -23,8 +23,9 @@ export function BrandSettings({
   return (
     <Modal title="Marca e rodapé" onClose={onClose} wide>
       <p className="muted">
-        Estas configurações são compartilhadas por todos os templates e idiomas.
+        Estas configurações são usadas por toda a equipe, em todos os templates e idiomas.
       </p>
+      <p className="settings-impact">Ao salvar, novos previews e publicações usarão estas alterações. Versões já publicadas permanecem intactas.</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();

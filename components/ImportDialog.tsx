@@ -12,7 +12,7 @@ export function ImportDialog({
   onClose,
 }: {
   existing: Campaign[];
-  onImport: (c: Campaign[]) => void;
+  onImport: (c: Campaign[], focusPending?: boolean) => void;
   onClose: () => void;
 }) {
   const [result, setResult] = useState<ImportResult>();
@@ -27,6 +27,9 @@ export function ImportDialog({
       known.add(key);
       return true;
     }) ?? [];
+  const repeated = result ? result.campaigns.length - unique.length : 0;
+  const missingDate = unique.filter(c => !c.date).length;
+  const needsReview = unique.filter(c => c.importIssues?.length).length;
   async function read(file?: File) {
     if (!file) return;
     setError('');
@@ -101,6 +104,10 @@ export function ImportDialog({
             <span>{result.sheets.join(', ')}</span>
           </div>
           <div className="import-stats" aria-label="Resumo da importação">
+            <span><strong>{unique.length}</strong> novas</span>
+            <span><strong>{repeated}</strong> já existentes</span>
+            <span><strong>{missingDate}</strong> sem data</span>
+            <span><strong>{needsReview}</strong> precisam de revisão</span>
             <span>
               <strong>{result.campaigns.filter((campaign) => campaign.date).length}</strong> com data
             </span>
@@ -161,9 +168,9 @@ export function ImportDialog({
               </tbody>
             </table>
           </div>
-          {unique.length < result.campaigns.length && (
+          {repeated > 0 && (
             <p className="check-line">
-              {result.campaigns.length - unique.length} duplicata(s) será(ão) ignorada(s): mesma
+              {repeated} duplicata(s) será(ão) ignorada(s): mesma
               data, tema, tipo, público e idioma.
             </p>
           )}
@@ -183,6 +190,7 @@ export function ImportDialog({
         <button className="button" onClick={onClose}>
           Cancelar
         </button>
+        {needsReview > 0 && <button className="button" disabled={busy || !unique.length} onClick={() => { onImport(unique, true); onClose(); }}>Importar e ver pendências</button>}
         <button
           className="button primary"
           disabled={busy || !unique.length}

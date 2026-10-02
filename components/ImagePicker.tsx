@@ -6,10 +6,12 @@ import { prepareImage } from '@/lib/images';
 import { uploadLocalImage } from '@/lib/online';
 import AssetLibrary from './AssetLibrary';
 import ImageCropEditor from './ImageCropEditor';
+import type { SaveState } from '@/lib/workspace-sync';
 
-export default function ImagePicker({ label, value, alt, recommended, materialId, onChange, onAlt }: {
+export default function ImagePicker({ label, value, alt, recommended, materialId, onChange, onAlt, saveState }: {
   label: string; value: string; alt: string; recommended: string; materialId?: string;
   onChange: (value: string) => void; onAlt: (value: string) => void;
+  saveState?: SaveState;
 }) {
   const [error, setError] = useState('');
   const [cropOpen, setCropOpen] = useState(false);
@@ -40,8 +42,8 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
     setError(''); setFeedback('');
     try {
       const parsed = new URL(url.trim());
-      if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error();
-    } catch { setError('Cole o endereço completo da imagem, começando com https://.'); return; }
+      if (parsed.protocol !== 'https:') throw new Error();
+    } catch { setError('Use uma URL pública HTTPS.'); return; }
     setBusy(true);
     const request = ++revision.current;
     const candidate = new Image();
@@ -52,7 +54,7 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
       await candidate.decode();
       if (request !== revision.current) return;
       apply.current(url.trim()); setBroken(false); setFeedback('Imagem da web aplicada.');
-    } catch { setError('Este endereço não abriu uma imagem. Copie o link direto da imagem ou baixe o arquivo para o computador.'); }
+    } catch { setError('Esta URL HTTPS não abriu uma imagem. Copie o link direto ou baixe o arquivo para o computador.'); }
     finally { clearTimeout(timeout); setBusy(false); }
   }
   return <div className="image-field image-picker">
@@ -77,6 +79,8 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
     <input ref={input} type="file" className="sr-only" aria-label={`Carregar ${label.toLowerCase()}`} accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy}
       onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ''; }} />
     <small className="image-hint">{recommended} · Compartilhada entre PT, EN e ES. Fotos grandes são otimizadas automaticamente.</small>
+    {value.startsWith('data:') && <p className={`image-sync image-sync-${saveState || 'local'}`} role="status">{saveState === 'saving' ? 'Enviando imagem…' : saveState === 'error' || saveState === 'offline' ? 'Não foi possível sincronizar esta imagem. Tente novamente quando houver conexão.' : 'Imagem local · aguardando envio para a equipe.'}</p>}
+    {value.includes('/assets/') && saveState === 'saved' && <p className="image-sync image-sync-saved" role="status">✓ Imagem disponível para a equipe</p>}
     <div className="actions">
       {value && <button type="button" className="text-button" disabled={busy} onClick={() => setCropOpen(true)}><Crop size={14} /> Editar corte e tamanho</button>}
       {value.startsWith('data:') && <button type="button" className="text-button" disabled={busy} onClick={async () => {

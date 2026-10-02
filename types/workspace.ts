@@ -7,6 +7,8 @@ export interface SharedBrand { brand: BrandSettings; revision: number; updatedAt
 export interface CampaignRevision { revision: number; campaign: Campaign; changedBy: string; createdAt: string; reason: string }
 export interface PendingChange { revision: number; operation: 'save' | 'delete'; requestId: string; sent?: { operation: 'save' | 'delete'; campaign?: Campaign } }
 export interface SyncMetadata {
+  activity?: Record<string, { updatedAt: string; updatedBy: string; deletedAt: string | null; deletedBy: string | null }>;
+  conflictDetails?: Record<string, { updatedAt: string; updatedBy: string }>;
   revisions: Record<string, number>;
   pending: Record<string, PendingChange>;
   conflicts: Record<string, string>;

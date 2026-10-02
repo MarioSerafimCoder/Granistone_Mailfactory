@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Search, ArrowUpRight, Plus, Upload, ArrowRight, Mail, Trash2 } from 'lucide-react';
 import { campaignTypes, statuses, type Campaign } from '@/types/campaign';
 import { languages, languageStates } from '@/campaigns/model';
+import type { SyncMetadata } from '@/types/workspace';
+import { editorName, relativeTime, activityTime } from '@/lib/workspace-display';
 export function StatusBadge({ status }: { status: Campaign['status'] }) {
   return (
     <span className={`status status-${statuses.indexOf(status)}`}>
@@ -17,12 +19,16 @@ export default function CampaignList({
   onDelete,
   onCreate,
   onImport,
+  activity,
+  reviewIds,
 }: {
   campaigns: Campaign[];
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
   onCreate: () => void;
   onImport: () => void;
+  activity?: SyncMetadata['activity'];
+  reviewIds?: string[];
 }) {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
@@ -30,6 +36,11 @@ export default function CampaignList({
   const [audience, setAudience] = useState('');
   const [language, setLanguage] = useState('');
   const [status, setStatus] = useState('');
+  const [sort, setSort] = useState<'date' | 'updated' | 'name' | 'status'>('date');
+  const [quick, setQuick] = useState('');
+  const [onlyReview, setOnlyReview] = useState(!!reviewIds?.length);
+  const reviewSet = new Set(reviewIds);
+  const thisMonth = new Date().toISOString().slice(0, 7);
   const filtered = campaigns
     .filter(
       (c) =>
@@ -38,12 +49,18 @@ export default function CampaignList({
         (!month || c.date.startsWith(month)) &&
         (!audience || c.audience === audience) &&
         (!language || c.language.includes(language)) &&
-        (!status || languages(c).some(lang => languageStates(c)[lang].status === status)),
+        (!status || languages(c).some(lang => languageStates(c)[lang].status === status)) &&
+        (!quick || (quick === 'month' ? c.date.startsWith(thisMonth) : quick === 'Aprovado' ? languages(c).every(lang => ['Aprovado', 'Exportado'].includes(languageStates(c)[lang].status)) : languages(c).some(lang => languageStates(c)[lang].status === quick))) &&
+        (!onlyReview || reviewSet.has(c.id)),
     )
-    .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+    .sort((a, b) => sort === 'name' ? a.title.localeCompare(b.title, 'pt-BR')
+      : sort === 'updated' ? (activity?.[b.id]?.updatedAt || b.updatedAt).localeCompare(activity?.[a.id]?.updatedAt || a.updatedAt)
+      : sort === 'status' ? a.status.localeCompare(b.status, 'pt-BR')
+      : (a.date || '9999').localeCompare(b.date || '9999'));
   const inProgress = campaigns.filter(
-    (c) => c.status === 'Em produção' || c.status === 'Revisão',
+    (c) => languages(c).some(lang => ['Em produção', 'Revisão'].includes(languageStates(c)[lang].status)),
   ).length;
+  const ready = campaigns.filter(c => languages(c).every(lang => ['Aprovado', 'Exportado'].includes(languageStates(c)[lang].status))).length;
   const emptyTitle = month
     ? `Nenhuma campanha em ${new Date(`${month}-15T12:00:00`).toLocaleDateString('pt-BR', {
         month: 'long',
@@ -86,7 +103,7 @@ export default function CampaignList({
           <span>PRONTAS PARA SEGUIR</span>
           <strong>
             {String(
-              campaigns.filter((c) => ['Aprovado', 'Exportado'].includes(c.status)).length,
+              ready,
             ).padStart(2, '0')}
           </strong>
           <small>aprovadas ou exportadas</small>
@@ -123,6 +140,9 @@ export default function CampaignList({
         </label>
       </div>
       <div className="filters">
+        <select aria-label="Ordenar campanhas" value={sort} onChange={e => setSort(e.target.value as typeof sort)}>
+          <option value="date">Data de disparo</option><option value="updated">Última alteração</option><option value="name">Nome</option><option value="status">Status</option>
+        </select>
         <select aria-label="Filtrar mês" value={month} onChange={(e) => setMonth(e.target.value)}>
           <option value="">Todos os meses</option>
           {[...new Set(campaigns.map((c) => c.date.slice(0, 7)).filter(Boolean))]
@@ -172,7 +192,7 @@ export default function CampaignList({
             <option key={t}>{t}</option>
           ))}
         </select>
-        {(month || type || audience || language || status || search) && (
+        {(month || type || audience || language || status || search || quick || onlyReview) && (
           <button
             className="text-button"
             onClick={() => {
@@ -182,12 +202,18 @@ export default function CampaignList({
               setLanguage('');
               setStatus('');
               setSearch('');
+              setQuick(''); setOnlyReview(false);
             }}
           >
             Limpar
           </button>
         )}
       </div>
+      <div className="quick-filters" aria-label="Filtros rápidos">
+        {([['Em produção', 'Em produção'], ['Revisão', 'Revisão'], ['Aprovadas', 'Aprovado'], ['Este mês', 'month']] as const).map(([label, value]) => <button key={value} className={quick === value ? 'active' : ''} aria-pressed={quick === value} onClick={() => setQuick(quick === value ? '' : value)}>{label}</button>)}
+        {reviewIds?.length ? <button className={onlyReview ? 'active' : ''} aria-pressed={onlyReview} onClick={() => setOnlyReview(!onlyReview)}>Com pendências ({reviewIds.length})</button> : null}
+      </div>
+      {(month || type || audience || language || status || search || quick || onlyReview) && <p className="filter-feedback" role="status">{filtered.length} de {campaigns.length} campanhas com os filtros atuais.</p>}
       <div className="table-wrap">
         <table className="campaign-table">
           <thead>
@@ -228,6 +254,7 @@ export default function CampaignList({
                       <span>Demonstração</span>
                     </div>
                   )}
+                  {activity?.[c.id]?.updatedAt && <div className="campaign-activity" title={activityTime(activity[c.id].updatedAt)}>Atualizado {relativeTime(activity[c.id].updatedAt)} · {editorName(activity[c.id].updatedBy)}</div>}
                 </td>
                 <td>{c.campaignType}</td>
                 <td>{c.audience || 'Público a definir'}</td>

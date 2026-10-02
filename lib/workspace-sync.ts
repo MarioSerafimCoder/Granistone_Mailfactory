@@ -6,7 +6,7 @@ import { defaultBrand } from '@/data/brand';
 export type SaveState = 'loading' | 'saving' | 'saved' | 'local' | 'offline' | 'conflict' | 'error';
 export const saveLabels: Record<SaveState, string> = { loading: 'Abrindo workspace…', saving: 'Salvando…', saved: 'Salvo na nuvem', local: 'Salvo localmente · ainda não compartilhado', offline: 'Sem conexão · alterações pendentes', conflict: 'Conflito de edição', error: 'Erro ao sincronizar' };
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
-export const initialSync = (): SyncMetadata => ({ revisions: {}, pending: {}, conflicts: {}, brandRevision: 0, initialized: false, trash: [] });
+export const initialSync = (): SyncMetadata => ({ revisions: {}, pending: {}, conflicts: {}, activity: {}, conflictDetails: {}, brandRevision: 0, initialized: false, trash: [] });
 type Api = Pick<typeof online, 'campaigns' | 'settings' | 'session'>;
 export class WorkspaceSync {
   data: StudioData;
@@ -65,6 +65,8 @@ export class WorkspaceSync {
         const local = this.data.campaigns.find(c => c.id === id);
         if (local && !this.meta.revisions[id] && !equal(local, row.campaign)) {
           this.meta.conflicts[id] = 'Já existe uma campanha com este ID no workspace. Seu rascunho local foi preservado.';
+          this.meta.conflictDetails ??= {};
+          this.meta.conflictDetails[id] = { updatedAt: row.updatedAt, updatedBy: row.updatedBy };
           this.meta.revisions[id] = row.revision;
           continue;
         }
@@ -83,6 +85,8 @@ export class WorkspaceSync {
   private accept(row: SharedCampaign) {
     const id = row.campaign.id;
     this.meta.revisions[id] = row.revision;
+    this.meta.activity ??= {};
+    this.meta.activity[id] = { updatedAt: row.updatedAt, updatedBy: row.updatedBy, deletedAt: row.deletedAt, deletedBy: row.deletedBy };
     this.data.campaigns = this.data.campaigns.filter(c => c.id !== id);
     this.meta.trash = this.meta.trash.filter(c => c.id !== id);
     if (row.deletedAt) this.meta.trash.push(row.campaign); else this.data.campaigns.push(row.campaign);
@@ -126,7 +130,15 @@ export class WorkspaceSync {
           }
           await this.commit();
         } catch (error) {
-          if (error instanceof OnlineError && error.status === 409) { this.meta.conflicts[id] = error.message; await this.commit(); }
+          if (error instanceof OnlineError && error.status === 409) {
+            this.meta.conflicts[id] = error.message;
+            try {
+              const remote = await this.api.campaigns.get(id);
+              this.meta.conflictDetails ??= {};
+              this.meta.conflictDetails[id] = { updatedAt: remote.updatedAt, updatedBy: remote.updatedBy };
+            } catch { /* The conflict remains actionable if remote details are temporarily unavailable. */ }
+            await this.commit();
+          }
           else throw error;
         }
       }
@@ -168,7 +180,7 @@ export class WorkspaceSync {
       if (keepCopy) { this.data.campaigns.push(copy); this.meta.pending[copy.id] = { revision: 0, operation: 'save', requestId: crypto.randomUUID() }; }
       else this.meta.trash.push(copy);
     }
-    delete this.meta.conflicts[id]; delete this.meta.pending[id];
+    delete this.meta.conflicts[id]; delete this.meta.pending[id]; delete this.meta.conflictDetails?.[id];
     this.accept(row); this.settle(); await this.commit();
   }
   async resolveBrand() {

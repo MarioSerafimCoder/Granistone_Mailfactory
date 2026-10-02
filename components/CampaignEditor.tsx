@@ -15,6 +15,8 @@ import type { BrandSettings, Campaign, Language, TemplateId } from '@/types/camp
 import { campaignTypes, statuses } from '@/types/campaign';
 import { changeTemplate, editCampaign, languageStates } from '@/campaigns/model';
 import { saveLabels } from '@/lib/workspace-sync';
+import { editorName, activityTime } from '@/lib/workspace-display';
+import type { SyncMetadata } from '@/types/workspace';
 import { templates, getTemplate, blockLabels, suggestTemplate } from '@/templates/registry';
 import { Field, Select, TextArea, Modal } from './ui';
 import ImagePicker from './ImagePicker';
@@ -33,6 +35,8 @@ export default function CampaignEditor({
   onSettings,
   saveState,
   campaignRevision,
+  activity,
+  onHistory,
 }: {
   campaign: Campaign;
   brand: BrandSettings;
@@ -41,6 +45,8 @@ export default function CampaignEditor({
   onSettings: () => void;
   saveState: SaveState;
   campaignRevision?: number;
+  activity?: NonNullable<SyncMetadata['activity']>[string];
+  onHistory: () => void;
 }) {
   const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
   const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
@@ -108,6 +114,8 @@ export default function CampaignEditor({
             <Check size={14} />
             {saveLabels[saveState]}
           </span>
+          {activity?.updatedAt && <span className="editor-activity" title={activityTime(activity.updatedAt)}>Última alteração por {editorName(activity.updatedBy)} · {activityTime(activity.updatedAt)}</span>}
+          {campaignRevision && <button className="text-button" onClick={onHistory}>Histórico</button>}
           <select
             aria-label="Status da campanha"
             title={`Status de ${language.toUpperCase()}`}
@@ -118,6 +126,7 @@ export default function CampaignEditor({
               <option key={s}>{s}</option>
             ))}
           </select>
+          <small className="language-status-label">{language.toUpperCase()}</small>
           <button className="button primary" disabled={!ready} onClick={() => setExportOpen(true)}>
             <Download size={16} />
             Exportar
@@ -170,7 +179,7 @@ export default function CampaignEditor({
           </div>
           <div className="editor-fields">
             {tab === 'content' && (
-              <ContentFields campaign={campaign} language={language} onChange={update} />
+              <ContentFields campaign={campaign} language={language} onChange={update} saveState={saveState} />
             )}
             {tab === 'planning' && (
               <>
@@ -429,6 +438,7 @@ export default function CampaignEditor({
         <ImagePicker
           key={`${imageSlot}-${language}`}
           label={imageSlot === 'hero' ? 'Imagem principal' : 'Imagem de aplicação'}
+          saveState={saveState}
           value={campaign.content[language][imageField]}
           alt={campaign.content[language][altField]}
           recommended={imageSlot === 'hero' ? '1200 × 700 px' : '1200 × 800 px'}
@@ -442,7 +452,7 @@ export default function CampaignEditor({
         />
         <div className="modal-actions"><button className="button primary" onClick={() => setImageSlot(undefined)}>Concluir</button></div>
       </Modal>}
-      {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} campaignRevision={campaignRevision} onChange={onChange} onClose={() => setPublishOpen(false)} />}
+      {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} campaignRevision={campaignRevision} saveState={saveState} onChange={onChange} onClose={() => setPublishOpen(false)} />}
       {translateTarget && <TranslateDialog
         campaign={campaign}
         target={translateTarget}

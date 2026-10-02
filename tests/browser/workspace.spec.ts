@@ -25,9 +25,11 @@ test('shared campaign survives another browser, autosave conflict, copy recovery
     await second.getByLabel('Headline', { exact: true }).fill('Conteúdo de outro funcionário');
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await page.getByLabel('Headline', { exact: true }).fill('Meu conteúdo preservado');
-    await expect(page.getByText('Nenhuma versão foi sobrescrita.', { exact: false })).toBeVisible();
+    const conflict = page.getByRole('dialog', { name: 'Conflito de edição' });
+    await expect(conflict.getByText('Nenhuma versão foi sobrescrita.')).toBeVisible();
+    await expect(conflict.getByText(/Alterada por: Local/)).toBeVisible();
     await expect(page.locator('.save-indicator')).toHaveText('Conflito de edição');
-    await page.getByRole('button', { name: 'Salvar meu trabalho como cópia' }).click();
+    await conflict.getByRole('button', { name: 'Salvar minha versão como cópia' }).click();
     await expect(page.getByLabel('Headline', { exact: true })).toHaveValue('Conteúdo de outro funcionário');
     await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
     await expect(page.getByRole('button', { name: `${title} · cópia recuperada`, exact: true })).toBeVisible();
@@ -36,6 +38,7 @@ test('shared campaign survives another browser, autosave conflict, copy recovery
     await second.getByRole('dialog', { name: 'Excluir e-mail' }).getByRole('button', { name: 'Excluir e-mail', exact: true }).click();
     await second.getByRole('button', { name: /^Lixeira/ }).click();
     const trash = second.getByRole('dialog', { name: 'Lixeira' }).locator('.workspace-trash').filter({ hasText: title });
+    await expect(trash.getByText(/Excluída por Local/)).toBeVisible();
     await expect(trash.getByRole('button', { name: 'Restaurar', exact: true })).toBeEnabled();
     await trash.getByRole('button', { name: 'Restaurar', exact: true }).click();
     await second.getByRole('button', { name: 'Fechar', exact: true }).click();

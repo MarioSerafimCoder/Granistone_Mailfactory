@@ -6,6 +6,7 @@ import type { Campaign, CampaignContent, Language, StoneMaterial } from '@/types
 import { plainText, richText } from '@/campaigns/model';
 import MaterialSelector from './MaterialSelector';
 import ImagePicker from './ImagePicker';
+import type { SaveState } from '@/lib/workspace-sync';
 const MailyTextEditor = dynamic(() => import('./MailyTextEditor'), {
   ssr: false,
   loading: () => <p className="muted">Carregando editor…</p>,
@@ -14,10 +15,12 @@ export default function ContentFields({
   campaign,
   language,
   onChange,
+  saveState,
 }: {
   campaign: Campaign;
   language: Language;
   onChange: (update: Partial<Campaign>) => void;
+  saveState: SaveState;
 }) {
   const c = campaign.content[language];
   const [revision, setRevision] = useState(0);
@@ -118,6 +121,7 @@ export default function ContentFields({
         {has('hero') && (
           <ImagePicker
             label="Imagem principal"
+            saveState={saveState}
             value={c.heroImage}
             alt={c.heroAlt}
             recommended="1200 × 700 px"
@@ -129,6 +133,7 @@ export default function ContentFields({
         {has('application') && (
           <ImagePicker
             label="Imagem de aplicação"
+            saveState={saveState}
             value={c.applicationImage}
             alt={c.applicationAlt}
             recommended="1200 × 800 px"

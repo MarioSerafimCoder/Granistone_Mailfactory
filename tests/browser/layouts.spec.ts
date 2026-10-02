@@ -19,6 +19,7 @@ test('real layouts, clickable slots, large local photo, web image and portable e
   const split = frame.locator('.stack-col');
   await expect(split).toHaveCount(2);
   await page.screenshot({ path: 'test-results/commercial-empty-slots.png', fullPage: true });
+  await expect(page.locator('.preview-stage iframe')).toHaveAttribute('aria-busy', 'false');
   await frame.getByRole('button', { name: 'Adicionar foto do produto' }).click();
   await expect(page.getByRole('dialog', { name: 'Imagem principal', exact: true })).toBeVisible();
   const base64 = await page.evaluate(() => {

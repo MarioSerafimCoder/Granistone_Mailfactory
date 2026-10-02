@@ -15,9 +15,8 @@ test('publication dialog explains sign-in and blocks anonymous writes', async ({
   const dialog = page.getByRole('dialog', { name: 'Publicar e-mail · PT' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Entrar com ChatGPT para publicar' })).toHaveAttribute('href', '/signin-with-chatgpt?return_to=/');
-  await expect(dialog.getByRole('button', { name: 'Hospedar fotos locais' })).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: 'Executar pré-flight' })).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: 'PUBLICAR PARA RD' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Preparar para RD Station' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Publicar versão' })).toBeDisabled();
 });
 test('large transparent logos preserve alpha after client optimization', async ({ page }) => {
   await page.goto('/');

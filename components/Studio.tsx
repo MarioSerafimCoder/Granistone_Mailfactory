@@ -41,6 +41,9 @@ export default function Studio() {
   const [name, setName] = useState('');
   const [feedback, setFeedback] = useState('');
   const [deleteCampaignId, setDeleteCampaignId] = useState<string>();
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [reviewIds, setReviewIds] = useState<string[]>([]);
   const onlineEditor = workspace?.editor ?? false;
   const active = data?.campaigns.find((c) => c.id === activeId);
   const deleteCampaign = data?.campaigns.find((c) => c.id === deleteCampaignId);
@@ -228,6 +231,7 @@ export default function Studio() {
             <Upload size={18} />
             Importar planejamento
           </button>
+          <button onClick={() => setTrashOpen(true)}><Trash2 size={18} />Lixeira ({workspace?.meta.trash.length ?? 0})</button>
         </nav>
         <button className="sidebar-create" onClick={() => start()}>
           <Plus size={16} />
@@ -307,7 +311,7 @@ export default function Studio() {
             {error}
           </div>
         )}
-        {workspace && <WorkspacePanel workspace={workspace} activeId={activeId} />}
+        {workspace && <WorkspacePanel workspace={workspace} activeId={activeId} trashOpen={trashOpen} onTrashClose={() => setTrashOpen(false)} historyOpen={historyOpen} onHistoryClose={() => setHistoryOpen(false)} />}
         {feedback && (
           <div className="feedback global-feedback" role="status">
             {feedback}
@@ -321,10 +325,12 @@ export default function Studio() {
             key={active.id}
             campaign={active}
             campaignRevision={workspace?.meta.revisions[active.id]}
+            activity={workspace?.meta.activity?.[active.id]}
             brand={data.brand}
             saveState={workspace?.campaignState(active.id) ?? saveState}
             onBack={() => setActiveId(undefined)}
             onSettings={showBrand}
+            onHistory={() => setHistoryOpen(true)}
             onChange={(campaign) =>
               save({
                 ...data,
@@ -338,7 +344,10 @@ export default function Studio() {
           <LibraryPage />
         ) : (
           <CampaignList
+            key={reviewIds.join(',')}
             campaigns={data.campaigns}
+            activity={workspace?.meta.activity}
+            reviewIds={reviewIds}
             onOpen={setActiveId}
             onDelete={setDeleteCampaignId}
             onCreate={() => start()}
@@ -349,11 +358,12 @@ export default function Studio() {
       {importOpen && (
         <ImportDialog
           existing={data.campaigns}
-          onImport={(campaigns) => {
+          onImport={(campaigns, focusPending) => {
             save({ ...data, campaigns: [...campaigns, ...data.campaigns] });
             setView('campaigns');
             setActiveId(undefined);
-            setFeedback(`${campaigns.length} campanhas importadas.`);
+            setReviewIds(focusPending ? campaigns.filter(c => c.importIssues?.length).map(c => c.id) : []);
+            setFeedback(`${campaigns.length} campanhas importadas · ${campaigns.filter(c => !c.date).length} sem data · ${campaigns.filter(c => c.importIssues?.length).length} para revisão.`);
           }}
           onClose={() => setImportOpen(false)}
         />

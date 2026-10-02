@@ -12,6 +12,8 @@ Campanhas antigas deste navegador não são enviadas silenciosamente. Após entr
 
 O editor distingue **Salvando…**, **Salvo na nuvem**, **Salvo localmente**, **Sem conexão · alterações pendentes**, **Conflito de edição** e **Erro ao sincronizar**. Uma gravação só recebe confirmação de nuvem depois do servidor. A sincronização consulta alterações a cada 15 segundos, ao recuperar conexão e ao voltar à janela; há um botão para atualizar manualmente.
 
+Na lista, ordene por disparo, alteração, nome ou status e use filtros rápidos ou avançados. A autoria e a data da última alteração aparecem quando a campanha já foi sincronizada. O editor mostra o status do idioma aberto, acesso ao histórico e a última pessoa que salvou. Um conflito abre uma janela com autor, horário e opções para carregar a versão recente ou guardar seu trabalho como cópia.
+
 Cada gravação usa a revisão aberta pelo usuário. Se outra pessoa gravar antes, o servidor retorna `409`: o Studio permite usar a versão da nuvem ou salvar o trabalho local como uma nova cópia. Ao escolher a nuvem, a versão local fica na lixeira como cópia recuperada. Não há sobrescrita automática nem mesclagem silenciosa.
 
 Veja [o guia do workspace](docs/WORKSPACE.md) para concorrência, endpoints, recuperação e limitações.
@@ -47,7 +49,7 @@ Sem uma chave Gemini válida, os outros recursos continuam funcionando, mas trad
 2. Importe XLSX/XLS ou clique em **Nova campanha** e escolha o template inicial.
 3. Edite assunto, textos Maily, imagens, cortes e CTA. Fotos locais são otimizadas para preview e hospedadas automaticamente ao sincronizar.
 4. Gere versões em inglês/espanhol preservando o português. Status, aprovação e data de edição são independentes por idioma. A estrutura visual é compartilhada.
-5. Confira desktop/mobile e execute o pré-flight. Imagens, ALT, URLs públicas, compatibilidade e recursos remotos são verificados, com proteção SSRF.
+5. Confira desktop/mobile e escolha **Preparar para RD Station**. O fluxo hospeda imagens locais e executa o pré-flight real de conteúdo, imagens, links e compatibilidade. O relatório técnico fica em **Ver detalhes do pré-flight**.
 6. Publique a versão e leve HTML/URL para o RD Station. Publicações anteriores e seus assets permanecem imutáveis.
 7. Use **Histórico** para restaurar um snapshot e **Lixeira** para recuperar campanhas excluídas. Baixe backups regularmente.
 
@@ -77,7 +79,7 @@ pnpm build
 pnpm exec playwright test
 ```
 
-O último comando requer o servidor local ativo e as migrations aplicadas. No Windows usa Microsoft Edge; em outros sistemas instale Chromium com `pnpm exec playwright install chromium`.
+O teste de navegador inicia o servidor local automaticamente; aplique as migrations locais antes. No Windows usa Microsoft Edge; em outros sistemas instale Chromium com `pnpm exec playwright install chromium`. O GitHub Actions executa esses comandos em push e pull request, incluindo Chromium e o D1/R2 local.
 
 ## Limitações
 
