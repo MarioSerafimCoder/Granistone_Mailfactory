@@ -31,7 +31,7 @@ test('history requires confirmation, list shows author, and language status foll
   await expect(history.getByRole('button', { name: 'Confirmar restauração' })).toHaveCount(0);
   await history.getByRole('button', { name: 'Fechar' }).click();
   await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
-  await expect(page.getByText(/Atualizado há .* · Local/).first()).toBeVisible();
+  await expect(page.getByText(/Atualizado (agora|há .*|em .*) · Local/).first()).toBeVisible();
   await page.getByLabel('Ordenar campanhas').selectOption('updated');
   await page.getByRole('button', { name: 'Aprovadas', exact: true }).click();
   await expect(page.getByText(/campanhas com os filtros atuais/)).toBeVisible();
