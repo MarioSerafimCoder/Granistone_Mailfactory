@@ -158,6 +158,7 @@ test('translation keeps Portuguese and creates Spanish, while visual library sta
 test('campaign list deletes an email only after confirmation and persists the change', async ({ page }) => {
   await page.goto('/');
   const rows = page.locator('.campaign-table tbody tr');
+  await expect(rows.first()).toBeVisible();
   const initialCount = await rows.count();
   expect(initialCount).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Excluir Crystal Palace · Arquitetura' }).click();

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ImagePlus, Upload, Link as LinkIcon, Images, Crop } from 'lucide-react';
 import { Field } from './ui';
 import { prepareImage } from '@/lib/images';
@@ -21,7 +21,7 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
   const input = useRef<HTMLInputElement>(null);
   const revision = useRef(0);
   const apply = useRef(onChange);
-  useEffect(() => { apply.current = onChange; }, [onChange]);
+  useLayoutEffect(() => { apply.current = onChange; }, [onChange]);
   useEffect(() => () => { revision.current++; }, []);
   async function upload(file?: File) {
     if (!file || busy) return;

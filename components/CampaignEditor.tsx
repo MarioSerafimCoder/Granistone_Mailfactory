@@ -51,6 +51,8 @@ export default function CampaignEditor({
   const [imageSlot, setImageSlot] = useState<ImageSlot>();
   const [editImages, setEditImages] = useState(true);
   const [preview, setPreview] = useState({ html: '', editorHtml: '', signature: '', error: '' });
+  const [loadedPreview, setLoadedPreview] = useState('');
+  const previewSource = editImages ? preview.editorHtml : preview.html;
   const signature = JSON.stringify({ campaign, language, brand });
   const ready = preview.signature === signature && !!preview.html;
   useEffect(() => {
@@ -391,7 +393,7 @@ export default function CampaignEditor({
               <iframe
                 title={`Preview ${mobile ? 'mobile' : 'desktop'} do e-mail`}
                 sandbox="allow-same-origin"
-                srcDoc={editImages ? preview.editorHtml : preview.html}
+                srcDoc={previewSource}
                 onLoad={(event) => {
                   const document = event.currentTarget.contentDocument;
                   if (!document) return;
@@ -408,11 +410,10 @@ export default function CampaignEditor({
                       }
                     }
                   });
-                  event.currentTarget.style.pointerEvents = 'auto';
-                  event.currentTarget.setAttribute('aria-busy', 'false');
+                  setLoadedPreview(previewSource);
                 }}
-                aria-busy="true"
-                style={{ width: mobile ? 375 : 600, pointerEvents: 'none' }}
+                aria-busy={loadedPreview !== previewSource}
+                style={{ width: mobile ? 375 : 600, pointerEvents: loadedPreview === previewSource ? 'auto' : 'none' }}
               />
             ) : (
               <div className="preview-loading">Preparando seu e-mail…</div>
