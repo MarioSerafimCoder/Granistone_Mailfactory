@@ -1887,7 +1887,7 @@ td:first-child {
 .asset-upload-progress .button { align-self: flex-start; }
 .asset-upload-result,.asset-count { font-size: 14px; margin: 12px 0; color: var(--granistone-gray); }
 .asset-upload .alert ul { max-height: 180px; overflow: auto; }
-.image-picker .asset-folder-grid { grid-template-columns: 1fr; }
+.image-picker .asset-folder-grid { grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); }
 .asset-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 14px; }
 .asset-card { position: relative; border: 1px solid var(--granistone-line); background: white; min-width: 0; }
 .asset-image { width: 100%; aspect-ratio: 4/3; overflow: hidden; background: #eeede9; display: block; }
@@ -1901,11 +1901,18 @@ td:first-child {
 .asset-empty { min-height: 210px; grid-column: 1/-1; border: 1px dashed var(--granistone-line); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--granistone-gray); }
 .asset-empty strong { color: var(--granistone-black); }
 .asset-empty span { font-size: 11px; }
-.image-picker .asset-browser { max-height: 360px; overflow: auto; border: 1px solid var(--granistone-line); padding: 10px; }
-.image-picker .asset-toolbar select:nth-of-type(1),.image-picker .asset-toolbar select:nth-of-type(3),.image-picker .asset-toolbar .button { display: none; }
-.image-picker .asset-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
-.image-picker .asset-card > div,.image-picker .asset-card > .icon-button { display: none; }
-.image-picker .asset-card > .button { font-size: 10px; }
+.image-picker .asset-browser { border: 1px solid var(--granistone-line); padding: 12px; }
+.image-picker .asset-toolbar { display: flex; flex-wrap: wrap; }
+.image-picker .asset-toolbar > * { min-width: 0; flex: 1 1 145px; }
+.image-picker .asset-toolbar .asset-search { flex-basis: 100%; }
+.image-picker .asset-grid { grid-template-columns: repeat(auto-fill,minmax(170px,1fr)); }
+.image-picker .asset-card > .icon-button { display: none; }
+.image-picker .asset-card > .button { font-size: 12px; }
+.image-current { display: flex; align-items: center; gap: 16px; padding: 12px; background: var(--granistone-light); }
+.image-current > img { width: 100px; height: 70px; object-fit: contain; }
+.image-current > div { display: grid; gap: 6px; min-width: 0; }
+.image-current small { color: var(--granistone-gray); }
+.image-current .button { white-space: normal; }
 .asset-detail-preview { width: 100%; max-height: 350px; object-fit: contain; background: #efeeeb; }
 .asset-detail-meta { display: flex; gap: 8px; margin: 10px 0 20px; }
 .asset-detail-meta span { font-size: 9px; padding: 5px 8px; background: var(--granistone-light); }
@@ -1938,9 +1945,17 @@ td:first-child {
 .translation-options legend { font-size: 11px; font-weight: 600; padding: 0 6px; }
 .translation-options label { font-size: 12px; display: flex; gap: 7px; }
 .crop-layout { display: grid; grid-template-columns: minmax(320px,1.3fr) minmax(240px,.7fr); gap: 25px; }
-.crop-stage { overflow: hidden; background: #ddd; display: flex; align-items: center; justify-content: center; }
-.crop-stage img { display: block; object-fit: cover; flex: none; }
-.crop-controls label { display: grid; gap: 7px; margin: 20px 0; font-size: 11px; }
+.crop-stage { position: relative; overflow: hidden; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50% / 20px 20px; }
+.crop-stage canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+.crop-stage.ready canvas { cursor: grab; }
+.crop-stage.ready canvas:active { cursor: grabbing; }
+.crop-stage canvas:focus-visible { outline: 3px solid var(--granistone-black); outline-offset: -3px; }
+.crop-stage > span { position: absolute; inset: 0; display: grid; place-items: center; background: var(--granistone-light); }
+.crop-guides { position: absolute; inset: 33.333%; border: 1px solid #ffffff99; pointer-events: none; opacity: 0; }
+.crop-stage:hover .crop-guides,.crop-stage:focus-within .crop-guides { opacity: 1; }
+.crop-controls fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.crop-controls label { display: grid; gap: 7px; margin: 20px 0; font-size: 12px; }
+.crop-controls input { width: 100%; }
 .publish-state { display: flex; justify-content: space-between; gap: 15px; padding: 14px; margin-bottom: 12px; }
 .publish-state span { font-size: 10px; }
 .publish-state.dirty { color: var(--granistone-warn); background: var(--granistone-warn-bg); }

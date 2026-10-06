@@ -18,7 +18,7 @@ export default function AssetLibrary({ onSelect, onClose, embedded = false, lazy
   const [items, setItems] = useState<MediaAsset[]>([]); const [materials, setMaterials] = useState<OnlineMaterial[]>([]);
   const [query, setQuery] = useState(''); const [category, setCategory] = useState('');
   const [folder, setFolder] = useState('');
-  const [orientation, setOrientation] = useState(preferredOrientation ?? ''); const [material, setMaterial] = useState(materialId);
+  const [orientation, setOrientation] = useState(''); const [material, setMaterial] = useState('');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [selected, setSelected] = useState<MediaAsset>();
   const [active, setActive] = useState(!lazy);
   const { session } = useContext(CollaborationContext);
@@ -53,7 +53,13 @@ export default function AssetLibrary({ onSelect, onClose, embedded = false, lazy
     if (query && !searchable.includes(query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR'))) return false;
     if (orientation && asset.orientation !== orientation) return false;
     return !material || (materials.find((item) => item.id === material)?.assetIds.includes(asset.id) ?? false);
-  }), [items, materials, material, orientation, folder, category, query]);
+  }).sort((a, b) => {
+    const related = materials.find(item => item.id === materialId)?.assetIds ?? [];
+    const score = (asset: MediaAsset) => Number(related.includes(asset.id)) * 2 + Number(asset.orientation === preferredOrientation);
+    return score(b) - score(a);
+  }), [items, materials, material, orientation, folder, category, query, materialId, preferredOrientation]);
+  const hasFilters = !!(query || category || orientation || material);
+  function clearFilters() { setQuery(''); setCategory(''); setOrientation(''); setMaterial(''); }
   async function saveAsset() {
     if (!selected || !lease.editing) return; setBusy(true); setError('');
     try {
@@ -70,7 +76,7 @@ export default function AssetLibrary({ onSelect, onClose, embedded = false, lazy
   }
   const body = !active ? <button className="asset-library-open" type="button" onClick={() => setActive(true)}><ImagePlus size={24} /><strong>Abrir biblioteca de imagens</strong><span>Busque fotos hospedadas e recomendações para este espaço.</span></button> : <div className="asset-browser">
     <AssetFolders items={items} folder={folder} onChange={setFolder} />
-    {canEdit && <AssetUpload folder={folder} material={materials.find(item => item.id === material)} onComplete={refresh} />}
+    {canEdit && !onSelect && <AssetUpload folder={folder} material={materials.find(item => item.id === material)} onComplete={refresh} />}
     <div className="asset-toolbar">
       <label className="asset-search"><Search size={15} /><input value={query} placeholder="Buscar por nome…" onChange={(event) => setQuery(event.target.value)} /></label>
       <select aria-label="Categoria" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">Todas as categorias</option>{assetCategories.map((item) => <option key={item} value={item}>{labels[item]}</option>)}</select>
@@ -78,6 +84,7 @@ export default function AssetLibrary({ onSelect, onClose, embedded = false, lazy
       <select aria-label="Material" value={material} onChange={(event) => setMaterial(event.target.value)}><option value="">Todos os materiais</option>{materials.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
       <button className="button" type="button" disabled={busy} onClick={() => void refresh()}><RefreshCw size={15} /> Atualizar</button>
     </div>
+    {hasFilters && <button className="text-button" type="button" onClick={clearFilters}>Limpar filtros</button>}
     <p className="asset-count" role="status">{filtered.length} {filtered.length === 1 ? 'imagem' : 'imagens'}{folder ? ' nesta pasta' : ' na biblioteca'}{(query || category || orientation || material) ? ' com os filtros atuais' : ''}</p>
     {preferredOrientation && <p className="asset-recommendation">Imagens {preferredOrientation === 'horizontal' ? 'horizontais' : preferredOrientation === 'vertical' ? 'verticais' : 'quadradas'} são as mais indicadas para este espaço.</p>}
     {error && <p role="alert" className="alert">{error} {error.includes('Entre com') && <a href="/signin-with-chatgpt?return_to=/" target="_top">Entrar com ChatGPT</a>}</p>}

@@ -26,12 +26,13 @@ export default function ContentFields({
   const [revision, setRevision] = useState(0);
   const edit = (patch: Partial<CampaignContent>) =>
     onChange({ content: { ...campaign.content, [language]: { ...c, ...patch } } });
-  const editSharedImage = (field: 'heroImage' | 'applicationImage', value: string) =>
+  const editSharedImage = (field: 'heroImage' | 'applicationImage', value: string, suggestedAlt?: string) =>
     onChange({
       content: {
         pt: { ...campaign.content.pt, [field]: value },
         en: { ...campaign.content.en, [field]: value },
         es: { ...campaign.content.es, [field]: value },
+        [language]: { ...campaign.content[language], [field]: value, ...(suggestedAlt ? { [field === 'heroImage' ? 'heroAlt' : 'applicationAlt']: suggestedAlt } : {}) },
       },
     });
   function applyMaterial(material: StoneMaterial, replace: boolean) {
@@ -126,7 +127,7 @@ export default function ContentFields({
             alt={c.heroAlt}
             recommended="1200 × 700 px"
             materialId={campaign.materialId}
-            onChange={(heroImage) => editSharedImage('heroImage', heroImage)}
+            onChange={(heroImage, suggestedAlt) => editSharedImage('heroImage', heroImage, suggestedAlt)}
             onAlt={(heroAlt) => edit({ heroAlt })}
           />
         )}
@@ -138,7 +139,7 @@ export default function ContentFields({
             alt={c.applicationAlt}
             recommended="1200 × 800 px"
             materialId={campaign.materialId}
-            onChange={(applicationImage) => editSharedImage('applicationImage', applicationImage)}
+            onChange={(applicationImage, suggestedAlt) => editSharedImage('applicationImage', applicationImage, suggestedAlt)}
             onAlt={(applicationAlt) => edit({ applicationAlt })}
           />
         )}

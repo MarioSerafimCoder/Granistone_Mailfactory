@@ -10,7 +10,7 @@ import type { SaveState } from '@/lib/workspace-sync';
 
 export default function ImagePicker({ label, value, alt, recommended, materialId, onChange, onAlt, saveState }: {
   label: string; value: string; alt: string; recommended: string; materialId?: string;
-  onChange: (value: string) => void; onAlt: (value: string) => void;
+  onChange: (value: string, suggestedAlt?: string) => void; onAlt: (value: string) => void;
   saveState?: SaveState;
 }) {
   const [error, setError] = useState('');
@@ -59,12 +59,13 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
   }
   return <div className="image-field image-picker">
     <strong>{label}</strong>
+    {value && <div className="image-current"><img src={value} alt={alt || label} /><div><strong>Imagem selecionada</strong><small>{recommended}</small><button type="button" className="button" disabled={busy} onClick={() => setCropOpen(true)}><Crop size={14} /> Editar corte e tamanho</button></div></div>}
     <div className="image-source-tabs">
       <button type="button" disabled={busy} className={mode === 'library' ? 'active' : ''} onClick={() => setMode('library')}><Images size={14} /> Biblioteca</button>
       <button type="button" disabled={busy} className={mode === 'file' ? 'active' : ''} onClick={() => setMode('file')}><Upload size={14} /> Computador</button>
       <button type="button" disabled={busy} className={mode === 'web' ? 'active' : ''} onClick={() => setMode('web')}><LinkIcon size={14} /> Link da web</button>
     </div>
-    {mode === 'library' ? <AssetLibrary embedded lazy materialId={materialId} preferredOrientation="horizontal" onSelect={asset => { onChange(asset.url); if (!alt && asset.alt) onAlt(asset.alt); setFeedback('Imagem da biblioteca aplicada.'); }} /> : mode === 'file' ? <button type="button" className="image-dropzone" disabled={busy}
+    {mode === 'library' ? <AssetLibrary embedded lazy materialId={materialId} preferredOrientation="horizontal" onSelect={asset => { revision.current++; onChange(asset.url, !alt ? asset.alt : undefined); setBroken(false); setFeedback('Imagem da biblioteca aplicada.'); }} /> : mode === 'file' ? <button type="button" className="image-dropzone" disabled={busy}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => { event.preventDefault(); void upload(event.dataTransfer.files[0]); }}
       onClick={() => input.current?.click()}>
@@ -82,7 +83,6 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
     {value.startsWith('data:') && <p className={`image-sync image-sync-${saveState || 'local'}`} role="status">{saveState === 'saving' ? 'Enviando imagem…' : saveState === 'error' || saveState === 'offline' ? 'Não foi possível sincronizar esta imagem. Tente novamente quando houver conexão.' : 'Imagem local · aguardando envio para a equipe.'}</p>}
     {value.includes('/assets/') && saveState === 'saved' && <p className="image-sync image-sync-saved" role="status">✓ Imagem disponível para a equipe</p>}
     <div className="actions">
-      {value && <button type="button" className="text-button" disabled={busy} onClick={() => setCropOpen(true)}><Crop size={14} /> Editar corte e tamanho</button>}
       {value.startsWith('data:') && <button type="button" className="text-button" disabled={busy} onClick={async () => {
         setBusy(true); setError('');
         try { const asset = await uploadLocalImage(value, alt); onChange(asset.url); setFeedback('Imagem hospedada com URL pública.'); }

@@ -437,7 +437,7 @@ export default function CampaignEditor({
           </div>
         </div>
       </div>
-      {imageSlot && <Modal title={imageSlot === 'hero' ? 'Imagem principal' : 'Imagem de aplicação'} onClose={() => setImageSlot(undefined)}>
+      {imageSlot && <Modal title={imageSlot === 'hero' ? 'Imagem principal' : 'Imagem de aplicação'} onClose={() => setImageSlot(undefined)} wide>
         <ImagePicker
           key={`${imageSlot}-${language}`}
           label={imageSlot === 'hero' ? 'Imagem principal' : 'Imagem de aplicação'}
@@ -446,10 +446,11 @@ export default function CampaignEditor({
           alt={campaign.content[language][altField]}
           recommended={imageSlot === 'hero' ? '1200 × 700 px' : '1200 × 800 px'}
           materialId={campaign.materialId}
-          onChange={(value) => update({ content: {
+          onChange={(value, suggestedAlt) => update({ content: {
             pt: { ...campaign.content.pt, [imageField]: value },
             en: { ...campaign.content.en, [imageField]: value },
             es: { ...campaign.content.es, [imageField]: value },
+            [language]: { ...campaign.content[language], [imageField]: value, ...(suggestedAlt ? { [altField]: suggestedAlt } : {}) },
           } })}
           onAlt={(value) => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], [altField]: value } } })}
         />
