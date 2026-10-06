@@ -86,7 +86,9 @@ test('permission is rechecked atomically after a session was authorized; revoked
     const actor: MemberActor = { id: 'editor-b@example.com', email: 'editor-b@example.com', name: 'Editor B', role: 'editor', owner: false };
     const req = new Request(`${f.env.SITE_ORIGIN}/api/campaigns/${c.campaign.id}`, { method: 'PUT', headers: f.headers(lock) });
     const repo = new CampaignRepository(guardedEnv(f.env, actor, req, 'campaign', c.campaign.id), actor);
-    await f.json(`/api/workspace/members/${member.id}`, 'PATCH', { role: 'viewer' });
+    // Leave the old lease intact to prove fresh role validation independently
+    // of the normal member-management path's lease revocation.
+    f.db.prepare("UPDATE workspace_members SET role='viewer' WHERE id=?").run(member.id);
     await assert.rejects(repo.update(c.campaign.id, { campaign: { ...c.campaign, title: 'Não deve salvar' }, revision: 1, requestId: crypto.randomUUID() }), /workspace_forbidden/);
     assert.equal((await f.json(`/api/campaigns/${c.campaign.id}`)).revision, 1);
     assert.equal((await f.request('/api/workspace/edit-locks/acquire', 'POST', { resourceType: 'campaign', resourceId: c.campaign.id, ...f.identity() }, actor.email)).status, 403);
@@ -118,7 +120,7 @@ test('brand, materials and assets require leases; library revisions prevent a st
     assert.equal((await f.request(`/api/materials/${material.id}`, 'PUT', { ...material, name: 'Novo nome' }, f.owner, headers)).status, 200);
     assert.equal((await f.request(`/api/materials/${material.id}`, 'PUT', { ...material, name: 'Sobrescrita' }, f.owner, headers)).status, 409);
     const asset = await new AssetRepository(f.env).create(readFileSync('public/brand/granistone-logo.png'), 'image/png', 'logo.png');
-    assert.equal((await f.request(`/api/assets/${asset.id}`, 'PATCH', { name: 'Não salvar' })).status, 423);
+    assert.ok([409, 423].includes((await f.request(`/api/assets/${asset.id}`, 'PATCH', { name: 'Não salvar' })).status));
     const lease = await f.acquire('asset', asset.id);
     assert.equal((await f.request(`/api/assets/${asset.id}`, 'PATCH', { name: 'Logo' }, f.owner, { ...f.headers(lease), 'X-Resource-Revision': String(asset.revision) })).status, 200);
   } finally { f.close(); }

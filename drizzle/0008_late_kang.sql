@@ -68,21 +68,28 @@ CREATE TABLE `workspace_write_checks` (
 ALTER TABLE `assets` ADD `revision` integer DEFAULT 1 NOT NULL;--> statement-breakpoint
 ALTER TABLE `materials` ADD `revision` integer DEFAULT 1 NOT NULL;
 --> statement-breakpoint
-CREATE TRIGGER workspace_check_write BEFORE INSERT ON workspace_write_checks BEGIN
-  SELECT CASE WHEN NEW.owner=0 AND NOT EXISTS (
+CREATE TRIGGER workspace_check_write BEFORE INSERT ON workspace_write_checks
+WHEN NEW.owner=0 AND NOT EXISTS (
     SELECT 1 FROM workspace_members WHERE email=NEW.email AND status='active'
       AND (NEW.required_role='member' OR role='admin' OR (NEW.required_role='editor' AND role='editor'))
-  ) THEN RAISE(ABORT,'workspace_forbidden') END;
-  SELECT CASE WHEN NEW.resource_type<>'' AND NOT EXISTS (
+  )
+BEGIN SELECT RAISE(ABORT,'workspace_forbidden'); END;
+--> statement-breakpoint
+CREATE TRIGGER workspace_check_lease BEFORE INSERT ON workspace_write_checks
+WHEN NEW.resource_type<>'' AND NOT EXISTS (
     SELECT 1 FROM workspace_edit_locks WHERE resource_type=NEW.resource_type AND resource_id=NEW.resource_id
       AND user_id=NEW.user_id AND session_id=NEW.session_id AND tab_id=NEW.tab_id AND token=NEW.token
       AND generation=NEW.generation AND expires_at>CAST(strftime('%s','now') AS INTEGER)
-  ) THEN RAISE(ABORT,'workspace_lock_lost') END;
-  SELECT CASE WHEN NEW.resource_type='material' AND NOT EXISTS(SELECT 1 FROM materials WHERE id=NEW.resource_id AND revision=NEW.revision)
-    THEN RAISE(ABORT,'workspace_revision_conflict') END;
-  SELECT CASE WHEN NEW.resource_type='asset' AND NOT EXISTS(SELECT 1 FROM assets WHERE id=NEW.resource_id AND revision=NEW.revision)
-    THEN RAISE(ABORT,'workspace_revision_conflict') END;
-END;
+  )
+BEGIN SELECT RAISE(ABORT,'workspace_lock_lost'); END;
+--> statement-breakpoint
+CREATE TRIGGER workspace_check_material_revision BEFORE INSERT ON workspace_write_checks
+WHEN NEW.resource_type='material' AND NOT EXISTS(SELECT 1 FROM materials WHERE id=NEW.resource_id AND revision=NEW.revision)
+BEGIN SELECT RAISE(ABORT,'workspace_revision_conflict'); END;
+--> statement-breakpoint
+CREATE TRIGGER workspace_check_asset_revision BEFORE INSERT ON workspace_write_checks
+WHEN NEW.resource_type='asset' AND NOT EXISTS(SELECT 1 FROM assets WHERE id=NEW.resource_id AND revision=NEW.revision)
+BEGIN SELECT RAISE(ABORT,'workspace_revision_conflict'); END;
 --> statement-breakpoint
 CREATE TRIGGER workspace_last_admin_update BEFORE UPDATE OF role,status ON workspace_members
 WHEN OLD.role='admin' AND OLD.status='active' AND (NEW.role<>'admin' OR NEW.status<>'active')
