@@ -13,6 +13,7 @@ import {
   Trash2,
   LogIn,
   CircleCheckBig,
+  Users,
 } from 'lucide-react';
 import { useStudio } from '@/lib/use-studio';
 import { createCampaign } from '@/campaigns/model';
@@ -30,12 +31,18 @@ import { Modal, Field, Select } from './ui';
 import LibraryPage from './LibraryPage';
 import WorkspacePanel from './WorkspacePanel';
 import { saveLabels } from '@/lib/workspace-sync';
+import { CollaborationContext, useEditLease, useWorkspacePresence } from '@/lib/use-collaboration';
+import { EditLeaseBar, PresenceAvatars } from './WorkspacePresence';
+import WorkspaceMembers from './WorkspaceMembers';
+import type { ResourceType } from '@/types/collaboration';
 export default function Studio() {
   const { data, save, saveState, error, workspace } = useStudio();
   const [view, setView] = useState<'campaigns' | 'templates' | 'library'>('campaigns');
   const [activeId, setActiveId] = useState<string>();
   const [importOpen, setImportOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [resourceLocation, setResourceLocation] = useState<{ type: ResourceType; id: string }>();
   const [helpOpen, setHelpOpen] = useState(false);
   const [newTemplate, setNewTemplate] = useState<TemplateId>();
   const [name, setName] = useState('');
@@ -45,8 +52,25 @@ export default function Studio() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reviewIds, setReviewIds] = useState<string[]>([]);
   const onlineEditor = workspace?.editor ?? false;
+  const session = workspace?.session;
+  const onlineMember = session?.member ?? onlineEditor;
+  const canEdit = !session?.authenticated || onlineEditor;
   const active = data?.campaigns.find((c) => c.id === activeId);
   const deleteCampaign = data?.campaigns.find((c) => c.id === deleteCampaignId);
+  const campaignLease = useEditLease('campaign', active?.id, Boolean(active && workspace?.meta.revisions[active.id]), canEdit);
+  const collaboration = useWorkspacePresence(session, membersOpen ? 'members' : resourceLocation?.type || (brandOpen ? 'brand' : active ? 'campaign' : view), resourceLocation?.type || (brandOpen ? 'brand' : active ? 'campaign' : ''), resourceLocation?.id || (brandOpen ? 'brand' : active?.id || ''));
+  async function leaveEditor() {
+    try {
+      await workspace?.flush();
+      if (active && workspace?.meta.pending[active.id]) throw new Error(error || 'As alterações ainda não foram compartilhadas. Retome a edição para salvar ou recupere uma cópia.');
+      await campaignLease.finish(); setActiveId(undefined);
+    } catch (caught) { setFeedback(caught instanceof Error ? caught.message : 'O salvamento ainda não terminou.'); }
+  }
+  function copyActive() {
+    if (!active || !data || !canEdit) return;
+    const copy = { ...structuredClone(active), id: crypto.randomUUID(), title: `${active.title} · cópia`, updatedAt: new Date().toISOString() };
+    save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id);
+  }
   function showBrand() {
     workspace?.setBrandEditing(true);
     setBrandOpen(true);
@@ -83,6 +107,7 @@ export default function Studio() {
           },
           annotations: { readOnlyHint: false, untrustedContentHint: false },
           execute(input: unknown) {
+            if (!canEdit) throw new Error('Sua função permite apenas visualizar campanhas.');
             if (!input || typeof input !== 'object') throw new Error('Dados da campanha inválidos.');
             const value = input as { title?: unknown; template?: unknown };
             const title = typeof value.title === 'string' ? value.title.trim() : '';
@@ -115,13 +140,14 @@ export default function Studio() {
       ),
     ).catch(() => {});
     return () => lifecycle.abort();
-  }, [data, save]);
+  }, [data, save, canEdit]);
   function start(template: TemplateId = 'institutional') {
+    if (!canEdit) { setFeedback('Sua função permite apenas visualizar campanhas.'); return; }
     setName('');
     setNewTemplate(template);
   }
   function create() {
-    if (!data || !newTemplate || !name.trim()) return;
+    if (!data || !canEdit || !newTemplate || !name.trim()) return;
     const type: Campaign['campaignType'] = newTemplate.startsWith('product')
       ? 'Produto'
       : newTemplate === 'newsletter'
@@ -136,7 +162,7 @@ export default function Studio() {
     setView('campaigns');
   }
   async function restore(file?: File) {
-    if (!file || !data) return;
+    if (!file || !data || !canEdit) return;
     try {
       if (file.size > 100_000_000) throw new Error('O limite para backups com imagens é 100 MB.');
       const text = await file.text();
@@ -179,7 +205,9 @@ export default function Studio() {
         )}
       </div>
     );
+  if (session?.authenticated && !session.member) return <div className="workspace-access-screen"><img src="/brand/granistone-logo.png" alt="Granistone" /><h1>Você não possui acesso ao workspace Granistone</h1><p>Você está conectado como <strong>{session.email}</strong>.</p><p>Peça a um administrador para adicionar este e-mail em <strong>Configurações → Membros do workspace</strong>.</p><a className="button primary" href="/signin-with-chatgpt?return_to=/" target="_top">Entrar com outra conta</a></div>;
   return (
+    <CollaborationContext.Provider value={{ session, presence: collaboration.presence, setResource: setResourceLocation }}>
     <div className={`studio ${active ? 'editing' : ''}`}>
       <aside className="sidebar">
         <button
@@ -197,7 +225,7 @@ export default function Studio() {
           </span>
         </button>
         <div className="workspace-label">
-          WORKSPACE <span>{onlineEditor ? 'GRANISTONE' : 'LOCAL'}</span>
+          WORKSPACE <span>{onlineMember ? 'GRANISTONE' : 'LOCAL'}</span>
         </div>
         <nav aria-label="Navegação principal">
           <button
@@ -227,17 +255,17 @@ export default function Studio() {
             <Images size={18} />
             Biblioteca
           </button>
-          <button onClick={() => setImportOpen(true)}>
+          <button disabled={!canEdit} onClick={() => setImportOpen(true)}>
             <Upload size={18} />
             Importar planejamento
           </button>
           <button onClick={() => setTrashOpen(true)}><Trash2 size={18} />Lixeira ({workspace?.meta.trash.length ?? 0})</button>
         </nav>
-        <button className="sidebar-create" onClick={() => start()}>
+        <button className="sidebar-create" disabled={!canEdit} onClick={() => start()}>
           <Plus size={16} />
           Nova campanha
         </button>
-        {onlineEditor ? (
+        {onlineMember ? (
           <div className="sidebar-auth authenticated" role="status">
             <CircleCheckBig size={17} />
             <span>
@@ -259,10 +287,12 @@ export default function Studio() {
           </a>
         )}
         <div className="sidebar-bottom">
-          <button onClick={showBrand}>
+          <span className="workspace-label">CONFIGURAÇÕES</span>
+          <button disabled={onlineMember && !session?.permissions.editBrand} onClick={showBrand}>
             <Settings2 size={17} />
             Marca e rodapé
           </button>
+          {session?.permissions.manageMembers && <button onClick={() => setMembersOpen(true)}><Users size={17} />Membros do workspace</button>}
           <button
             onClick={() => {
               downloadFile(
@@ -281,6 +311,7 @@ export default function Studio() {
             Restaurar JSON
             <input
               type="file"
+              disabled={!canEdit}
               accept=".json"
               onChange={(e) => {
                 void restore(e.target.files?.[0]);
@@ -304,7 +335,7 @@ export default function Studio() {
             Granistone <span>/</span> Mail Studio <span>/</span>
             <strong>{active ? 'Editor' : view === 'templates' ? 'Templates' : view === 'library' ? 'Biblioteca' : 'Campanhas'}</strong>
           </div>
-          <span className="topbar-note">Feito para a sua marca.</span>
+          {onlineMember ? <div className="topbar-team"><PresenceAvatars entries={collaboration.presence} />{collaboration.unavailable && <small>Presença indisponível</small>}</div> : <span className="topbar-note">Gere o link do e-mail para o RD Station.</span>}
         </header>
         {error && (
           <div className="persistent-error" role="alert">
@@ -321,6 +352,8 @@ export default function Studio() {
           </div>
         )}
         {active ? (
+          <>
+          {workspace?.meta.revisions[active.id] && <EditLeaseBar lease={campaignLease} type="campaign" id={active.id} onBegin={() => workspace.refresh()} onFinish={async () => { await workspace.flush(); if (workspace.meta.pending[active.id]) { setFeedback('As alterações estão pendentes. Retome a conexão ou recupere uma cópia.'); throw new Error('Salvamento pendente.'); } }} onCopy={copyActive} />}
           <CampaignEditor
             key={active.id}
             campaign={active}
@@ -328,16 +361,19 @@ export default function Studio() {
             activity={workspace?.meta.activity?.[active.id]}
             brand={data.brand}
             saveState={workspace?.campaignState(active.id) ?? saveState}
-            onBack={() => setActiveId(undefined)}
+            readOnly={!campaignLease.editing}
+            onBack={() => void leaveEditor()}
             onSettings={showBrand}
             onHistory={() => setHistoryOpen(true)}
-            onChange={(campaign) =>
+            onChange={(campaign) => {
+              if (!campaignLease.editing) return;
               save({
                 ...data,
                 campaigns: data.campaigns.map((c) => (c.id === campaign.id ? campaign : c)),
-              }, campaign.status !== active.status)
-            }
+              }, campaign.status !== active.status);
+            }}
           />
+          </>
         ) : view === 'templates' ? (
           <TemplateLibrary onUse={start} />
         ) : view === 'library' ? (
@@ -346,6 +382,8 @@ export default function Studio() {
           <CampaignList
             key={reviewIds.join(',')}
             campaigns={data.campaigns}
+            canEdit={canEdit}
+            canDelete={!onlineMember || session?.role === 'admin'}
             activity={workspace?.meta.activity}
             reviewIds={reviewIds}
             onOpen={setActiveId}
@@ -355,6 +393,7 @@ export default function Studio() {
           />
         )}
       </main>
+      {membersOpen && <WorkspaceMembers onClose={() => setMembersOpen(false)} />}
       {importOpen && (
         <ImportDialog
           existing={data.campaigns}
@@ -371,8 +410,11 @@ export default function Studio() {
       {brandOpen && (
         <BrandSettings
           brand={data.brand}
-          onSave={(brand) => {
-            save({ ...data, brand });
+          onlineMember={onlineMember}
+          brandRevision={workspace?.meta.brandRevision}
+          onSave={async (brand) => {
+            if (workspace) { await workspace.save({ ...workspace.data, brand }); await workspace.flush(); if (workspace.meta.brandPending) throw new Error(workspace.error || 'Não foi possível compartilhar a marca. Seu rascunho foi preservado.'); }
+            else save({ ...data, brand });
             workspace?.setBrandEditing(false);
           }}
           onClose={() => { workspace?.setBrandEditing(false); setBrandOpen(false); }}
@@ -439,11 +481,7 @@ export default function Studio() {
             <button
               type="button"
               className="button danger"
-              onClick={() => {
-                save({ ...data, campaigns: data.campaigns.filter((campaign) => campaign.id !== deleteCampaign.id) }, true);
-                setDeleteCampaignId(undefined);
-                setFeedback('E-mail movido para a lixeira.');
-              }}
+              onClick={() => void (async () => { try { await workspace?.remove(deleteCampaign.id); setDeleteCampaignId(undefined); setFeedback('E-mail movido para a lixeira.'); } catch (caught) { setFeedback(caught instanceof Error ? caught.message : 'Não foi possível excluir.'); } })()}
             >
               <Trash2 size={16} />
               Excluir e-mail
@@ -489,5 +527,6 @@ export default function Studio() {
         </Modal>
       )}
     </div>
+    </CollaborationContext.Provider>
   );
 }

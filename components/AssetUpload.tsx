@@ -5,6 +5,7 @@ import { prepareImage } from '@/lib/images';
 import { folderForFile } from '@/lib/asset-folders';
 import { online } from '@/lib/online';
 import type { OnlineMaterial } from '@/types/online';
+import { withLease } from '@/lib/edit-leases';
 
 export default function AssetUpload({ folder, material, onComplete }: { folder: string; material?: OnlineMaterial; onComplete: () => Promise<void> }) {
   const filesInput = useRef<HTMLInputElement>(null); const folderInput = useRef<HTMLInputElement>(null);
@@ -38,8 +39,10 @@ export default function AssetUpload({ folder, material, onComplete }: { folder: 
       }
       if (material && successful) {
         // Read the current association so importing does not overwrite another editor's additions.
-        const current = await online.materials.get(material.id);
-        await online.materials.save({ ...current, assetIds: [...new Set([...current.assetIds, ...assetIds])] });
+        await withLease('material', material.id, async () => {
+          const current = await online.materials.get(material.id);
+          await online.materials.save({ ...current, assetIds: [...new Set([...current.assetIds, ...assetIds])] });
+        });
       }
       setMessage(`${successful} de ${batch.length} arquivos importados${cancelled.current ? ' · envio interrompido' : ''}. Imagens repetidas são reutilizadas.`);
     } catch (error) { failures.push(error instanceof Error ? error.message : 'Não foi possível associar as imagens ao material.'); }

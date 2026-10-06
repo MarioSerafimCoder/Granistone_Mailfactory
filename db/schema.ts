@@ -21,6 +21,7 @@ export const workspaceMutations = sqliteTable('workspace_mutations', {
 });
 
 export const assets = sqliteTable('assets', {
+  revision: integer('revision').notNull().default(1),
   id: text('id').primaryKey(), objectKey: text('object_key').notNull(),
   hash: text('hash').notNull(), metadata: text('metadata').notNull(),
   category: text('category').notNull(), name: text('name').notNull(),
@@ -31,6 +32,7 @@ export const assetFolders = sqliteTable('asset_folders', {
   folderPath: text('folder_path').notNull(),
 }, t => [primaryKey({ columns: [t.assetId, t.folderPath] }), index('asset_folders_path').on(t.folderPath)]);
 export const materials = sqliteTable('materials', {
+  revision: integer('revision').notNull().default(1),
   id: text('id').primaryKey(), slug: text('slug').notNull(), data: text('data').notNull(),
 }, t => [uniqueIndex('materials_slug').on(t.slug)]);
 export const materialAssets = sqliteTable('material_assets', {
@@ -50,3 +52,33 @@ export const publicationAssets = sqliteTable('publication_assets', {
   publicationId: text('publication_id').notNull().references(() => publications.id),
   assetId: text('asset_id').notNull().references(() => assets.id),
 }, t => [primaryKey({ columns: [t.publicationId, t.assetId] })]);
+
+export const workspaceMembers = sqliteTable('workspace_members', {
+  id: text('id').primaryKey(), email: text('email').notNull(), name: text('name').notNull().default(''),
+  role: text('role').notNull(), status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull(), createdBy: text('created_by').notNull(),
+  updatedAt: text('updated_at').notNull(), lastSeenAt: text('last_seen_at'),
+}, t => [uniqueIndex('workspace_member_email').on(t.email)]);
+export const workspaceMemberEvents = sqliteTable('workspace_member_events', {
+  targetEmail: text('target_email').notNull().default(''),
+  id: text('id').primaryKey(), memberId: text('member_id').notNull(), action: text('action').notNull(),
+  actorEmail: text('actor_email').notNull(), previousRole: text('previous_role'), newRole: text('new_role'),
+  createdAt: text('created_at').notNull(),
+});
+export const workspacePresence = sqliteTable('workspace_presence_sessions', {
+  id: text('id').primaryKey(), userId: text('user_id').notNull(), email: text('email').notNull(),
+  name: text('name').notNull(), sessionId: text('session_id').notNull(), tabId: text('tab_id').notNull(),
+  location: text('location').notNull(), resourceType: text('resource_type').notNull(), resourceId: text('resource_id').notNull(),
+  lastActivityAt: integer('last_activity_at').notNull(), lastSeenAt: integer('last_seen_at').notNull(), expiresAt: integer('expires_at').notNull(),
+}, t => [index('workspace_presence_expiry').on(t.expiresAt)]);
+export const workspaceEditLocks = sqliteTable('workspace_edit_locks', {
+  resourceType: text('resource_type').notNull(), resourceId: text('resource_id').notNull(),
+  userId: text('user_id').notNull(), email: text('email').notNull(), sessionId: text('session_id').notNull(), tabId: text('tab_id').notNull(),
+  token: text('token').notNull(), generation: integer('generation').notNull(), expiresAt: integer('expires_at').notNull(),
+}, t => [primaryKey({ columns: [t.resourceType, t.resourceId] })]);
+export const workspaceWriteChecks = sqliteTable('workspace_write_checks', {
+  id: text('id').primaryKey(), userId: text('user_id').notNull(), email: text('email').notNull(), owner: integer('owner').notNull(),
+  requiredRole: text('required_role').notNull(), resourceType: text('resource_type').notNull(), resourceId: text('resource_id').notNull(),
+  sessionId: text('session_id').notNull(), tabId: text('tab_id').notNull(), token: text('token').notNull(),
+  generation: integer('generation').notNull(), revision: integer('revision'),
+});

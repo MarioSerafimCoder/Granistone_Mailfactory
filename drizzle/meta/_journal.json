@@ -57,6 +57,27 @@
       "when": 1791286948039,
       "tag": "0007_asset_folders",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791304898883,
+      "tag": "0008_late_kang",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791305628467,
+      "tag": "0009_outgoing_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791305865083,
+      "tag": "0010_collaboration_asset_guards",
+      "breakpoints": true
     }
   ]
 }

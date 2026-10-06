@@ -5,6 +5,7 @@ import { campaignTypes, statuses, type Campaign } from '@/types/campaign';
 import { languages, languageStates } from '@/campaigns/model';
 import type { SyncMetadata } from '@/types/workspace';
 import { editorName, relativeTime, activityTime } from '@/lib/workspace-display';
+import { ResourcePresence } from './WorkspacePresence';
 export function StatusBadge({ status }: { status: Campaign['status'] }) {
   return (
     <span className={`status status-${statuses.indexOf(status)}`}>
@@ -21,6 +22,8 @@ export default function CampaignList({
   onImport,
   activity,
   reviewIds,
+  canEdit = true,
+  canDelete = true,
 }: {
   campaigns: Campaign[];
   onOpen: (id: string) => void;
@@ -29,6 +32,8 @@ export default function CampaignList({
   onImport: () => void;
   activity?: SyncMetadata['activity'];
   reviewIds?: string[];
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
@@ -78,11 +83,11 @@ export default function CampaignList({
           <p>Do planejamento à próxima conversa.</p>
         </div>
         <div className="actions">
-          <button className="button" onClick={onImport}>
+          <button className="button" disabled={!canEdit} onClick={onImport}>
             <Upload size={16} />
             Importar planejamento
           </button>
-          <button className="button primary" onClick={onCreate}>
+          <button className="button primary" disabled={!canEdit} onClick={onCreate}>
             <Plus size={17} />
             Nova campanha
           </button>
@@ -108,7 +113,7 @@ export default function CampaignList({
           </strong>
           <small>aprovadas ou exportadas</small>
         </div>
-        <button onClick={onImport} className="planning-callout">
+        <button disabled={!canEdit} onClick={onImport} className="planning-callout">
           <FileMark />
           <span>
             <strong>Seu mês começa na planilha.</strong>
@@ -249,6 +254,7 @@ export default function CampaignList({
                   <button className="campaign-title" onClick={() => onOpen(c.id)}>
                     {c.title}
                   </button>
+                  <ResourcePresence type="campaign" id={c.id} />
                   {c.demo && (
                     <div className="campaign-meta">
                       <span>Demonstração</span>
@@ -276,6 +282,7 @@ export default function CampaignList({
                     <button
                       className="icon-button delete-campaign"
                       aria-label={`Excluir ${c.title}`}
+                      disabled={!canDelete}
                       title="Excluir e-mail"
                       onClick={() => onDelete(c.id)}
                     >

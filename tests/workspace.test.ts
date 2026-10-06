@@ -16,15 +16,26 @@ import { richText } from '../campaigns/model';
 function setup() {
   const fixture = platformFixture();
   fixture.env.EDITOR_EMAILS = 'editor@example.com,second@example.com';
-  const request = async (path: string, method = 'GET', body?: unknown, user = 'editor@example.com') => worker.fetch(new Request(`https://studio.example.com${path}`, {
-    method, headers: { Origin: 'https://studio.example.com', 'Content-Type': 'application/json', ...(user ? { 'oai-authenticated-user-id': user, 'oai-authenticated-user-email': user } : {}) }, body: body === undefined ? undefined : JSON.stringify(body),
+  const request = async (path: string, method = 'GET', body?: unknown, user = 'editor@example.com', extra: Record<string, string> = {}) => worker.fetch(new Request(`https://studio.example.com${path}`, {
+    method, headers: { Origin: 'https://studio.example.com', 'Content-Type': 'application/json', ...extra, ...(user ? { 'oai-authenticated-user-id': user, 'oai-authenticated-user-email': user } : {}) }, body: body === undefined ? undefined : JSON.stringify(body),
   }), fixture.env);
   const api = (user = 'editor@example.com'): Pick<typeof online, 'session' | 'campaigns' | 'settings'> => {
+    const identity = { sessionId: crypto.randomUUID(), tabId: crypto.randomUUID() };
     const call = async <T>(path: string, method = 'GET', body?: unknown): Promise<T> => {
-      const response = await request(path, method, body, user);
-      const data = await response.json() as T & { error?: string };
-      if (!response.ok) throw new OnlineError(data.error || 'Erro', response.status);
-      return data;
+      const match = path.match(/^\/api\/campaigns\/([a-zA-Z0-9_-]+)/);
+      const target = method !== 'GET' ? match ? { resourceType: 'campaign', resourceId: match[1] } : path === '/api/workspace/settings' ? { resourceType: 'brand', resourceId: 'brand' } : undefined : undefined;
+      let lease: { token: string; generation: number } | undefined;
+      if (target) {
+        const acquired = await request('/api/workspace/edit-locks/acquire', 'POST', { ...identity, ...target }, user);
+        lease = await acquired.json() as typeof lease;
+        if (!acquired.ok) throw new OnlineError('Reserva indisponível', acquired.status);
+      }
+      try {
+        const response = await request(path, method, body, user, lease ? { 'X-Workspace-Session': identity.sessionId, 'X-Workspace-Tab': identity.tabId, 'X-Edit-Token': lease.token, 'X-Edit-Generation': String(lease.generation) } : {});
+        const data = await response.json() as T & { error?: string };
+        if (!response.ok) throw new OnlineError(data.error || 'Erro', response.status);
+        return data;
+      } finally { if (lease && target) await request('/api/workspace/edit-locks/release', 'POST', { ...target, ...identity, ...lease }, user); }
     };
     return {
       session: () => call('/api/session'),

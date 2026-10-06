@@ -37,6 +37,7 @@ export default function CampaignEditor({
   campaignRevision,
   activity,
   onHistory,
+  readOnly = false,
 }: {
   campaign: Campaign;
   brand: BrandSettings;
@@ -47,6 +48,7 @@ export default function CampaignEditor({
   campaignRevision?: number;
   activity?: NonNullable<SyncMetadata['activity']>[string];
   onHistory: () => void;
+  readOnly?: boolean;
 }) {
   const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
   const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
@@ -66,7 +68,7 @@ export default function CampaignEditor({
     const timer = setTimeout(() => {
       Promise.all([
         renderEmail(campaign, language, brand),
-        renderEmail(campaign, language, brand, true),
+        renderEmail(campaign, language, brand, !readOnly),
       ])
         .then(([html, editorHtml]) => {
           if (!cancelled) setPreview({ html, editorHtml, signature, error: '' });
@@ -86,8 +88,8 @@ export default function CampaignEditor({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [brand, campaign, language, signature]);
-  const update = (patch: Partial<Campaign>) => onChange(editCampaign(campaign, patch, language));
+  }, [brand, campaign, language, signature, readOnly]);
+  const update = (patch: Partial<Campaign>) => { if (!readOnly) onChange(editCampaign(campaign, patch, language)); };
   const imageField = imageSlot === 'application' ? 'applicationImage' : 'heroImage';
   const altField = imageSlot === 'application' ? 'applicationAlt' : 'heroAlt';
   const resolvedIssues = (field: NonNullable<Campaign['importIssues']>[number]['field']) =>
@@ -118,6 +120,7 @@ export default function CampaignEditor({
           {campaignRevision && <button className="text-button" onClick={onHistory}>Histórico</button>}
           <select
             aria-label="Status da campanha"
+            disabled={readOnly}
             title={`Status de ${language.toUpperCase()}`}
             value={languageStates(campaign)[language].status}
             onChange={(e) => update({ status: e.target.value as Campaign['status'] })}
@@ -131,7 +134,7 @@ export default function CampaignEditor({
             <Download size={16} />
             Exportar
           </button>
-          <button className="button" disabled={['saving', 'conflict', 'offline', 'error'].includes(saveState)} onClick={() => setPublishOpen(true)}>Publicar online</button>
+          <button className="button" disabled={readOnly || ['saving', 'conflict', 'offline', 'error'].includes(saveState)} onClick={() => setPublishOpen(true)}>Publicar online</button>
         </div>
       </div>
       {!!campaign.importIssues?.length && (
@@ -159,8 +162,8 @@ export default function CampaignEditor({
           <div className="translation-bar">
             <span><Languages size={14} /> Tradução a partir do português</span>
             <div>
-              <button type="button" disabled={language === 'en'} onClick={() => setTranslateTarget('en')}>Converter para inglês</button>
-              <button type="button" disabled={language === 'es'} onClick={() => setTranslateTarget('es')}>Converter para espanhol</button>
+              <button type="button" disabled={readOnly || language === 'en'} onClick={() => setTranslateTarget('en')}>Converter para inglês</button>
+              <button type="button" disabled={readOnly || language === 'es'} onClick={() => setTranslateTarget('es')}>Converter para espanhol</button>
             </div>
           </div>
           <div className="editor-tabs">
@@ -177,7 +180,7 @@ export default function CampaignEditor({
               Estrutura
             </button>
           </div>
-          <div className="editor-fields">
+          <div className="editor-fields" inert={readOnly} aria-disabled={readOnly}>
             {tab === 'content' && (
               <ContentFields campaign={campaign} language={language} onChange={update} saveState={saveState} />
             )}
@@ -409,7 +412,7 @@ export default function CampaignEditor({
                   const choose = (target: EventTarget | null) => {
                     const element = target as HTMLElement | null;
                     const slot = element?.closest?.('[data-image-slot]')?.getAttribute('data-image-slot');
-                    if (slot === 'hero' || slot === 'application') setImageSlot(slot);
+                    if (!readOnly && (slot === 'hero' || slot === 'application')) setImageSlot(slot);
                   };
                   document.addEventListener('click', (click) => { click.preventDefault(); if (editImages) choose(click.target); });
                   document.addEventListener('keydown', (key) => {

@@ -3,14 +3,17 @@ import type { StudioData } from './storage';
 import { online, OnlineError } from './online';
 import { hostLocalImages } from './workspace-images';
 import { defaultBrand } from '@/data/brand';
-export type SaveState = 'loading' | 'saving' | 'saved' | 'local' | 'offline' | 'conflict' | 'error';
-export const saveLabels: Record<SaveState, string> = { loading: 'Abrindo workspace…', saving: 'Salvando…', saved: 'Salvo na nuvem', local: 'Salvo localmente · ainda não compartilhado', offline: 'Sem conexão · alterações pendentes', conflict: 'Conflito de edição', error: 'Erro ao sincronizar' };
+import type { WorkspaceSession } from '@/types/collaboration';
+import { activeLease, withLease } from './edit-leases';
+export type SaveState = 'loading' | 'saving' | 'saved' | 'local' | 'offline' | 'conflict' | 'error' | 'paused';
+export const saveLabels: Record<SaveState, string> = { loading: 'Abrindo workspace…', saving: 'Salvando…', saved: 'Salvo na nuvem', local: 'Salvo localmente · ainda não compartilhado', offline: 'Sem conexão · alterações pendentes', conflict: 'Conflito de edição', error: 'Erro ao sincronizar', paused: 'Rascunho local · retome a edição para sincronizar' };
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 export const initialSync = (): SyncMetadata => ({ revisions: {}, pending: {}, conflicts: {}, activity: {}, conflictDetails: {}, brandRevision: 0, initialized: false, trash: [] });
 type Api = Pick<typeof online, 'campaigns' | 'settings' | 'session'>;
 export class WorkspaceSync {
   data: StudioData;
   editor = false;
+  session?: WorkspaceSession;
   state: SaveState = 'loading';
   error = '';
   busy = false;
@@ -29,8 +32,9 @@ export class WorkspaceSync {
     await this.persist(this.data);
   }
   private settle() {
+    const paused = this.api === online && (Object.keys(this.meta.pending).some(id => this.meta.pending[id].revision && !activeLease('campaign', id)) || (this.meta.brandPending && !activeLease('brand', 'brand')));
     this.state = Object.keys(this.meta.conflicts).length || this.meta.brandConflict ? 'conflict'
-      : Object.keys(this.meta.pending).length || this.meta.brandPending ? this.editor ? 'saving' : 'offline'
+      : Object.keys(this.meta.pending).length || this.meta.brandPending ? this.editor ? paused ? 'paused' : 'saving' : 'offline'
       : this.editor && !this.localCampaigns.length ? 'saved' : 'local';
     this.notify();
   }
@@ -55,8 +59,8 @@ export class WorkspaceSync {
     if (this.busy || this.stopped) return;
     this.busy = true;
     try {
-      const session = await this.api.session(); this.editor = session.editor;
-      if (!this.editor) { this.settle(); return; }
+      const session = await this.api.session(); this.session = session; this.editor = session.editor;
+      if (!(session.member ?? session.editor)) { this.settle(); return; }
       const [rows, settings] = await Promise.all([this.api.campaigns.list(), this.api.settings.get()]);
       if (this.stopped) return;
       for (const row of rows) {
@@ -103,6 +107,7 @@ export class WorkspaceSync {
       for (const id of Object.keys(this.meta.pending)) {
         if (this.stopped) return;
         if (this.meta.conflicts[id]) continue;
+        if (this.api === online && this.meta.pending[id].revision && !activeLease('campaign', id)) continue;
         let pending = this.meta.pending[id];
         const current = this.data.campaigns.find(c => c.id === id);
         if (!pending.sent) {
@@ -142,7 +147,7 @@ export class WorkspaceSync {
           else throw error;
         }
       }
-      if (this.meta.brandPending && !this.meta.brandConflict) {
+      if (this.meta.brandPending && !this.meta.brandConflict && (this.api !== online || activeLease('brand', 'brand'))) {
         if (!this.meta.brandSent) {
           const snapshot = this.data.brand;
           const hosted = await this.images(snapshot);
@@ -170,7 +175,9 @@ export class WorkspaceSync {
     if (!this.editor) return;
     for (const campaign of this.localCampaigns) this.meta.pending[campaign.id] = { revision: 0, operation: 'save', requestId: crypto.randomUUID() };
     if (!this.meta.brandRevision && this.meta.localBrand) { this.data.brand = this.meta.localBrand; this.meta.brandPending = crypto.randomUUID(); delete this.meta.localBrand; }
-    this.settle(); await this.commit(); await this.sync();
+    this.settle(); await this.commit();
+    if (this.api === online && this.meta.brandPending && this.session?.permissions.editBrand) await withLease('brand', 'brand', () => this.sync());
+    else await this.sync();
   }
   async resolve(id: string, keepCopy: boolean) {
     const local = this.data.campaigns.find(c => c.id === id) ?? this.meta.trash.find(c => c.id === id);
@@ -196,14 +203,30 @@ export class WorkspaceSync {
       const local = this.meta.trash.find(c => c.id === id);
       if (local) { this.meta.trash = this.meta.trash.filter(c => c.id !== id); this.data.campaigns.push(local); }
     } else {
-      const row = historical ? await this.api.campaigns.restoreRevision(id, this.meta.revisions[id], historical) : await this.api.campaigns.restore(id, this.meta.revisions[id]);
+      const action = () => historical ? this.api.campaigns.restoreRevision(id, this.meta.revisions[id], historical) : this.api.campaigns.restore(id, this.meta.revisions[id]);
+      const row = this.api === online ? await withLease('campaign', id, action) : await action();
       this.accept(row);
     }
     await this.commit();
   }
   campaignState(id: string): SaveState {
     if (this.meta.conflicts[id]) return 'conflict';
+    if (this.api === online && this.meta.pending[id]?.revision && !activeLease('campaign', id)) return 'paused';
     if (this.meta.pending[id]) return ['error', 'offline'].includes(this.state) ? this.state : this.editor ? 'saving' : 'offline';
     return this.meta.revisions[id] ? 'saved' : 'local';
+  }
+  async flush() {
+    const until = Date.now() + 30000;
+    while (this.busy && Date.now() < until) await new Promise(resolve => setTimeout(resolve, 30));
+    if (this.busy) throw new Error('O salvamento ainda está em andamento.');
+    await this.sync();
+  }
+  async remove(id: string) {
+    const action = async () => {
+      await this.save({ ...this.data, campaigns: this.data.campaigns.filter(c => c.id !== id) });
+      await this.flush();
+      if (this.meta.pending[id]) throw new Error(this.error || 'A exclusão não foi sincronizada. O rascunho foi preservado.');
+    };
+    if (this.api === online && this.meta.revisions[id]) await withLease('campaign', id, action); else await action();
   }
 }

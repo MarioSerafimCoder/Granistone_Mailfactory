@@ -18,7 +18,9 @@ export function platformFixture() {
     SITE_ORIGIN: 'https://studio.example.com', EDITOR_EMAILS: 'editor@example.com', REMOTE_HOSTS: '',
     DB: { prepare: (sql: string) => new Statement(sql), async batch(statements: Statement[]) {
       db.exec('BEGIN');
-      try { const result = []; for (const s of statements) result.push(await s.run()); db.exec('COMMIT'); return result; }
+      // A D1 batch is serialized as one transaction. Do not yield between
+      // synchronous SQLite statements or concurrent requests interleave BEGIN.
+      try { const result = []; for (const s of statements) result.push({ success: true, meta: db.prepare(s.sql).run(...s.values) }); db.exec('COMMIT'); return result; }
       catch (error) { db.exec('ROLLBACK'); throw error; }
     } },
     BUCKET: {

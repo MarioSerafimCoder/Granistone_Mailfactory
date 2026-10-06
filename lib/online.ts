@@ -1,14 +1,25 @@
 import type { EmailPublication, MediaAsset, OnlineMaterial, PreflightResult, PublicationInput, TranslationRequest, TranslationResult } from '@/types/online';
 import type { Campaign, BrandSettings } from '@/types/campaign';
 import type { SharedCampaign, SharedBrand, CampaignRevision } from '@/types/workspace';
-export class OnlineError extends Error {
-  constructor(message: string, public status: number) { super(message); }
+import type { PresenceEntry, ResourceType, WorkspaceMember, WorkspaceSession } from '@/types/collaboration';
+import { editHeaders, invalidateLease } from './edit-leases';
+import { OnlineError } from './online-error';
+export { OnlineError } from './online-error';
+function resource(path: string, body?: BodyInit | null): [ResourceType, string] | undefined {
+  const match = path.match(/^\/api\/(campaigns|materials|assets)\/([a-zA-Z0-9_-]+)/);
+  if (match) return [{ campaigns: 'campaign', materials: 'material', assets: 'asset' }[match[1]] as ResourceType, match[2]];
+  if (path === '/api/workspace/settings') return ['brand', 'brand'];
+  if (path === '/api/publications' && typeof body === 'string') return ['campaign', JSON.parse(body).campaign.id];
 }
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(path, { ...options, credentials: 'same-origin' });
+  const editing = options?.method && !['GET', 'HEAD'].includes(options.method) ? resource(path, options.body) : undefined;
+  const response = await fetch(path, { ...options, headers: { ...(editing ? editHeaders(...editing) : {}), ...options?.headers }, credentials: 'same-origin' });
   let value;
   try { value = await response.json(); } catch { throw new OnlineError('Servidor online indisponível neste endereço.', response.status); }
-  if (!response.ok) throw new OnlineError(value.error || 'A operação não foi concluída.', response.status);
+  if (!response.ok) {
+    if (editing && [401, 403, 423].includes(response.status)) invalidateLease(...editing);
+    throw new OnlineError(value.error || 'A operação não foi concluída.', response.status);
+  }
   return value as T;
 }
 const json = (value: unknown) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
@@ -27,7 +38,19 @@ export const online = {
     get: () => api<SharedBrand>('/api/workspace/settings'),
     save: (brand: BrandSettings, revision: number, requestId: string) => api<SharedBrand>('/api/workspace/settings', { method: 'PUT', ...json({ brand, revision, requestId }) }),
   },
-  session: () => api<{ editor: boolean; email: string; origin: string }>('/api/session'),
+  session: () => api<WorkspaceSession>('/api/session'),
+  members: {
+    list: () => api<WorkspaceMember[]>('/api/workspace/members'),
+    add: (email: string, role: string, name: string) => api('/api/workspace/members', { method: 'POST', ...json({ email, role, name }) }),
+    change: (id: string, patch: { role?: string; status?: string }) => api(`/api/workspace/members/${encodeURIComponent(id)}`, { method: 'PATCH', ...json(patch) }),
+    remove: (id: string) => api(`/api/workspace/members/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    events: () => api<{ id: string; member_id: string; member_email: string | null; action: string; actor_email: string; previous_role: string | null; new_role: string | null; created_at: string }[]>('/api/workspace/members/events'),
+  },
+  presence: {
+    list: () => api<PresenceEntry[]>('/api/workspace/presence'),
+    heartbeat: (input: unknown) => api('/api/workspace/presence/heartbeat', { method: 'POST', ...json(input) }),
+    leave: (input: unknown) => api('/api/workspace/presence/session', { method: 'DELETE', ...json(input) }),
+  },
   assets: {
     list: async (q = '', category = '') => {
       const assets: MediaAsset[] = [];
@@ -39,22 +62,25 @@ export const online = {
     },
     get: (id: string) => api<MediaAsset>(`/api/assets/${encodeURIComponent(id)}`),
     upload: (file: Blob, metadata: Partial<MediaAsset> & { fileName: string }) => api<MediaAsset>('/api/assets', { method: 'POST', headers: { 'Content-Type': file.type, 'X-Asset-Metadata': encodeURIComponent(JSON.stringify(metadata)) }, body: file }),
-    update: (id: string, patch: Partial<MediaAsset>) => api<MediaAsset>(`/api/assets/${encodeURIComponent(id)}`, { method: 'PATCH', ...json(patch) }),
-    remove: (id: string) => api<{ deleted: boolean }>(`/api/assets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    update: (id: string, patch: Partial<MediaAsset>) => api<MediaAsset>(`/api/assets/${encodeURIComponent(id)}`, { method: 'PATCH', ...json(patch), headers: { 'Content-Type': 'application/json', 'X-Resource-Revision': String(patch.revision ?? '') } }),
+    remove: (id: string, revision?: number) => api<{ deleted: boolean }>(`/api/assets/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Resource-Revision': String(revision ?? '') } }),
     usage: (id: string) => api<{ publications: { id: string }[]; materials: { id: string }[] }>(`/api/assets/${encodeURIComponent(id)}/usage`),
   },
   materials: {
     list: () => api<OnlineMaterial[]>('/api/materials'),
     get: (id: string) => api<OnlineMaterial>(`/api/materials/${encodeURIComponent(id)}`),
-    save: (material: Partial<OnlineMaterial>) => api<OnlineMaterial>(material.id ? `/api/materials/${encodeURIComponent(material.id)}` : '/api/materials', { method: material.id ? 'PUT' : 'POST', ...json(material) }),
+    save: (material: Partial<OnlineMaterial>) => api<OnlineMaterial>(material.id ? `/api/materials/${encodeURIComponent(material.id)}` : '/api/materials', { method: material.id ? 'PUT' : 'POST', ...json(material), headers: { 'Content-Type': 'application/json', 'X-Resource-Revision': String(material.revision ?? '') } }),
   },
   preflight: (input: PublicationInput) => api<PreflightResult & { html: string }>('/api/preflight', { method: 'POST', ...json(input) }),
   translate: (input: TranslationRequest) => api<TranslationResult>('/api/translate', { method: 'POST', ...json(input) }),
   versions: (campaignId: string) => api<EmailPublication[]>(`/api/publications?campaignId=${encodeURIComponent(campaignId)}`),
   publish: async (input: PublicationInput, key: string) => {
-    const response = await fetch('/api/publications', { method: 'POST', ...json(input), headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key } });
+    const response = await fetch('/api/publications', { method: 'POST', ...json(input), headers: { ...editHeaders('campaign', input.campaign.id), 'Content-Type': 'application/json', 'Idempotency-Key': key } });
     const value = await response.json();
-    if (response.status !== 422 && !response.ok) throw new OnlineError(value.error || 'Publicação indisponível.', response.status);
+    if (response.status !== 422 && !response.ok) {
+      if ([401, 403, 423].includes(response.status)) invalidateLease('campaign', input.campaign.id);
+      throw new OnlineError(value.error || 'Publicação indisponível.', response.status);
+    }
     return value as { publication: EmailPublication | null; preflight?: PreflightResult };
   },
 };

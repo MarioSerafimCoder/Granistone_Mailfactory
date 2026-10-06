@@ -6,7 +6,7 @@ async function authenticate(page: Page, id: string) {
     'oai-authenticated-user-email': 'local@studio.test', origin: 'https://studio.example.com', 'sec-fetch-site': 'same-origin',
   } }) }));
 }
-test('shared campaign survives another browser, autosave conflict, copy recovery, trash and restoration', async ({ page, browser }) => {
+test('shared campaign coordinates two browsers, preserves edits, trash and restoration', async ({ page, browser }) => {
   const other = await browser.newContext(); const second = await other.newPage();
   await authenticate(page, 'employee-one'); await authenticate(second, 'employee-two');
   try {
@@ -20,19 +20,13 @@ test('shared campaign survives another browser, autosave conflict, copy recovery
     await second.goto('/');
     await second.getByRole('button', { name: title, exact: true }).click();
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    // Block refreshes on the first page to deliberately edit its older revision.
-    await page.route('**/api/campaigns', route => route.request().method() === 'GET' ? route.abort() : route.fallback());
+    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
     await second.getByLabel('Headline', { exact: true }).fill('Conteúdo de outro funcionário');
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await page.getByLabel('Headline', { exact: true }).fill('Meu conteúdo preservado');
-    const conflict = page.getByRole('dialog', { name: 'Conflito de edição' });
-    await expect(conflict.getByText('Nenhuma versão foi sobrescrita.')).toBeVisible();
-    await expect(conflict.getByText(/Alterada por: Local/)).toBeVisible();
-    await expect(page.locator('.save-indicator')).toHaveText('Conflito de edição');
-    await conflict.getByRole('button', { name: 'Salvar minha versão como cópia' }).click();
-    await expect(page.getByLabel('Headline', { exact: true })).toHaveValue('Conteúdo de outro funcionário');
+    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+    await expect(page.locator('.edit-lease-bar')).toContainText('está editando');
+    await expect(page.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
-    await expect(page.getByRole('button', { name: `${title} · cópia recuperada`, exact: true })).toBeVisible();
     await second.getByRole('button', { name: 'Voltar às campanhas' }).click();
     await second.getByRole('button', { name: `Excluir ${title}`, exact: true }).click();
     await second.getByRole('dialog', { name: 'Excluir e-mail' }).getByRole('button', { name: 'Excluir e-mail', exact: true }).click();
@@ -54,9 +48,10 @@ test('legacy migration requires an explicit choice and status stays independent 
   await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill(`Idiomas ${Date.now()}`);
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
-  await page.getByLabel('Status da campanha', { exact: true }).selectOption('Aprovado');
-  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-  await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
+    await page.getByLabel('Status da campanha', { exact: true }).selectOption('Aprovado');
+    await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+    await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(page.getByLabel('Status da campanha', { exact: true })).toHaveValue('Pendente');
   await page.getByLabel('Headline', { exact: true }).fill('English copy');
   await page.getByRole('button', { name: 'PORTUGUÊS', exact: true }).click();

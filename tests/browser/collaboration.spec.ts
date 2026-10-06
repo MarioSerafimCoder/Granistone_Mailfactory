@@ -1,0 +1,80 @@
+import { test, expect, type Page } from '@playwright/test';
+async function authenticate(page: Page, id: string, email = 'local@studio.test') {
+  await page.route('**/api/**', async route => route.fulfill({ response: await route.fetch({ headers: { ...route.request().headers(), 'oai-authenticated-user-id': id, 'oai-authenticated-user-email': email, origin: 'https://studio.example.com', 'sec-fetch-site': 'same-origin' } }) }));
+}
+test('members UI grants access; two browsers coordinate editing and show presence', async ({ page, browser }) => {
+  const context = await browser.newContext(), second = await context.newPage();
+  const editorEmail = `editor-${Date.now()}@granistone.test`, title = `Colaboração ${Date.now()}`;
+  await authenticate(page, 'owner'); await authenticate(second, 'collaboration-editor', editorEmail);
+  try {
+    await page.goto('/'); await expect(page.getByText('ChatGPT conectado')).toBeVisible();
+    await page.getByRole('button', { name: 'Membros do workspace', exact: true }).click();
+    const members = page.getByRole('dialog', { name: 'Membros do workspace', exact: true });
+    await members.getByRole('button', { name: 'Adicionar membro' }).click();
+    const adding = page.getByRole('dialog', { name: 'Adicionar ao workspace' });
+    await adding.getByLabel('E-mail', { exact: true }).fill(editorEmail);
+    await adding.getByLabel('Nome · opcional').fill('Flavia');
+    await adding.getByRole('button', { name: 'Adicionar membro' }).click();
+    await expect(members.getByText(editorEmail, { exact: true })).toBeVisible();
+    await members.getByRole('button', { name: 'Fechar', exact: true }).click();
+    await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
+    await page.getByLabel('Nome da campanha', { exact: true }).fill(title);
+    await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+    await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+    await expect(page.getByLabel('Status da campanha', { exact: true })).toBeEnabled();
+    await second.goto('/'); await expect(second.getByText('ChatGPT conectado')).toBeVisible();
+    await expect(second.getByRole('button', { name: 'Membros do workspace', exact: true })).toHaveCount(0);
+    await second.getByRole('button', { name: title, exact: true }).click();
+    await expect(second.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
+    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+    await expect(second.locator('.edit-lease-bar')).toContainText('está editando');
+    await expect(second.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
+    await expect(page.locator('.topbar-team summary .member-avatar[title="Flavia"]').first()).toBeVisible({ timeout: 20000 });
+    await page.getByLabel('Headline', { exact: true }).fill('Texto da equipe');
+    await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+    await page.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
+    await expect(page.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
+    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+    await expect(second.getByLabel('Status da campanha', { exact: true })).toBeEnabled();
+    await expect(second.getByLabel('Headline', { exact: true })).toHaveValue('Texto da equipe');
+    await second.getByLabel('Headline', { exact: true }).fill('Texto atualizado por Flavia');
+    await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+    await second.setViewportSize({ width: 390, height: 844 });
+    expect(await second.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    await second.screenshot({ path: 'test-results/collaboration-mobile.png', fullPage: true });
+  } finally { await context.close(); }
+});
+test('unauthorized account gets a dedicated access screen', async ({ page }) => {
+  await authenticate(page, 'unlisted-user', 'unlisted@example.test'); await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Você não possui acesso ao workspace Granistone' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Entrar com outra conta' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nova campanha', exact: true })).toHaveCount(0);
+});
+test('material editor preserves a local draft through closing and reloading', async ({ page }) => {
+  await authenticate(page, 'library-owner');
+  const name = `Material ${Date.now()}`;
+  await page.goto('/'); await expect(page.getByText('ChatGPT conectado')).toBeVisible();
+  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await page.getByRole('button', { name: 'Materiais', exact: true }).click();
+  await page.getByRole('button', { name: 'Novo material', exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: 'Novo material', exact: true });
+  await dialog.getByLabel('Nome', { exact: true }).fill(name);
+  await dialog.getByRole('button', { name: 'Salvar material', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole('button', { name: `Abrir material ${name}`, exact: true }).click();
+  dialog = page.getByRole('dialog', { name: `Editar ${name}`, exact: true });
+  await dialog.getByRole('button', { name: 'Editar', exact: true }).click();
+  await dialog.getByLabel('Descrição', { exact: true }).fill('Descrição preservada no rascunho');
+  await dialog.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+  await page.reload(); await expect(page.getByText('ChatGPT conectado')).toBeVisible();
+  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await page.getByRole('button', { name: 'Materiais', exact: true }).click();
+  await page.getByRole('button', { name: `Abrir material ${name}`, exact: true }).click();
+  dialog = page.getByRole('dialog', { name: `Editar ${name}`, exact: true });
+  await dialog.getByRole('button', { name: 'Recuperar rascunho', exact: true }).click();
+  await expect(dialog.getByLabel('Descrição', { exact: true })).toHaveValue('Descrição preservada no rascunho');
+  await dialog.getByRole('button', { name: 'Editar', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Salvar material', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+});

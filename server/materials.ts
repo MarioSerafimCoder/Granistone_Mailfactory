@@ -5,13 +5,13 @@ import { AssetRepository } from './assets';
 export class MaterialRepository {
   constructor(private env: Env) {}
   async get(id: string) {
-    const row = await this.env.DB.prepare('SELECT data FROM materials WHERE id=?').bind(identifier(id)).first<{ data: string }>();
+    const row = await this.env.DB.prepare('SELECT data,revision FROM materials WHERE id=?').bind(identifier(id)).first<{ data: string; revision: number }>();
     if (!row) throw new HttpError(404, 'Material não encontrado.');
-    return JSON.parse(row.data) as OnlineMaterial;
+    return { ...JSON.parse(row.data), revision: row.revision } as OnlineMaterial;
   }
   async list() {
-    const rows = await this.env.DB.prepare('SELECT data FROM materials ORDER BY slug LIMIT 500').all<{ data: string }>();
-    return rows.results.map(r => JSON.parse(r.data) as OnlineMaterial);
+    const rows = await this.env.DB.prepare('SELECT data,revision FROM materials ORDER BY slug LIMIT 500').all<{ data: string; revision: number }>();
+    return rows.results.map(r => ({ ...JSON.parse(r.data), revision: r.revision }) as OnlineMaterial);
   }
   async save(raw: Partial<OnlineMaterial>, id = crypto.randomUUID() as string) {
     identifier(id);
@@ -33,10 +33,10 @@ export class MaterialRepository {
       heroAssetId: raw.heroAssetId, slabAssetId: raw.slabAssetId, applicationAssetId: raw.applicationAssetId, assetIds,
     };
     await this.env.DB.batch([
-      this.env.DB.prepare('INSERT INTO materials (id,slug,data) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug,data=excluded.data').bind(id, material.slug, JSON.stringify(material)),
+      this.env.DB.prepare('INSERT INTO materials (id,slug,data) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug,data=excluded.data,revision=materials.revision+1').bind(id, material.slug, JSON.stringify(material)),
       this.env.DB.prepare('DELETE FROM material_assets WHERE material_id=?').bind(id),
       ...assetIds.map(assetId => this.env.DB.prepare('INSERT INTO material_assets (material_id,asset_id) VALUES (?,?)').bind(id, assetId)),
     ]);
-    return material;
+    return this.get(id);
   }
 }

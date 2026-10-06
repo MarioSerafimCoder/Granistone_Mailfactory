@@ -3,7 +3,7 @@ import { assetCategories } from '@/types/online';
 import { clean, HttpError, identifier, type Env } from './platform';
 import { optimizeImage } from './images';
 import { normalizeFolderPaths } from '@/lib/asset-folders';
-type AssetRow = { id: string; object_key: string; metadata: string; deleted_at: string | null };
+type AssetRow = { id: string; object_key: string; metadata: string; deleted_at: string | null; revision: number };
 export async function hashBytes(bytes: Uint8Array) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>))].map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -13,16 +13,17 @@ export class AssetRepository {
   async get(id: string): Promise<MediaAsset> {
     const row = await this.row(id); if (!row) throw new HttpError(404, 'Imagem não encontrada.');
     const asset = JSON.parse(row.metadata) as MediaAsset;
+    asset.revision = row.revision;
     asset.url = `${this.env.SITE_ORIGIN}/assets/${asset.id}`;
     const folders = await this.env.DB.prepare('SELECT folder_path FROM asset_folders WHERE asset_id=? ORDER BY folder_path').bind(id).all<{ folder_path: string }>();
     asset.folderPaths = folders.results.map(folder => folder.folder_path);
     return asset;
   }
   async list(query = '', category = '', offset = 0) {
-    const rows = await this.env.DB.prepare('SELECT metadata, (SELECT json_group_array(folder_path) FROM asset_folders WHERE asset_id=assets.id) AS folders FROM assets WHERE deleted_at IS NULL AND name LIKE ? AND (? = \'\' OR category=?) ORDER BY created_at DESC, id DESC LIMIT 100 OFFSET ?').bind(`%${clean(query, 100)}%`, category, category, offset).all<{ metadata: string; folders: string }>();
+    const rows = await this.env.DB.prepare('SELECT metadata, revision, (SELECT json_group_array(folder_path) FROM asset_folders WHERE asset_id=assets.id) AS folders FROM assets WHERE deleted_at IS NULL AND name LIKE ? AND (? = \'\' OR category=?) ORDER BY created_at DESC, id DESC LIMIT 100 OFFSET ?').bind(`%${clean(query, 100)}%`, category, category, offset).all<{ metadata: string; folders: string; revision: number }>();
     return rows.results.map(r => {
       const asset = JSON.parse(r.metadata) as MediaAsset;
-      return { ...asset, url: `${this.env.SITE_ORIGIN}/assets/${asset.id}`, folderPaths: JSON.parse(r.folders) as string[] };
+      return { ...asset, revision: r.revision, url: `${this.env.SITE_ORIGIN}/assets/${asset.id}`, folderPaths: JSON.parse(r.folders) as string[] };
     });
   }
   private folders(value: unknown) {
@@ -60,7 +61,7 @@ export class AssetRepository {
       asset.category = patch.category;
     }
     asset.updatedAt = new Date().toISOString();
-    const statements = [this.env.DB.prepare('UPDATE assets SET metadata=?,name=?,category=? WHERE id=? AND deleted_at IS NULL').bind(JSON.stringify({ ...asset, folderPaths: undefined }), asset.name, asset.category, id)];
+    const statements = [this.env.DB.prepare('UPDATE assets SET metadata=?,name=?,category=?,revision=revision+1 WHERE id=? AND deleted_at IS NULL').bind(JSON.stringify({ ...asset, folderPaths: undefined }), asset.name, asset.category, id)];
     if (folders !== undefined) {
       statements.push(this.env.DB.prepare('DELETE FROM asset_folders WHERE asset_id=?').bind(id));
       statements.push(...folders.map(path => this.env.DB.prepare('INSERT INTO asset_folders (asset_id,folder_path) VALUES (?,?)').bind(id, path)));

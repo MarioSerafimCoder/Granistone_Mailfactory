@@ -1,0 +1,1 @@
+ALTER TABLE `workspace_member_events` ADD `target_email` text DEFAULT '' NOT NULL;
