@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, uniqueIndex, primaryKey, index } from 'drizzle-orm/sqlite-core';
 
 export const campaigns = sqliteTable('campaigns', {
   id: text('id').primaryKey(), title: text('title').notNull(), date: text('date').notNull(),
@@ -26,6 +26,10 @@ export const assets = sqliteTable('assets', {
   category: text('category').notNull(), name: text('name').notNull(),
   createdAt: text('created_at').notNull(), deletedAt: text('deleted_at'),
 }, t => [uniqueIndex('assets_hash').on(t.hash)]);
+export const assetFolders = sqliteTable('asset_folders', {
+  assetId: text('asset_id').notNull().references(() => assets.id),
+  folderPath: text('folder_path').notNull(),
+}, t => [primaryKey({ columns: [t.assetId, t.folderPath] }), index('asset_folders_path').on(t.folderPath)]);
 export const materials = sqliteTable('materials', {
   id: text('id').primaryKey(), slug: text('slug').notNull(), data: text('data').notNull(),
 }, t => [uniqueIndex('materials_slug').on(t.slug)]);

@@ -92,4 +92,12 @@ O teste de navegador inicia o servidor local automaticamente; aplique as migrati
 
 ## Assets
 
+### Pastas da biblioteca
+
+A biblioteca permite **Importar pasta** (incluindo subpastas) e enviar várias imagens. O envio prepara JPG/PNG/WebP de até 20 MB no navegador e mantém os arquivos em R2. Caminhos de pastas ficam em D1, na tabela `asset_folders` (migration `0007_asset_folders`); uma mesma imagem pode pertencer a várias pastas sem duplicar seus bytes. Imagens antigas continuam disponíveis em **Todas as imagens**.
+
+Clique nas pastas para navegar; a busca considera nome, texto alternativo e caminho. Os detalhes da imagem permitem editar as pastas, uma por linha. A biblioteca consulta todas as páginas de 100 registros e atualiza a organização compartilhada ao voltar à janela, a cada 30 segundos ou pelo botão **Atualizar**. O importador mostra progresso, falhas por arquivo e permite interromper depois do arquivo atual; repetir uma importação reutiliza imagens já recebidas. Mantenha a biblioteca aberta durante o envio.
+
+HEIC e RAW precisam ser convertidos antes de uma futura importação pelo navegador. O catálogo fornecido em outubro de 2026 foi preparado em cópias otimizadas, preservando os originais; o PDF da pasta não faz parte da biblioteca de imagens.
+
 Logo fornecida pelo usuário; rodapé baseado na referência Granistone. Ícones sociais derivados de Simple Icons (CC0) e Link de Lucide (ISC), rasterizados para compatibilidade de e-mail. Materiais demonstrativos precisam de revisão da equipe antes do uso comercial.

@@ -29,7 +29,14 @@ export const online = {
   },
   session: () => api<{ editor: boolean; email: string; origin: string }>('/api/session'),
   assets: {
-    list: (q = '', category = '') => api<MediaAsset[]>(`/api/assets?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`),
+    list: async (q = '', category = '') => {
+      const assets: MediaAsset[] = [];
+      for (let offset = 0; ; offset += 100) {
+        const page = await api<MediaAsset[]>(`/api/assets?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}&offset=${offset}`);
+        assets.push(...page);
+        if (page.length < 100) return [...new Map(assets.map(asset => [asset.id, asset])).values()];
+      }
+    },
     get: (id: string) => api<MediaAsset>(`/api/assets/${encodeURIComponent(id)}`),
     upload: (file: Blob, metadata: Partial<MediaAsset> & { fileName: string }) => api<MediaAsset>('/api/assets', { method: 'POST', headers: { 'Content-Type': file.type, 'X-Asset-Metadata': encodeURIComponent(JSON.stringify(metadata)) }, body: file }),
     update: (id: string, patch: Partial<MediaAsset>) => api<MediaAsset>(`/api/assets/${encodeURIComponent(id)}`, { method: 'PATCH', ...json(patch) }),

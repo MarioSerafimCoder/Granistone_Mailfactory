@@ -7,6 +7,7 @@ export interface MediaAsset {
   category: typeof assetCategories[number]; materialId?: string;
   orientation: 'horizontal' | 'vertical' | 'square'; alt: string;
   createdAt: string; updatedAt: string;
+  folderPaths?: string[];
 }
 export interface OnlineMaterial extends Omit<StoneMaterial, 'images' | 'heroImage' | 'slabImage'> {
   pageUrl: string; active: boolean; heroAssetId?: string; slabAssetId?: string;
