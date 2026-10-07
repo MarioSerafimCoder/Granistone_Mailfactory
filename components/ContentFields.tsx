@@ -39,12 +39,12 @@ export default function ContentFields({
     const next = {
       ...c,
       materialName: replace || !c.materialName ? material.name : c.materialName,
-      body: replace || !plainText(c.body).trim() ? richText(material.description) : c.body,
-      features: replace || !c.features ? material.features.join('\n') : c.features,
-      applications: replace || !c.applications ? material.applications.join('\n') : c.applications,
-      heroImage: replace || !c.heroImage ? material.heroImage : c.heroImage,
+      body: material.description && (replace || !plainText(c.body).trim()) ? richText(material.description) : c.body,
+      features: material.features.length && (replace || !c.features) ? material.features.join('\n') : c.features,
+      applications: material.applications.length && (replace || !c.applications) ? material.applications.join('\n') : c.applications,
+      heroImage: material.heroImage && (replace || !c.heroImage) ? material.heroImage : c.heroImage,
       applicationImage:
-        replace || !c.applicationImage ? material.slabImage || material.images[0] || '' : c.applicationImage,
+        (material.slabImage || material.images[0]) && (replace || !c.applicationImage) ? material.slabImage || material.images[0] : c.applicationImage,
     };
     onChange({
       materialId: material.id,

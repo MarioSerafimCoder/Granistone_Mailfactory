@@ -5,12 +5,35 @@ import { normalizeFolderPaths, folderForFile, childFolders } from '../lib/asset-
 import { AssetRepository } from '../server/assets';
 import { platformFixture } from './platform-fixture';
 import { online } from '../lib/online';
+import { catalogMaterials, materialFolderPath, stoneFolders } from '../lib/catalog-materials';
+import type { MediaAsset, OnlineMaterial } from '../types/online';
 
 test('folder paths preserve accents and hierarchy and reject traversal or malformed input', () => {
   assert.deepEqual(normalizeFolderPaths([' Imagens Catálogo / Amazonita ', 'Imagens Catálogo/Amazonita', '']), ['Imagens Catálogo/Amazonita']);
   assert.deepEqual(folderForFile({ webkitRelativePath: 'Catálogo/Amazonita/foto.jpg' }, 'Acervo'), ['Acervo/Catálogo/Amazonita']);
   assert.deepEqual(folderForFile({ webkitRelativePath: '' }, 'Institucional'), ['Institucional']);
   for (const paths of [['../a'], ['a/../b'], ['a/./b'], ['a\u0000b'], ['x'.repeat(241)], 'folder', [3]]) assert.throws(() => normalizeFolderPaths(paths));
+});
+
+test('every stone folder becomes a material without duplicating saved materials', () => {
+  const asset = (id: string, paths: string[]): MediaAsset => ({ id, name: id, fileName: `${id}.jpg`, mimeType: 'image/jpeg', width: 100, height: 100, fileSize: 100, url: `https://example.com/${id}`, category: 'material', orientation: 'square', alt: id, createdAt: '', updatedAt: '', folderPaths: paths });
+  const assets = Array.from({ length: 21 }, (_, index) => asset(`photo-${index}`, [`Imagens Catálogo/Pedra ${index + 1}/Detalhes`]));
+  assets.push(asset('extra', ['Imagens Catálogo/Pedra 2', 'Imagens Catálogo/Fotos institucionais']));
+  assets.push(asset('unrelated', ['Eventos/Pedra 22']));
+  const saved: OnlineMaterial = { id: 'saved-2', name: 'Pedra 2', slug: 'pedra-2', category: 'Quartzito', description: 'Detalhes cadastrados', features: [], applications: [], pageUrl: '', active: true, assetIds: [] };
+  const folders = stoneFolders(assets);
+  assert.equal(folders.length, 21);
+  assert.equal(folders.find(folder => folder.name === 'Pedra 2')?.assetIds.length, 2);
+  const catalog = catalogMaterials([saved], assets);
+  assert.equal(catalog.length, 21);
+  assert.equal(catalog.filter(item => item.material.name === 'Pedra 2').length, 1);
+  const matched = catalog.find(item => item.material.name === 'Pedra 2')!;
+  assert.equal(matched.folderOnly, false);
+  assert.equal(matched.material.description, 'Detalhes cadastrados');
+  assert.equal(matched.material.assetIds.length, 2);
+  const automatic = catalog.find(item => item.material.name === 'Pedra 1')!;
+  assert.equal(automatic.folderOnly, true);
+  assert.equal(materialFolderPath(automatic.material.id), automatic.folder?.path);
 });
 
 test('shared folder memberships survive duplicate uploads, edits and reload without changing image bytes', async () => {

@@ -10,6 +10,7 @@ import { EditLeaseBar } from './WorkspacePresence';
 import { ResourcePresence } from './WorkspacePresence';
 import { useResourceDraft } from '@/lib/use-resource-draft';
 import ResourceDraftRecovery from './ResourceDraftRecovery';
+import { catalogMaterials, type CatalogMaterial } from '@/lib/catalog-materials';
 
 const blank = (): OnlineMaterial => ({ id: '', name: '', slug: '', category: '', description: '', features: [], applications: [], pageUrl: '', active: true, assetIds: [] });
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
@@ -18,6 +19,7 @@ export default function LibraryPage() {
   const [tab, setTab] = useState<'images' | 'materials'>('images');
   const [materials, setMaterials] = useState<OnlineMaterial[]>([]); const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [query, setQuery] = useState(''); const [editing, setEditing] = useState<OnlineMaterial>();
+  const [folderPreview, setFolderPreview] = useState<CatalogMaterial>(); const [selectedFolder, setSelectedFolder] = useState('');
   const [category, setCategory] = useState(''), [activeFilter, setActiveFilter] = useState(''), [imageQuery, setImageQuery] = useState('');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false), [loading, setLoading] = useState(false);
   const { session } = useContext(CollaborationContext);
@@ -34,8 +36,9 @@ export default function LibraryPage() {
     return () => { active = false; clearTimeout(loadingTimer); };
   }, [tab]);
   const assetById = useMemo(() => new Map(assets.map(item => [item.id, item])), [assets]);
-  const categories = useMemo(() => [...new Set(materials.map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [materials]);
-  const visible = useMemo(() => materials.filter(material => (!category || material.category === category) && (!activeFilter || (activeFilter === 'active') === material.active) && (!query || normalize(material.name + ' ' + material.category + ' ' + material.description + ' ' + material.features.join(' ')).includes(normalize(query)))).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')), [materials, query, category, activeFilter]);
+  const catalog = useMemo(() => catalogMaterials(materials, assets), [materials, assets]);
+  const categories = useMemo(() => [...new Set(catalog.map(item => item.material.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [catalog]);
+  const visible = useMemo(() => catalog.filter(({ material }) => (!category || material.category === category) && (!activeFilter || (activeFilter === 'active') === material.active) && (!query || normalize(material.name + ' ' + material.category + ' ' + material.description + ' ' + material.features.join(' ')).includes(normalize(query)))), [catalog, query, category, activeFilter]);
   const galleryAssets = useMemo(() => assets.filter(item => !imageQuery || normalize(item.name + ' ' + item.alt + ' ' + (item.folderPaths ?? []).join(' ')).includes(normalize(imageQuery))).sort((a, b) => Number(editing?.assetIds.includes(b.id)) - Number(editing?.assetIds.includes(a.id))).slice(0, 80), [assets, editing?.assetIds, imageQuery]);
   const asset = (id?: string) => id ? assetById.get(id) : undefined;
   async function save() {
@@ -46,17 +49,22 @@ export default function LibraryPage() {
   }
   return <div className="page library-page">
     <div className="page-heading"><div><span className="eyebrow">ACERVO GRANISTONE</span><h1>Biblioteca visual</h1><p>Imagens hospedadas, materiais e dados técnicos em um só lugar.</p></div></div>
-    <div className="library-tabs" role="tablist"><button className={tab === 'images' ? 'active' : ''} onClick={() => setTab('images')}><ImageIcon size={17} /> Imagens</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => setTab('materials')}><Gem size={17} /> Materiais</button></div>
-    {tab === 'images' ? <AssetLibrary embedded /> : <>
+    <div className="library-tabs" role="tablist"><button className={tab === 'images' ? 'active' : ''} onClick={() => { setSelectedFolder(''); setTab('images'); }}><ImageIcon size={17} /> Imagens</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => setTab('materials')}><Gem size={17} /> Materiais</button></div>
+    {tab === 'images' ? <AssetLibrary embedded initialFolder={selectedFolder} /> : <>
       <div className="material-toolbar"><label className="asset-search"><Search size={15} /><input aria-label="Buscar material" value={query} placeholder="Buscar material…" onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="Filtrar categoria de material" value={category} onChange={e => setCategory(e.target.value)}><option value="">Todas as categorias</option>{categories.map(value => <option key={value} value={value}>{value}</option>)}</select><select aria-label="Filtrar estado de material" value={activeFilter} onChange={e => setActiveFilter(e.target.value)}><option value="">Ativos e inativos</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select><button className="button primary" disabled={!canEdit} onClick={() => setEditing(blank())}><Plus size={15} /> Novo material</button></div>
-      {!!materials.length && <p className="material-count" role="status">{visible.length} de {materials.length} materiais · selecione para ver imagens e detalhes</p>}
+      {!!catalog.length && <p className="material-count" role="status">{visible.length} de {catalog.length} pedras e materiais · pastas do catálogo aparecem automaticamente</p>}
       {error && <p className="alert" role="alert">{error} {error.includes('Entre com') && <a href="/signin-with-chatgpt?return_to=/" target="_top">Entrar com ChatGPT</a>}</p>}
       {loading && <p className="muted" role="status">Carregando materiais e imagens…</p>}
-      <div className="material-grid">{visible.map((material) => {
+      <div className="material-grid">{visible.map(({ material, folder, folderOnly }) => {
         const cover = asset(material.heroAssetId) ?? asset(material.assetIds[0]);
-        return <article className="material-card" key={material.id}><button className="material-card-open" type="button" aria-label={`Abrir material ${material.name}`} onClick={() => setEditing(material)}>{cover ? <img src={cover.url} alt={cover.alt || material.name} loading="lazy" /> : <div className="material-placeholder"><Gem size={28} /></div>}<div><span>{material.category || 'Sem categoria'}</span><h2>{material.name}</h2><p>{material.description || 'Adicione uma descrição para este material.'}</p><small>{material.assetIds.length} {material.assetIds.length === 1 ? 'imagem' : 'imagens'} · {material.active ? 'Ativo' : 'Inativo'}</small></div></button><ResourcePresence type="material" id={material.id} /></article>;
-      })}{!visible.length && !loading && !error && <div className="asset-empty"><Gem size={30} /><strong>{materials.length ? 'Nenhum material encontrado' : 'Nenhum material cadastrado'}</strong><span>{materials.length ? 'Tente outro nome, categoria ou estado.' : 'Crie o primeiro material e associe suas imagens.'}</span>{!!materials.length && <button className="button" type="button" onClick={() => { setQuery(''); setCategory(''); setActiveFilter(''); }}>Limpar filtros</button>}</div>}</div>
+        return <article className="material-card" key={material.id}><button className="material-card-open" type="button" aria-label={`Abrir material ${material.name}`} onClick={() => folderOnly ? setFolderPreview({ material, folder, folderOnly }) : setEditing(material)}>{cover ? <img src={cover.url} alt={cover.alt || material.name} loading="lazy" /> : <div className="material-placeholder"><Gem size={28} /></div>}<div><span>{folderOnly ? 'Pasta de pedra' : material.category || 'Sem categoria'}</span><h2>{material.name}</h2><p>{material.description || (folderOnly ? 'Fotos organizadas no acervo Granistone.' : 'Adicione uma descrição para este material.')}</p><small>{material.assetIds.length} {material.assetIds.length === 1 ? 'imagem' : 'imagens'} · {folderOnly ? 'Pasta do catálogo' : material.active ? 'Ativo' : 'Inativo'}</small></div></button>{!folderOnly && <ResourcePresence type="material" id={material.id} />}</article>;
+      })}{!visible.length && !loading && !error && <div className="asset-empty"><Gem size={30} /><strong>{catalog.length ? 'Nenhuma pedra encontrada' : 'Nenhuma pasta de pedra encontrada'}</strong><span>{catalog.length ? 'Tente outro nome, categoria ou estado.' : 'Importe a pasta Imagens Catálogo em Imagens para ver as pedras aqui.'}</span>{catalog.length ? <button className="button" type="button" onClick={() => { setQuery(''); setCategory(''); setActiveFilter(''); }}>Limpar filtros</button> : <button className="button" type="button" onClick={() => setTab('images')}>Abrir imagens</button>}</div>}</div>
     </>}
+    {folderPreview?.folder && <Modal title={folderPreview.material.name} onClose={() => setFolderPreview(undefined)} side>
+      <p className="muted">Pasta {folderPreview.folder.path} · {folderPreview.material.assetIds.length} {folderPreview.material.assetIds.length === 1 ? 'imagem' : 'imagens'}</p>
+      <div className="material-folder-gallery">{folderPreview.material.assetIds.map(id => asset(id)).filter((item): item is MediaAsset => Boolean(item)).map(item => <figure key={item.id}><img src={item.url} alt={item.alt || item.name} loading="lazy" /><figcaption>{item.name}</figcaption></figure>)}</div>
+      <div className="modal-actions"><button className="button" type="button" onClick={() => { setSelectedFolder(folderPreview.folder!.path); setFolderPreview(undefined); setTab('images'); }}>Abrir pasta em Imagens</button>{canEdit && <button className="button primary" type="button" onClick={() => { setEditing({ ...folderPreview.material, id: '', revision: undefined }); setFolderPreview(undefined); }}>Cadastrar detalhes</button>}</div>
+    </Modal>}
     {editing && <Modal title={editing.id ? `Editar ${editing.name}` : 'Novo material'} onClose={() => setEditing(undefined)} side>
       {editing.id && <EditLeaseBar lease={lease} type="material" id={editing.id} onFinish={async () => { const saved = await online.materials.save(editing); draft.clear(); setMaterials(current => current.map(m => m.id === saved.id ? saved : m)); setEditing(saved); }} />}
       <ResourceDraftRecovery draft={draft} />

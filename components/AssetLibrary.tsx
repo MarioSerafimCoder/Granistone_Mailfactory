@@ -10,14 +10,15 @@ import { CollaborationContext, useEditLease } from '@/lib/use-collaboration';
 import { EditLeaseBar, ResourcePresence } from './WorkspacePresence';
 import { useResourceDraft } from '@/lib/use-resource-draft';
 import ResourceDraftRecovery from './ResourceDraftRecovery';
+import { materialFolderPath } from '@/lib/catalog-materials';
 
-type Props = { onSelect?: (asset: MediaAsset) => void; onClose?: () => void; embedded?: boolean; lazy?: boolean; materialId?: string; preferredOrientation?: MediaAsset['orientation'] };
+type Props = { onSelect?: (asset: MediaAsset) => void; onClose?: () => void; embedded?: boolean; lazy?: boolean; materialId?: string; initialFolder?: string; preferredOrientation?: MediaAsset['orientation'] };
 const labels: Record<MediaAsset['category'], string> = { material: 'Material', ambiente: 'Ambiente', chapa: 'Chapa', detalhe: 'Detalhe', institucional: 'Institucional', evento: 'Evento', outro: 'Outro' };
 
-export default function AssetLibrary({ onSelect, onClose, embedded = false, lazy = false, materialId = '', preferredOrientation }: Props) {
+export default function AssetLibrary({ onSelect, onClose, embedded = false, lazy = false, materialId = '', initialFolder = '', preferredOrientation }: Props) {
   const [items, setItems] = useState<MediaAsset[]>([]); const [materials, setMaterials] = useState<OnlineMaterial[]>([]);
   const [query, setQuery] = useState(''); const [category, setCategory] = useState('');
-  const [folder, setFolder] = useState('');
+  const [folder, setFolder] = useState(initialFolder);
   const [orientation, setOrientation] = useState(''); const [material, setMaterial] = useState('');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [selected, setSelected] = useState<MediaAsset>();
   const [active, setActive] = useState(!lazy);
@@ -55,7 +56,8 @@ export default function AssetLibrary({ onSelect, onClose, embedded = false, lazy
     return !material || (materials.find((item) => item.id === material)?.assetIds.includes(asset.id) ?? false);
   }).sort((a, b) => {
     const related = materials.find(item => item.id === materialId)?.assetIds ?? [];
-    const score = (asset: MediaAsset) => Number(related.includes(asset.id)) * 2 + Number(asset.orientation === preferredOrientation);
+    const materialFolder = materialFolderPath(materialId);
+    const score = (asset: MediaAsset) => Number(related.includes(asset.id) || Boolean(materialFolder && asset.folderPaths?.some(path => path === materialFolder || path.startsWith(`${materialFolder}/`)))) * 2 + Number(asset.orientation === preferredOrientation);
     return score(b) - score(a);
   }), [items, materials, material, orientation, folder, category, query, materialId, preferredOrientation]);
   const hasFilters = !!(query || category || orientation || material || folder);

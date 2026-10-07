@@ -153,7 +153,7 @@ test('translation keeps Portuguese and creates Spanish, while visual library sta
   await expect(page.getByRole('button', { name: 'Enviar imagens', exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: /Entrar com ChatGPT/ }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Materiais' }).click();
-  await expect(page.getByText('Nenhum material cadastrado')).toBeVisible();
+  await expect(page.getByText('Nenhuma pasta de pedra encontrada')).toBeVisible();
 });
 
 test('campaign list deletes an email only after confirmation and persists the change', async ({ page }) => {

@@ -174,6 +174,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, [role='option
 .material-card-open h2 { margin: 8px 0; font-size: 21px; }
 .material-card-open p { min-height: 36px; }
 .material-card .presence-avatars { margin: 0 15px 15px; }
+.material-folder-gallery { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 18px 0; }
+.material-folder-gallery figure { min-width: 0; margin: 0; border: 1px solid var(--ui-border); border-radius: 5px; overflow: hidden; background: var(--ui-surface); }
+.material-folder-gallery img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; background: var(--ui-placeholder); }
+.material-folder-gallery figcaption { padding: 9px; color: var(--ui-secondary); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .modal.side .material-form-grid { display: block; }
 .modal.side .material-form-grid > div:first-child { display: grid; gap: 8px; }
 .modal.side .material-asset-picker { border-top: 1px solid var(--ui-border); margin-top: 20px; padding-top: 20px; }

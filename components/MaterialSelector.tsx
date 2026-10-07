@@ -5,8 +5,9 @@ import { Search } from 'lucide-react';
 import type { CampaignContent, StoneMaterial } from '@/types/campaign';
 import { plainText } from '@/campaigns/model';
 import { online } from '@/lib/online';
-import type { MediaAsset, OnlineMaterial } from '@/types/online';
+import type { MediaAsset } from '@/types/online';
 import { materials as sampleMaterials } from '@/data/materials';
+import { catalogMaterials } from '@/lib/catalog-materials';
 
 export default function MaterialSelector({
   content,
@@ -28,7 +29,7 @@ export default function MaterialSelector({
       const [items, assets] = response;
       if (!active) return;
       const byId = new Map<string, MediaAsset>(assets.map((asset) => [asset.id, asset]));
-      setMaterials(items.filter((item) => item.active).map((item: OnlineMaterial) => ({
+      setMaterials(catalogMaterials(items.filter(item => item.active), assets).map(({ material: item }) => ({
         id: item.id, name: item.name, slug: item.slug, category: item.category,
         description: item.description, features: item.features, applications: item.applications,
         images: item.assetIds.map((id) => byId.get(id)?.url).filter(Boolean) as string[],

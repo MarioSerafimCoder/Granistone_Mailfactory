@@ -51,6 +51,8 @@ O pré-flight verifica fallback, HTTPS público, disponibilidade, tamanho, forma
 
 A biblioteca de blocos oferece busca, categoria, miniatura, seleção e ações diretas de inserir, editar, duplicar e excluir. A biblioteca de materiais mostra capas e filtros de nome/categoria/status; a edição abre em painel lateral. A galeria desse painel mostra até 80 imagens por vez e pode ser refinada por nome ou pasta. A lista atual de materiais da API tem limite de 500 itens; paginação de materiais continua como melhoria para catálogos maiores.
 
+Pastas abaixo de **Imagens Catálogo** aparecem automaticamente como pedras na aba **Materiais**, inclusive suas fotos em subpastas. **Fotos institucionais** fica apenas em Imagens. Uma pedra ainda sem ficha própria pode ser aberta para ver as fotos, ir à pasta ou cadastrar descrição e características; a ficha salva substitui a entrada automática com o mesmo nome, sem duplicar a pedra. O seletor de materiais no editor também usa essas pastas e prioriza suas fotos na biblioteca de imagens. Isso aproveita a organização já hospedada, sem migração de banco ou cadastro em massa.
+
 ## Validação e próximos passos
 
 `tests/designs.test.ts` cobre registro, renderização, cópia independente, backups legados, conversão rich text, tradução, aprovação por idioma, background/fallback, pré-flight, publicação imutável, D1, autorização, lease, CAS e proteção de imagens.
