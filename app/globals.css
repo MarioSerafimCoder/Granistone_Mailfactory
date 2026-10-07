@@ -1944,15 +1944,23 @@ td:first-child {
 .translation-options { border: 1px solid var(--granistone-line); padding: 14px; display: grid; gap: 9px; }
 .translation-options legend { font-size: 11px; font-weight: 600; padding: 0 6px; }
 .translation-options label { font-size: 12px; display: flex; gap: 7px; }
-.crop-layout { display: grid; grid-template-columns: minmax(320px,1.3fr) minmax(240px,.7fr); gap: 25px; }
-.crop-stage { position: relative; overflow: hidden; background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50% / 20px 20px; }
-.crop-stage canvas { width: 100%; height: 100%; display: block; touch-action: none; }
-.crop-stage.ready canvas { cursor: grab; }
-.crop-stage.ready canvas:active { cursor: grabbing; }
-.crop-stage canvas:focus-visible { outline: 3px solid var(--granistone-black); outline-offset: -3px; }
+.crop-layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(230px,.7fr); gap: 25px; }
+.crop-panel-label { margin: 0 0 10px; font-size: 12px; font-weight: 600; }
+.crop-source-panel > .muted { font-size: 11px; line-height: 1.5; }
+.crop-stage { position: relative; width: 100%; overflow: hidden; margin: 0 auto; border: 1px solid var(--granistone-line); background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50% / 20px 20px; touch-action: none; user-select: none; }
+.crop-source-image { width: 100%; height: 100%; display: block; pointer-events: none; }
 .crop-stage > span { position: absolute; inset: 0; display: grid; place-items: center; background: var(--granistone-light); }
-.crop-guides { position: absolute; inset: 33.333%; border: 1px solid #ffffff99; pointer-events: none; opacity: 0; }
-.crop-stage:hover .crop-guides,.crop-stage:focus-within .crop-guides { opacity: 1; }
+.crop-selection { position: absolute; z-index: 1; border: 2px solid white; box-shadow: 0 0 0 1px #171717, 0 0 0 200vmax #0009; cursor: move; touch-action: none; }
+.crop-selection:focus-visible { outline: 3px solid var(--granistone-black); outline-offset: -5px; }
+.crop-guides { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, transparent 33.2%, #fff9 33.3%, #fff9 33.5%, transparent 33.6%, transparent 66.5%, #fff9 66.6%, #fff9 66.8%, transparent 66.9%), linear-gradient(0deg, transparent 33.2%, #fff9 33.3%, #fff9 33.5%, transparent 33.6%, transparent 66.5%, #fff9 66.6%, #fff9 66.8%, transparent 66.9%); }
+.crop-handle { position: absolute; z-index: 2; width: 18px; height: 18px; padding: 0; border: 2px solid #171717; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); touch-action: none; }
+.crop-handle:focus-visible { outline: 3px solid #e94145; outline-offset: 2px; }
+.crop-handle.nw { left: 0; top: 0; cursor: nwse-resize; }.crop-handle.n { left: 50%; top: 0; cursor: ns-resize; }.crop-handle.ne { left: 100%; top: 0; cursor: nesw-resize; }
+.crop-handle.e { left: 100%; top: 50%; cursor: ew-resize; }.crop-handle.se { left: 100%; top: 100%; cursor: nwse-resize; }.crop-handle.s { left: 50%; top: 100%; cursor: ns-resize; }
+.crop-handle.sw { left: 0; top: 100%; cursor: nesw-resize; }.crop-handle.w { left: 0; top: 50%; cursor: ew-resize; }
+.crop-handle.n,.crop-handle.s { width: 26px; height: 12px; border-radius: 8px; }.crop-handle.e,.crop-handle.w { width: 12px; height: 26px; border-radius: 8px; }
+.crop-result canvas { display: block; width: 100%; height: auto; border: 1px solid var(--granistone-line); background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50% / 20px 20px; cursor: grab; touch-action: none; }
+.crop-result canvas:active { cursor: grabbing; }.crop-result canvas:focus-visible { outline: 3px solid var(--granistone-black); outline-offset: 2px; }
 .crop-controls fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .crop-controls label { display: grid; gap: 7px; margin: 20px 0; font-size: 12px; }
 .crop-controls input { width: 100%; }
