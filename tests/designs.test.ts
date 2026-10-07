@@ -9,6 +9,7 @@ import { isCampaign, decodeBackup } from '../lib/storage';
 import { defaultBrand } from '../data/brand';
 import { publicationSignature } from '../lib/publication-signature';
 import { renderEmail } from '../export/render';
+import { backgroundAttributes } from '../export/background';
 import { contentChecks, htmlChecks } from '../export/preflight';
 import { runPreflight, imageUrls } from '../server/preflight';
 import { platformFixture } from './platform-fixture';
@@ -94,6 +95,14 @@ test('solid, gradient, image and per-section backgrounds emit safe table fallbac
     f.objects.clear();
     assert.ok((await runPreflight({ campaign: { ...c, design: { ...c.design!, content: { kind: 'image', image: asset.url, fallback: '#FFFFFF', size: 'contain', position: 'center', overlay: 0 } } }, brand, language: 'pt' }, f.env)).checks.some(c => c.severity === 'error' && c.message.includes('ausente')));
   } finally { f.close(); }
+});
+
+test('transparent and original-size image backgrounds keep email markup self-contained', () => {
+  assert.equal(backgroundAttributes({ kind: 'none' }), 'style="background-color:transparent;"');
+  const attrs = backgroundAttributes({ kind: 'image', image: 'https://example.com/stone.jpg', size: 'original', position: 'top', align: 'left', repeat: 'repeat', fallback: '#FFFFFF', overlay: 0 });
+  assert.match(attrs, /bgcolor="#FFFFFF"/);
+  assert.match(attrs, /background-size:auto;background-position:left top;background-repeat:repeat/);
+  assert.doesNotMatch(attrs, /var\(--ui-|data-theme/);
 });
 
 test('saved blocks and templates share D1, enforce membership + leases + CAS, retain images and create new campaign history', async () => {

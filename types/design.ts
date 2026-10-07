@@ -1,5 +1,5 @@
 import type { Campaign, Language, TemplateId } from './campaign';
-export type Background = { kind: 'solid'; color: string } | { kind: 'gradient'; start: string; end: string; direction: 'vertical' | 'horizontal' | 'diagonal'; fallback: string } | { kind: 'image'; image: string; size: 'cover' | 'contain'; position: 'center' | 'top' | 'bottom'; fallback: string; overlay: number } | { kind: 'preset'; preset: string };
+export type Background = { kind: 'none' } | { kind: 'solid'; color: string } | { kind: 'gradient'; start: string; end: string; direction: 'vertical' | 'horizontal' | 'diagonal'; fallback: string } | { kind: 'image'; image: string; size: 'cover' | 'contain' | 'original'; position: 'center' | 'top' | 'bottom'; align?: 'left' | 'center' | 'right'; repeat?: 'repeat' | 'no-repeat'; fallback: string; overlay: number } | { kind: 'preset'; preset: string };
 export type SectionType = 'heroEditorial' | 'heroProduct' | 'imageText' | 'textImage' | 'centeredText' | 'product' | 'twoProducts' | 'gallery' | 'specifications' | 'applications' | 'quote' | 'cta' | 'divider' | 'spacer' | 'banner' | 'complementaryFooter';
 export interface Section {
   richBody?: Partial<Record<Language, import('./campaign').RichNode>>;

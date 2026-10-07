@@ -26,6 +26,7 @@ export default function SavedDesignDialog({ initial, existing, onClose, onSaved 
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Não foi possível salvar.'); } finally { setBusy(false); }
   }
   return <Modal title={existing ? 'Editar ' + (value.kind === 'block' ? 'bloco' : 'template') : value.kind === 'block' ? 'Salvar bloco reutilizável' : 'Salvar como template'} onClose={() => { if (!busy) onClose(); }} wide>
+    {!existing && <p className="design-explanation">{value.kind === 'template' ? 'Este template cria novas campanhas com textos para preencher. Para copiar esta campanha completa, use “Duplicar campanha”.' : 'Este bloco ficará disponível para inserir em outras campanhas, com uma cópia independente.'}</p>}
     {!session?.member && <p className="alert">Entre no workspace para salvar na biblioteca compartilhada.</p>}
     {existing && <EditLeaseBar lease={lease} type="design" id={existing.id} onBegin={async () => { const fresh = await online.designs.get(existing.id); setValue(current => current.revision === fresh.revision ? current : fresh); }} />}
     <ResourceDraftRecovery draft={draft} />

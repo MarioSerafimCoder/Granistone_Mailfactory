@@ -59,6 +59,7 @@ export default function CampaignEditor({
 }) {
   const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
   const [saveTemplate, setSaveTemplate] = useState(false), [converting, setConverting] = useState(false);
+  const [notice, setNotice] = useState('');
   const design = campaign.design ?? defaultDesign();
   const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
   const [tab, setTab] = useState('content');
@@ -127,8 +128,8 @@ export default function CampaignEditor({
           </span>
           {activity?.updatedAt && <span className="editor-activity" title={activityTime(activity.updatedAt)}>Última alteração por {editorName(activity.updatedBy)} · {activityTime(activity.updatedAt)}</span>}
           {campaignRevision && <button className="text-button" onClick={onHistory}>Histórico</button>}
-          {onDuplicate && <button className="button" onClick={onDuplicate}>Duplicar campanha</button>}
-          <button className="button" disabled={readOnly} onClick={() => setSaveTemplate(true)}>Salvar como template</button>
+          {onDuplicate && <button className="button" title="Criar uma cópia completa desta campanha" onClick={onDuplicate}>Duplicar campanha</button>}
+          <button className="button" title="Criar um modelo reutilizável com textos para preencher" disabled={readOnly} onClick={() => setSaveTemplate(true)}>Salvar como template</button>
           <select
             aria-label="Status da campanha"
             disabled={readOnly}
@@ -148,6 +149,7 @@ export default function CampaignEditor({
           <button className="button" disabled={readOnly || ['saving', 'conflict', 'offline', 'error'].includes(saveState)} onClick={() => setPublishOpen(true)}>Publicar online</button>
         </div>
       </div>
+      {notice && <p className="action-feedback" role="status">{notice} <button type="button" className="text-button" aria-label="Dispensar mensagem" onClick={() => setNotice('')}>Fechar</button></p>}
       {!!campaign.importIssues?.length && (
         <div className="import-issue-banner" role="status">
           <AlertCircle size={17} />
@@ -480,7 +482,7 @@ export default function CampaignEditor({
         />
         <div className="modal-actions"><button className="button primary" onClick={() => setImageSlot(undefined)}>Concluir</button></div>
       </Modal>}
-      {saveTemplate && <SavedDesignDialog initial={{ kind: 'template', payload: blueprintFromCampaign(campaign) }} onClose={() => setSaveTemplate(false)} />}
+      {saveTemplate && <SavedDesignDialog initial={{ kind: 'template', payload: blueprintFromCampaign(campaign) }} onClose={() => setSaveTemplate(false)} onSaved={() => setNotice('Template salvo na biblioteca compartilhada.')} />}
       {converting && <Modal title="Converter em blocos livres" onClose={() => setConverting(false)}><p>A estrutura será reorganizada em seções independentes. Revise a nova composição no preview. O conteúdo original continuará preservado na campanha e no histórico.</p><div className="modal-actions"><button className="button" onClick={() => setConverting(false)}>Cancelar</button><button className="button primary" onClick={() => { update({ sections: convertSections(campaign) }); setConverting(false); setTab('content'); }}>Converter estrutura</button></div></Modal>}
       {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} campaignRevision={campaignRevision} saveState={saveState} onChange={onChange} onClose={() => setPublishOpen(false)} />}
       {translateTarget && <TranslateDialog

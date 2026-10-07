@@ -36,6 +36,7 @@ import { CollaborationContext, useEditLease, useWorkspacePresence } from '@/lib/
 import { EditLeaseBar, PresenceAvatars } from './WorkspacePresence';
 import WorkspaceMembers from './WorkspaceMembers';
 import type { ResourceType } from '@/types/collaboration';
+import ThemeToggle from './ThemeToggle';
 export default function Studio() {
   const { data, save, saveState, error, workspace } = useStudio();
   const [view, setView] = useState<'campaigns' | 'templates' | 'library'>('campaigns');
@@ -70,7 +71,7 @@ export default function Studio() {
   function copyActive() {
     if (!active || !data || !canEdit) return;
     const copy = duplicateCampaign(active);
-    save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id);
+    save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id); setFeedback('Campanha duplicada. A nova cópia está em produção e será sincronizada.');
   }
   function showBrand() {
     workspace?.setBrandEditing(true);
@@ -289,6 +290,7 @@ export default function Studio() {
         )}
         <div className="sidebar-bottom">
           <span className="workspace-label">CONFIGURAÇÕES</span>
+          <ThemeToggle />
           <button disabled={onlineMember && !session?.permissions.editBrand} onClick={showBrand}>
             <Settings2 size={17} />
             Marca e rodapé
@@ -377,7 +379,7 @@ export default function Studio() {
           />
           </>
         ) : view === 'templates' ? (
-          <TemplateLibrary onUse={start} onCustomUse={(blueprint, title) => { if (!canEdit) return; const campaign = campaignFromBlueprint(blueprint, title); save({ ...data, campaigns: [campaign, ...data.campaigns] }, true); setActiveId(campaign.id); setView('campaigns'); }} />
+          <TemplateLibrary onUse={start} onCustomUse={(blueprint, title) => { if (!canEdit) return; const campaign = campaignFromBlueprint(blueprint, title); save({ ...data, campaigns: [campaign, ...data.campaigns] }, true); setActiveId(campaign.id); setView('campaigns'); setFeedback('Campanha criada a partir do template. Preencha os textos indicados.'); }} />
         ) : view === 'library' ? (
           <LibraryPage />
         ) : (
@@ -390,7 +392,7 @@ export default function Studio() {
             reviewIds={reviewIds}
             onOpen={setActiveId}
             onDelete={setDeleteCampaignId}
-            onDuplicate={id => { const source = data.campaigns.find(c => c.id === id); if (!source || !canEdit) return; const copy = duplicateCampaign(source); save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id); }}
+            onDuplicate={id => { const source = data.campaigns.find(c => c.id === id); if (!source || !canEdit) return; const copy = duplicateCampaign(source); save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id); setFeedback('Campanha duplicada. A nova cópia está em produção e será sincronizada.'); }}
             onCreate={() => start()}
             onImport={() => setImportOpen(true)}
           />

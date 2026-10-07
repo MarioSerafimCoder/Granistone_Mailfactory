@@ -290,7 +290,7 @@ export default function CampaignList({
                     >
                       <Trash2 size={17} />
                     </button>
-                    {canEdit && onDuplicate && <button className="icon-button" aria-label={`Duplicar ${c.title}`} title="Duplicar campanha" onClick={() => onDuplicate(c.id)}><Copy size={17} /></button>}
+                    {canEdit && onDuplicate && <button className="button campaign-copy" aria-label={`Duplicar ${c.title}`} title="Criar uma cópia completa" onClick={() => onDuplicate(c.id)}><Copy size={15} /><span>Duplicar</span></button>}
                   </div>
                 </td>
               </tr>
@@ -302,14 +302,14 @@ export default function CampaignList({
         <div className="empty">
           <Mail size={30} />
           <h3>{emptyTitle}</h3>
-          <p>Crie uma campanha ou importe seu planejamento mensal.</p>
+          <p>{campaigns.length ? 'Ajuste a busca ou limpe os filtros para ver outras campanhas.' : 'Crie uma campanha ou importe seu planejamento mensal.'}</p>
           <div className="empty-actions">
-            <button className="button" onClick={onImport}>
+            {campaigns.length ? <button className="button primary" onClick={() => { setMonth(''); setType(''); setAudience(''); setLanguage(''); setStatus(''); setSearch(''); setQuick(''); setOnlyReview(false); }}>Limpar filtros</button> : <><button className="button" disabled={!canEdit} onClick={onImport}>
               <Upload size={15} /> Importar planilha
             </button>
-            <button className="button primary" onClick={onCreate}>
+            <button className="button primary" disabled={!canEdit} onClick={onCreate}>
               Nova campanha <ArrowRight size={15} />
-            </button>
+            </button></>}
           </div>
         </div>
       )}

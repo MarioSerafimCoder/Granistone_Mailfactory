@@ -103,6 +103,11 @@ test('legacy conversion and solid, gradient, image backgrounds match exported HT
   await expect(page.frameLocator('.preview-stage iframe').getByRole('heading', { name: 'Composição mineral' })).toBeVisible();
   await page.getByRole('button', { name: 'Fundos', exact: true }).click();
   await page.locator('summary').filter({ hasText: /^Fundo do e-mail$/ }).click();
+  await page.getByLabel('Fundo do e-mail · tipo').selectOption('none');
+  await expect(page.frameLocator('.preview-stage iframe').locator('body > table')).not.toHaveAttribute('bgcolor');
+  await page.getByLabel('Fundo do e-mail · tipo').selectOption('preset');
+  await page.getByRole('group', { name: 'Presets de background' }).getByRole('button', { name: 'Preto Premium' }).click();
+  await expect(page.frameLocator('.preview-stage iframe').locator('body > table')).toHaveAttribute('bgcolor', '#111111');
   await page.getByLabel('Fundo do e-mail · tipo').selectOption('solid');
   await page.getByLabel('Fundo do e-mail · cor · hexadecimal').fill('#AB1234');
   await expect(page.frameLocator('.preview-stage iframe').locator('body > table')).toHaveAttribute('bgcolor', '#AB1234');

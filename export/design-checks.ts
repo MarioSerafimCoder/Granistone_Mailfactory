@@ -30,6 +30,7 @@ export function designChecks(c: Campaign, lang: Language): PreflightCheck[] {
   }
   for (const item of campaignBackgrounds(c)) {
     const b = resolveBackground(item.background);
+    if (b.kind === 'none') continue;
     const fallback = b.kind === 'solid' ? b.color : b.fallback;
     if (!colorValid(fallback)) { add('error', `${item.name}: configure uma cor sólida de fallback.`); continue; }
     if (b.kind === 'gradient') add('warning', `${item.name}: Outlook desktop e clientes sem gradientes mostrarão a cor de fallback ${fallback}.`);

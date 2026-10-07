@@ -82,11 +82,11 @@ export default function MaterialSelector({
             key={material.id}
             onClick={() => choose(material)}
           >
-            <strong>{material.name}</strong>
-            <span>{material.category}</span>
+            {material.heroImage ? <img src={material.heroImage} alt="" loading="lazy" /> : <span className="material-option-placeholder" aria-hidden="true" />}
+            <span className="material-option-copy"><strong>{material.name}</strong><small>{material.category || 'Material Granistone'}</small></span>
           </button>
         ))}
-        {!results.length && <p>Nenhum material encontrado.</p>}
+        {!results.length && <p>Nenhum material encontrado. Tente outro nome ou categoria.</p>}
       </div>
       {error && <p className="alert" role="alert">{error}</p>}
       {pending && (

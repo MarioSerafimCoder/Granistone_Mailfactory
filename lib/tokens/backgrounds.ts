@@ -19,11 +19,12 @@ export const colorValid = (value: unknown): value is string => typeof value === 
 export function backgroundValid(value: unknown): value is Background {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const b = value as Record<string, unknown>;
+  if (b.kind === 'none') return true;
   if (b.kind === 'solid') return colorValid(b.color);
   if (b.kind === 'preset') return typeof b.preset === 'string' && Object.hasOwn(backgroundPresets, b.preset);
   if (!colorValid(b.fallback)) return false;
   if (b.kind === 'gradient') return colorValid(b.start) && colorValid(b.end) && ['vertical', 'horizontal', 'diagonal'].includes(String(b.direction));
-  return b.kind === 'image' && typeof b.image === 'string' && b.image.length <= 2000000 && ['cover', 'contain'].includes(String(b.size)) && ['center', 'top', 'bottom'].includes(String(b.position)) && typeof b.overlay === 'number' && b.overlay >= 0 && b.overlay <= .8;
+  return b.kind === 'image' && typeof b.image === 'string' && b.image.length <= 2000000 && ['cover', 'contain', 'original'].includes(String(b.size)) && ['center', 'top', 'bottom'].includes(String(b.position)) && (b.align === undefined || ['left', 'center', 'right'].includes(String(b.align))) && (b.repeat === undefined || ['repeat', 'no-repeat'].includes(String(b.repeat))) && typeof b.overlay === 'number' && b.overlay >= 0 && b.overlay <= .8;
 }
 export function designValid(value: unknown): value is CampaignDesign {
   if (!value || typeof value !== 'object') return false;

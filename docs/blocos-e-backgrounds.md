@@ -39,17 +39,23 @@ Aplicação local: `pnpm db:migrate:local`. O empacotamento inclui a migration p
 
 ## Backgrounds e compatibilidade de e-mail
 
-Disponíveis no e-mail, área de conteúdo e cada bloco: cor sólida, gradiente de duas cores, imagem ou preset. Imagens aceitam cover/contain, posição vertical, overlay escuro e fallback. Gradientes aceitam direção vertical/horizontal/diagonal e fallback. Presets: branco, off-white pedra, preto Granistone, bege quente, cinza mineral, gradiente escuro, preto/grafite, areia e imagem de material (exige escolher a imagem).
+Disponíveis no e-mail, área de conteúdo e cada bloco: nenhum, cor sólida, gradiente de duas cores, imagem ou preset. A interface mostra uma prévia de cada escolha e uma galeria visual dos presets. Imagens aceitam cover/contain/tamanho original, posição vertical e horizontal, repetição, overlay escuro e fallback. Gradientes aceitam direção vertical/horizontal/diagonal e fallback. Presets: branco, off-white pedra, preto Granistone, bege quente, cinza mineral, gradiente escuro, preto/grafite, areia e imagem de material (exige escolher a imagem).
 
 HTML mantém 600 px, tabelas, estilos inline, atributo `bgcolor` e cor de fundo explícita. Não depende de grid/flex, scripts ou CSS de variáveis. Gradientes e imagens CSS são melhorias progressivas; **Outlook desktop pode mostrar somente a cor sólida**. Não se usa VML para fundos. Webmail, aplicativos e versões variam; imagens bloqueadas, modo escuro e sanitização podem alterar cores, overlay e posicionamento. Não colocar informação essencial somente em backgrounds. Cabeçalho e rodapé institucional preservam seu próprio estilo.
 
 O pré-flight verifica fallback, HTTPS público, disponibilidade, tamanho, formato, referência externa, contraste estimado e alertas de cliente. Contraste é estimado contra fallback e extremos do gradiente; não analisa os pixels da fotografia. Imagens de fundo são incluídas na retenção das publicações. Versões publicadas continuam armazenando HTML imutável.
 
+## Interface e tema
+
+`app/theme.css` concentra os tokens semânticos da interface, com tema claro e escuro. A preferência fica no navegador; sem preferência salva, a aplicação usa `prefers-color-scheme`. O botão fica em **Configurações**. O tema muda apenas a interface: a prévia do e-mail continua em seu próprio documento, e o HTML publicado não recebe tokens nem estilos do editor.
+
+A biblioteca de blocos oferece busca, categoria, miniatura, seleção e ações diretas de inserir, editar, duplicar e excluir. A biblioteca de materiais mostra capas e filtros de nome/categoria/status; a edição abre em painel lateral. A galeria desse painel mostra até 80 imagens por vez e pode ser refinada por nome ou pasta. A lista atual de materiais da API tem limite de 500 itens; paginação de materiais continua como melhoria para catálogos maiores.
+
 ## Validação e próximos passos
 
 `tests/designs.test.ts` cobre registro, renderização, cópia independente, backups legados, conversão rich text, tradução, aprovação por idioma, background/fallback, pré-flight, publicação imutável, D1, autorização, lease, CAS e proteção de imagens.
 
-`tests/browser/designs.spec.ts` cobre adicionar/remover/duplicar/ordenar/desativar seções, salvar/inserir bloco, duplicar campanha, salvar/editar/duplicar/excluir template, derivar campanha, compartilhar entre dois navegadores, conversão legada, fundos sólidos/gradiente/imagem, HTML e pré-flight, desktop/mobile. A suíte existente continua cobrindo importação, imagens, recorte, tradução, sincronização, colaboração e publicação.
+`tests/browser/designs.spec.ts` cobre adicionar/remover/duplicar/ordenar/desativar seções, salvar/inserir bloco, duplicar campanha, salvar/editar/duplicar/excluir template, derivar campanha, compartilhar entre dois navegadores, conversão legada, fundos sólidos/gradiente/imagem, HTML e pré-flight, desktop/mobile. `tests/browser/theme-ux.spec.ts` cobre tema, persistência, isolamento da prévia do e-mail, larguras de notebook/tablet, busca de blocos, filtros de materiais e abertura do painel por teclado. A suíte existente continua cobrindo importação, imagens, recorte, tradução, sincronização, colaboração e publicação.
 
 Comandos: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm exec playwright test`.
 

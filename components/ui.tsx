@@ -55,11 +55,13 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  side = false,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  side?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -70,7 +72,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className={`modal ${wide ? 'wide' : ''}`}
+      className={`modal ${wide ? 'wide' : ''} ${side ? 'side' : ''}`}
       aria-label={title}
       aria-modal="true"
       onCancel={(event) => { event.preventDefault(); onClose(); }}
