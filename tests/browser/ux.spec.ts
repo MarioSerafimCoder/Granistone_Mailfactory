@@ -16,10 +16,12 @@ test('history requires confirmation, list shows author, and language status foll
   await page.goto('/');
   const title = `UX ${Date.now()}`;
   await create(page, title);
-  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 15000 });
+  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 15000 });
   await expect(page.getByText(/Última alteração por Local/)).toBeVisible();
   await page.getByLabel('Status da campanha').selectOption('Aprovado');
-  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 15000 });
   await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(page.getByLabel('Status da campanha')).toHaveValue('Pendente');
   await page.getByRole('button', { name: 'Histórico', exact: true }).click();
@@ -41,6 +43,8 @@ test('HTTPS image entry and guided publication remain clear at desktop and narro
   await authenticate(page);
   await page.goto('/');
   await create(page, `Preparação ${Date.now()}`);
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
   await page.frameLocator('.preview-stage iframe').getByRole('button', { name: 'Adicionar capa editorial' }).click();
   const image = page.getByRole('dialog', { name: 'Imagem principal' });

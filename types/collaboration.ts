@@ -8,7 +8,7 @@ export interface WorkspaceMember {
   id: string; email: string; name: string; role: MemberRole; status: 'active' | 'disabled';
   created_at: string; last_seen_at: string | null; owner?: boolean;
 }
-export type ResourceType = 'campaign' | 'material' | 'asset' | 'brand';
+export type ResourceType = 'campaign' | 'material' | 'asset' | 'brand' | 'design';
 export interface PresenceEntry {
   userId: string; name: string; email: string; tabId: string; location: string;
   resourceType: ResourceType | ''; resourceId: string; resourceName: string;

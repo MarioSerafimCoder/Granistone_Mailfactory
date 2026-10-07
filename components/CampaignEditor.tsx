@@ -27,6 +27,11 @@ import PublishDialog from './PublishDialog';
 import type { SaveState } from '@/lib/use-studio';
 import { renderEmail } from '@/export/render';
 import TranslateDialog from './TranslateDialog';
+import SectionsEditor from './SectionsEditor';
+import BackgroundEditor, { ColorField } from './BackgroundEditor';
+import SavedDesignDialog from './SavedDesignDialog';
+import { blueprintFromCampaign, convertSections } from '@/blocks/model';
+import { defaultDesign } from '@/lib/tokens/backgrounds';
 export default function CampaignEditor({
   campaign,
   brand,
@@ -38,6 +43,7 @@ export default function CampaignEditor({
   activity,
   onHistory,
   readOnly = false,
+  onDuplicate,
 }: {
   campaign: Campaign;
   brand: BrandSettings;
@@ -49,8 +55,11 @@ export default function CampaignEditor({
   activity?: NonNullable<SyncMetadata['activity']>[string];
   onHistory: () => void;
   readOnly?: boolean;
+  onDuplicate?: () => void;
 }) {
   const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
+  const [saveTemplate, setSaveTemplate] = useState(false), [converting, setConverting] = useState(false);
+  const design = campaign.design ?? defaultDesign();
   const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
   const [tab, setTab] = useState('content');
   const [mobile, setMobile] = useState(false);
@@ -118,6 +127,8 @@ export default function CampaignEditor({
           </span>
           {activity?.updatedAt && <span className="editor-activity" title={activityTime(activity.updatedAt)}>Última alteração por {editorName(activity.updatedBy)} · {activityTime(activity.updatedAt)}</span>}
           {campaignRevision && <button className="text-button" onClick={onHistory}>Histórico</button>}
+          {onDuplicate && <button className="button" onClick={onDuplicate}>Duplicar campanha</button>}
+          <button className="button" disabled={readOnly} onClick={() => setSaveTemplate(true)}>Salvar como template</button>
           <select
             aria-label="Status da campanha"
             disabled={readOnly}
@@ -167,6 +178,7 @@ export default function CampaignEditor({
             </div>
           </div>
           <div className="editor-tabs">
+            <button className={tab === 'design' ? 'active' : ''} onClick={() => setTab('design')}>Fundos</button>
             <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>
               Conteúdo
             </button>
@@ -181,9 +193,19 @@ export default function CampaignEditor({
             </button>
           </div>
           <div className="editor-fields" inert={readOnly} aria-disabled={readOnly}>
-            {tab === 'content' && (
+            {tab === 'content' && !campaign.sections && (
               <ContentFields campaign={campaign} language={language} onChange={update} saveState={saveState} />
             )}
+            {tab === 'content' && campaign.sections && <>
+              <Field label="Assunto" value={campaign.content[language].subject} onChange={e => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], subject: e.target.value } } })} />
+              <Field label="Preheader" value={campaign.content[language].preheader} onChange={e => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], preheader: e.target.value } } })} />
+              <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} />
+            </>}
+            {tab === 'design' && <>
+              <BackgroundEditor label="Fundo do e-mail" value={design.email} onChange={email => update({ design: { ...design, email } })} />
+              <BackgroundEditor label="Fundo do conteúdo" value={design.content} onChange={(content, textColor) => update({ design: { ...design, content, ...(textColor ? { textColor } : {}) } })} />
+              <ColorField label="Cor do texto do conteúdo" value={design.textColor} onChange={textColor => update({ design: { ...design, textColor } })} />
+            </>}
             {tab === 'planning' && (
               <>
                 <section className="form-section">
@@ -277,6 +299,7 @@ export default function CampaignEditor({
             )}
             {tab === 'blocks' && (
               <>
+                {campaign.sections ? <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} /> : <><p className="muted">Este e-mail usa a estrutura original do template.</p><button className="button primary" type="button" onClick={() => setConverting(true)}>Usar blocos livres</button>
                 <section className="form-section">
                   <h3>Template Granistone</h3>
                   <Select
@@ -355,6 +378,7 @@ export default function CampaignEditor({
                     Configurar marca e rodapé →
                   </button>
                 </section>
+                </>}
               </>
             )}
           </div>
@@ -365,7 +389,7 @@ export default function CampaignEditor({
               <button className={editImages ? 'active' : ''} onClick={() => setEditImages(true)}>Montar e-mail</button>
               <button className={!editImages ? 'active' : ''} onClick={() => setEditImages(false)}>Visualizar final</button>
             </div>
-            <span>{editImages ? 'Clique nas áreas de imagem para adicionar ou trocar fotos' : 'HTML final, sem os controles de edição'}</span>
+            <span>{campaign.sections ? 'Edite as seções na aba Conteúdo · prévia do HTML final' : editImages ? 'Clique nas áreas de imagem para adicionar ou trocar fotos' : 'HTML final, sem os controles de edição'}</span>
           </div>
           <div className="preview-toolbar">
             <div>
@@ -456,6 +480,8 @@ export default function CampaignEditor({
         />
         <div className="modal-actions"><button className="button primary" onClick={() => setImageSlot(undefined)}>Concluir</button></div>
       </Modal>}
+      {saveTemplate && <SavedDesignDialog initial={{ kind: 'template', payload: blueprintFromCampaign(campaign) }} onClose={() => setSaveTemplate(false)} />}
+      {converting && <Modal title="Converter em blocos livres" onClose={() => setConverting(false)}><p>A estrutura será reorganizada em seções independentes. Revise a nova composição no preview. O conteúdo original continuará preservado na campanha e no histórico.</p><div className="modal-actions"><button className="button" onClick={() => setConverting(false)}>Cancelar</button><button className="button primary" onClick={() => { update({ sections: convertSections(campaign) }); setConverting(false); setTab('content'); }}>Converter estrutura</button></div></Modal>}
       {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} campaignRevision={campaignRevision} saveState={saveState} onChange={onChange} onClose={() => setPublishOpen(false)} />}
       {translateTarget && <TranslateDialog
         campaign={campaign}

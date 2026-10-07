@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Languages, Sparkles } from 'lucide-react';
 import type { Campaign, Language } from '@/types/campaign';
 import { online } from '@/lib/online';
-import { applyTranslation, translationItems } from '@/lib/translation';
+import { applyTranslation, translationItems, sectionTranslationItems, applySectionTranslation } from '@/lib/translation';
 import { Modal } from './ui';
 import { reconcileLanguageState } from '@/campaigns/model';
 
@@ -17,13 +17,19 @@ export default function TranslateDialog({ campaign, target, onApply, onClose }: 
   const [error, setError] = useState('');
   const [replace, setReplace] = useState(true);
   const label = target === 'en' ? 'inglês' : 'espanhol';
-  const items = useMemo(() => translationItems(campaign.content.pt), [campaign.content.pt]);
-  const hasTarget = translationItems(campaign.content[target]).length > 0;
+  const items = useMemo(() => [...translationItems(campaign.content.pt), ...sectionTranslationItems(campaign, 'pt')], [campaign]);
+  const hasTarget = translationItems(campaign.content[target]).length + sectionTranslationItems(campaign, target).length > 0;
   async function generate() {
     setBusy(true); setError('');
     try {
       if (!items.length) throw new Error('Escreva primeiro o conteúdo em português.');
-      const translated = await online.translate({ target, items });
+      const translated: Awaited<ReturnType<typeof online.translate>> = { target, items: [] };
+      let batch: typeof items = [], characters = 0;
+      for (const item of items) {
+        if (batch.length >= 90 || characters + item.text.length > 28000) { translated.items.push(...(await online.translate({ target, items: batch })).items); batch = []; characters = 0; }
+        batch.push(item); characters += item.text.length;
+      }
+      if (batch.length) translated.items.push(...(await online.translate({ target, items: batch })).items);
       const generated = applyTranslation(campaign.content.pt, campaign.content[target], translated);
       const next = replace || !hasTarget ? generated : {
         ...campaign.content[target],
@@ -38,6 +44,7 @@ export default function TranslateDialog({ campaign, target, onApply, onClose }: 
           ? campaign.language.includes('ES') ? 'PT / EN / ES' : 'PT / EN'
           : campaign.language.includes('EN') ? 'PT / EN / ES' : 'PT / ES',
         content: { ...campaign.content, [target]: next },
+        sections: applySectionTranslation(campaign, target, translated, replace),
         updatedAt: new Date().toISOString(),
       }), target);
       onClose();

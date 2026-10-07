@@ -1,7 +1,6 @@
-import type { Campaign, BrandSettings } from '@/types/campaign';
 import { uploadLocalImage } from './online';
 type Upload = (uri: string, alt: string) => Promise<{ url: string }>;
-export async function hostLocalImages<T extends Campaign | BrandSettings>(input: T, upload: Upload = uploadLocalImage): Promise<T> {
+export async function hostLocalImages<T extends object>(input: T, upload: Upload = uploadLocalImage): Promise<T> {
   const uploads = new Map<string, Promise<string>>();
   async function walk(value: unknown): Promise<unknown> {
     if (typeof value === 'string' && value.startsWith('data:image/')) {

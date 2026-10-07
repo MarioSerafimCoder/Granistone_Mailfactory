@@ -16,7 +16,7 @@ function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Dados inválidos.');
   return value as Record<string, unknown>;
 }
-async function validateImages(value: unknown, env: Env): Promise<void> {
+export async function validateImages(value: unknown, env: Env): Promise<void> {
   if (typeof value === 'string') {
     if (/^(data|blob):/i.test(value)) throw new HttpError(400, 'Hospede as imagens locais antes de sincronizar.');
     if (value.startsWith(`${env.SITE_ORIGIN}/assets/`)) {

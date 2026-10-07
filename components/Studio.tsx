@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useStudio } from '@/lib/use-studio';
 import { createCampaign } from '@/campaigns/model';
+import { duplicateCampaign, campaignFromBlueprint } from '@/blocks/model';
 import { getTemplate, templates } from '@/templates/registry';
 import { templateContent } from '@/templates/starter';
 import { downloadFile } from '@/export/download';
@@ -68,7 +69,7 @@ export default function Studio() {
   }
   function copyActive() {
     if (!active || !data || !canEdit) return;
-    const copy = { ...structuredClone(active), id: crypto.randomUUID(), title: `${active.title} · cópia`, updatedAt: new Date().toISOString() };
+    const copy = duplicateCampaign(active);
     save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id);
   }
   function showBrand() {
@@ -365,6 +366,7 @@ export default function Studio() {
             onBack={() => void leaveEditor()}
             onSettings={showBrand}
             onHistory={() => setHistoryOpen(true)}
+            onDuplicate={canEdit ? copyActive : undefined}
             onChange={(campaign) => {
               if (!campaignLease.editing) return;
               save({
@@ -375,7 +377,7 @@ export default function Studio() {
           />
           </>
         ) : view === 'templates' ? (
-          <TemplateLibrary onUse={start} />
+          <TemplateLibrary onUse={start} onCustomUse={(blueprint, title) => { if (!canEdit) return; const campaign = campaignFromBlueprint(blueprint, title); save({ ...data, campaigns: [campaign, ...data.campaigns] }, true); setActiveId(campaign.id); setView('campaigns'); }} />
         ) : view === 'library' ? (
           <LibraryPage />
         ) : (
@@ -388,6 +390,7 @@ export default function Studio() {
             reviewIds={reviewIds}
             onOpen={setActiveId}
             onDelete={setDeleteCampaignId}
+            onDuplicate={id => { const source = data.campaigns.find(c => c.id === id); if (!source || !canEdit) return; const copy = duplicateCampaign(source); save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id); }}
             onCreate={() => start()}
             onImport={() => setImportOpen(true)}
           />

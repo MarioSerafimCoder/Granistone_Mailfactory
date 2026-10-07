@@ -8,6 +8,7 @@ import { MAX_UPLOAD } from './images';
 import { renderEmail } from '@/export/render';
 import { translateContent } from './translation';
 import { CampaignRepository } from './campaigns';
+import { DesignRepository } from './designs';
 const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url); const path = url.pathname;
@@ -52,10 +53,12 @@ const worker = {
       const protectedCampaign = path.match(/^\/api\/campaigns\/([a-zA-Z0-9_-]+)(?:\/.*)?$/);
       const protectedMaterial = path.match(/^\/api\/materials\/([a-zA-Z0-9_-]+)$/);
       const protectedAsset = path.match(/^\/api\/assets\/([a-f0-9]{64})$/);
+      const protectedDesign = path.match(/^\/api\/designs\/([a-zA-Z0-9_-]{1,100})$/);
       if (mutating) {
         if (protectedCampaign) { resourceType = 'campaign'; resourceId = protectedCampaign[1]; }
         if (protectedMaterial) { resourceType = 'material'; resourceId = protectedMaterial[1]; }
         if (protectedAsset) { resourceType = 'asset'; resourceId = protectedAsset[1]; }
+        if (protectedDesign) { resourceType = 'design'; resourceId = protectedDesign[1]; }
         if (path === '/api/workspace/settings') { resourceType = 'brand'; resourceId = 'brand'; requiredRole = 'admin'; }
         if (request.method === 'DELETE' || /\/restore$/.test(path)) requiredRole = 'admin';
         // Rendering and preflight are read operations despite using POST.
@@ -66,6 +69,16 @@ const worker = {
       env = guardedEnv(env, actor, request, resourceType, resourceId, requiredRole, revision === null ? null : Number(revision));
       const protectedAssets = new AssetRepository(env), protectedMaterials = new MaterialRepository(env), protectedPublications = new PublicationRepository(env);
       const campaigns = new CampaignRepository(env, actor);
+      const designs = new DesignRepository(env, actor);
+      if (path === '/api/designs') {
+        if (request.method === 'GET') return json(await designs.list(url.searchParams.get('kind') || 'template'));
+        if (request.method === 'POST') return json(await designs.save(await jsonBody(request)), 201);
+      }
+      if (protectedDesign) {
+        if (request.method === 'GET') return json(await designs.get(protectedDesign[1]));
+        if (request.method === 'PUT') return json(await designs.save(await jsonBody(request), protectedDesign[1]));
+        if (request.method === 'DELETE') return json(await designs.remove(protectedDesign[1], Number(revision)));
+      }
       if (path === '/api/campaigns') {
         if (request.method === 'GET') return json(await campaigns.list());
         if (request.method === 'POST') return json(await campaigns.create(await jsonBody(request)), 201);
@@ -134,6 +147,7 @@ const worker = {
       if (message.includes('workspace_forbidden')) return json({ error: 'Seu acesso ou sua função foi alterado. Atualize a sessão.' }, 403);
       if (message.includes('workspace_lock_lost')) return json({ error: 'Sua reserva de edição expirou ou pertence a outra sessão. Suas alterações locais foram preservadas.' }, 423);
       if (message.includes('workspace_revision_conflict')) return json({ error: 'Este recurso foi alterado. Carregue a versão atual antes de salvar.' }, 409);
+      if (message.includes('asset_unavailable')) return json({ error: 'Uma imagem foi removida. Escolha outra imagem da biblioteca.' }, 409);
       if (message.includes('workspace_last_admin')) return json({ error: 'O workspace precisa ter pelo menos um administrador.' }, 409);
       if (message.includes('workspace_members.email')) return json({ error: 'Este e-mail já pertence ao workspace.' }, 409);
       console.error('Studio request failed', path, error);

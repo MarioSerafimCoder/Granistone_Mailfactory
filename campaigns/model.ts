@@ -84,10 +84,11 @@ export function languageStates(c: Campaign): NonNullable<Campaign['languageState
 }
 export function reconcileLanguageState(previous: Campaign, next: Campaign, actor?: string): Campaign {
   const before = languageStates(previous), state = languageStates(next);
-  const sharedChanged = ['template', 'blocks', 'alignment', 'materialId'].some(key => JSON.stringify(previous[key as keyof Campaign]) !== JSON.stringify(next[key as keyof Campaign]));
+  const sharedChanged = ['template', 'blocks', 'alignment', 'materialId', 'design'].some(key => JSON.stringify(previous[key as keyof Campaign]) !== JSON.stringify(next[key as keyof Campaign]));
   const now = new Date().toISOString();
   for (const lang of ['pt', 'en', 'es'] as const) {
-    const changed = sharedChanged || JSON.stringify(previous.content[lang]) !== JSON.stringify(next.content[lang]);
+    const sectionView = (c: Campaign) => c.sections?.map(s => ({ ...s, content: s.content[lang], richBody: s.richBody?.[lang] }));
+    const changed = sharedChanged || JSON.stringify(previous.content[lang]) !== JSON.stringify(next.content[lang]) || JSON.stringify(sectionView(previous)) !== JSON.stringify(sectionView(next));
     const status = changed && ['Aprovado', 'Exportado'].includes(state[lang].status) ? 'Em produção' : state[lang].status;
     state[lang] = { ...state[lang], status, updatedAt: changed ? now : before[lang].updatedAt };
     if (status === 'Aprovado') {
@@ -103,6 +104,7 @@ export function editCampaign(c: Campaign, update: Partial<Campaign>, language?: 
   const next = {
     ...c,
     ...update,
+    languageState: update.languageState ?? languageStates(c),
     status:
       update.status ??
       (c.status === 'Aprovado' || c.status === 'Exportado' ? 'Em produção' : c.status),

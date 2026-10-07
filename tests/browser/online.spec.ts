@@ -72,7 +72,8 @@ test('Worker + D1 + R2: upload, preflight, publication, anonymous images, immuta
   expect(await (await request.get(new URL(first.url).pathname)).text()).toBe(firstHtml);
   expect(await (await request.get(new URL(second.url).pathname)).text()).toContain('Versão dois');
   expect((await publish('en')).version).toBe(1);
-  expect((await request.delete(`/api/assets/${asset.id}`, { headers: auth })).status()).toBe(409);
+  const lease = await (await request.post('/api/workspace/edit-locks/acquire', { headers: auth, data: { resourceType: 'asset', resourceId: asset.id, sessionId: crypto.randomUUID(), tabId: crypto.randomUUID() } })).json();
+  expect((await request.delete(`/api/assets/${asset.id}`, { headers: { ...auth, 'X-Workspace-Session': lease.sessionId, 'X-Workspace-Tab': lease.tabId, 'X-Edit-Token': lease.token, 'X-Edit-Generation': String(lease.generation) } })).status()).toBe(409);
   campaign.content.pt.heroImage = '';
   const invalid = await request.post('/api/publications', { headers: { ...auth, 'Idempotency-Key': crypto.randomUUID() }, data: input });
   expect(invalid.status()).toBe(422);

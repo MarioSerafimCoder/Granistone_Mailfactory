@@ -61,6 +61,8 @@ export interface CampaignContent {
   projectText: string;
 }
 export interface Campaign {
+  sections?: import('./design').Section[];
+  design?: import('./design').CampaignDesign;
   languageState?: Record<Language, { status: Status; updatedAt: string; approvedAt?: string; approvedBy?: string }>;
   id: string;
   date: string;

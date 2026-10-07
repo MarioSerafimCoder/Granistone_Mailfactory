@@ -3,6 +3,7 @@ import type { PreflightCheck, PreflightResult } from '@/types/online';
 import { publicHttpsUrl as isPublicUrl } from '@/lib/public-url';
 import { assetUrl } from '@/components/email/brand';
 import { plainText } from '@/campaigns/model';
+import { designChecks } from './design-checks';
 import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
 export const preflightLimits = { subject: 60, preheader: 140, htmlBytes: 102_400, imageBytes: 500_000 };
 export function result(checks: PreflightCheck[]): PreflightResult {
@@ -13,8 +14,9 @@ export function contentChecks(c: Campaign, lang: Language, brand: BrandSettings)
   const add = (id: string, category: PreflightCheck['category'], severity: PreflightCheck['severity'], message: string) => checks.push({ id, category, severity, message });
   add('subject', 'content', !v.subject.trim() ? 'error' : v.subject.length > preflightLimits.subject ? 'warning' : 'pass', !v.subject.trim() ? 'Preencha o assunto.' : `Assunto: ${v.subject.length} caracteres (recomendado até ${preflightLimits.subject}).`);
   add('preheader', 'content', !v.preheader.trim() || v.preheader.length > preflightLimits.preheader ? 'warning' : 'pass', `Preheader: ${v.preheader.length} caracteres (recomendado entre 1 e ${preflightLimits.preheader}).`);
-  add('headline', 'content', v.headline.trim() ? 'pass' : 'error', v.headline.trim() ? 'Título preenchido.' : 'Preencha o título neste idioma.');
-  for (const slot of c.blocks.filter(b => b.enabled)) {
+  if (!c.sections) add('headline', 'content', v.headline.trim() ? 'pass' : 'error', v.headline.trim() ? 'Título preenchido.' : 'Preencha o título neste idioma.');
+  checks.push(...designChecks(c, lang));
+  for (const slot of c.sections ? [] : c.blocks.filter(b => b.enabled)) {
     if (slot.id === 'hero' || slot.id === 'application') {
       const src = slot.id === 'hero' ? v.heroImage : v.applicationImage;
       const alt = slot.id === 'hero' ? v.heroAlt : v.applicationAlt;
@@ -44,7 +46,9 @@ export function htmlChecks(html: string, allowedHttpLinks: string[] = [GRANISTON
     const url = match[1].replace(/&amp;/g, '&');
     return !/^(mailto:|tel:)/i.test(url) && !isPublicUrl(url) && !allowedHttpLinks.includes(url);
   }), 'Links e recursos do HTML devem ser públicos.');
-  add('html.css', /url\s*\(|@import|expression\s*\(/i.test(html), 'O HTML não pode conter recursos CSS externos ou código ativo.');
+  const decoded = html.replace(/&#39;|&quot;/g, "'").replace(/&amp;/g, '&');
+  const cssUrls = [...decoded.matchAll(/url\(\s*['"]?([^'"\s)]+)['"]?\s*\)/gi)].map(m => m[1]);
+  add('html.css', /@import|expression\s*\(/i.test(html) || cssUrls.some(url => !isPublicUrl(url)), 'Recursos CSS devem usar HTTPS público, sem código ativo.');
   add('html.viewport', !/<meta[^>]+name="viewport"/i.test(html), 'Viewport responsivo presente.');
   add('html.structure', !/role="presentation"/.test(html) || !/class="email-container"/.test(html) || !/width="600"/.test(html), 'Estrutura principal de e-mail com largura de 600 px.');
   const size = new TextEncoder().encode(html).length;

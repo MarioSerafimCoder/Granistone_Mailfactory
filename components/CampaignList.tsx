@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Search, ArrowUpRight, Plus, Upload, ArrowRight, Mail, Trash2 } from 'lucide-react';
+import { Search, ArrowUpRight, Plus, Upload, ArrowRight, Mail, Trash2, Copy } from 'lucide-react';
 import { campaignTypes, statuses, type Campaign } from '@/types/campaign';
 import { languages, languageStates } from '@/campaigns/model';
 import type { SyncMetadata } from '@/types/workspace';
@@ -18,6 +18,7 @@ export default function CampaignList({
   campaigns,
   onOpen,
   onDelete,
+  onDuplicate,
   onCreate,
   onImport,
   activity,
@@ -28,6 +29,7 @@ export default function CampaignList({
   campaigns: Campaign[];
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate?: (id: string) => void;
   onCreate: () => void;
   onImport: () => void;
   activity?: SyncMetadata['activity'];
@@ -288,6 +290,7 @@ export default function CampaignList({
                     >
                       <Trash2 size={17} />
                     </button>
+                    {canEdit && onDuplicate && <button className="icon-button" aria-label={`Duplicar ${c.title}`} title="Duplicar campanha" onClick={() => onDuplicate(c.id)}><Copy size={17} /></button>}
                   </div>
                 </td>
               </tr>

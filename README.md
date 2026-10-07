@@ -55,6 +55,8 @@ Sem uma chave Gemini válida, os outros recursos continuam funcionando, mas trad
 
 ## Arquitetura
 
+Blocos livres, templates compartilhados e backgrounds: veja [arquitetura, migration e compatibilidade](docs/blocos-e-backgrounds.md).
+
 | Caminho | Responsabilidade |
 | --- | --- |
 | `app/`, `components/` | Interface Next.js, Maily, preview e fluxos de trabalho |
@@ -83,7 +85,7 @@ O teste de navegador inicia o servidor local automaticamente; aplique as migrati
 
 ## Limitações
 
-- Sincronização por consulta periódica e revisão otimista; não há edição simultânea por caractere nem presença ao vivo.
+- Sincronização por consulta periódica, presença por sessão e edição exclusiva temporária por recurso; não há edição simultânea por caractere.
 - Campanhas, históricos e fila ainda não têm paginação/política de retenção. Um workspace muito grande exigirá essas evoluções.
 - A fila offline depende do armazenamento deste navegador; limpar IndexedDB pode remover alterações que ainda não chegaram ao servidor. Backup JSON continua importante.
 - R2 aceita JPG/PNG/WebP pelo fluxo atual. GIF animado pode continuar no rascunho local, mas precisa ser convertido para sincronizar.

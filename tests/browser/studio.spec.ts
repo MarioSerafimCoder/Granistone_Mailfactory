@@ -150,7 +150,8 @@ test('translation keeps Portuguese and creates Spanish, while visual library sta
   await page.getByRole('button', { name: 'Voltar às campanhas', exact: true }).click();
   await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Biblioteca visual' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Enviar imagens', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Enviar imagens', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Entrar com ChatGPT/ }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Materiais' }).click();
   await expect(page.getByText('Nenhum material cadastrado')).toBeVisible();
 });

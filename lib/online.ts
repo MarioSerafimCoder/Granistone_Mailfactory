@@ -3,11 +3,12 @@ import type { Campaign, BrandSettings } from '@/types/campaign';
 import type { SharedCampaign, SharedBrand, CampaignRevision } from '@/types/workspace';
 import type { PresenceEntry, ResourceType, WorkspaceMember, WorkspaceSession } from '@/types/collaboration';
 import { editHeaders, invalidateLease } from './edit-leases';
+import type { DesignInput, SavedDesign } from '@/types/design';
 import { OnlineError } from './online-error';
 export { OnlineError } from './online-error';
 function resource(path: string, body?: BodyInit | null): [ResourceType, string] | undefined {
-  const match = path.match(/^\/api\/(campaigns|materials|assets)\/([a-zA-Z0-9_-]+)/);
-  if (match) return [{ campaigns: 'campaign', materials: 'material', assets: 'asset' }[match[1]] as ResourceType, match[2]];
+  const match = path.match(/^\/api\/(campaigns|materials|assets|designs)\/([a-zA-Z0-9_-]+)/);
+  if (match) return [{ campaigns: 'campaign', materials: 'material', assets: 'asset', designs: 'design' }[match[1]] as ResourceType, match[2]];
   if (path === '/api/workspace/settings') return ['brand', 'brand'];
   if (path === '/api/publications' && typeof body === 'string') return ['campaign', JSON.parse(body).campaign.id];
 }
@@ -24,6 +25,12 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 }
 const json = (value: unknown) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
 export const online = {
+  designs: {
+    list: (kind: 'block' | 'template') => api<SavedDesign[]>(`/api/designs?kind=${kind}`),
+    get: (id: string) => api<SavedDesign>(`/api/designs/${encodeURIComponent(id)}`),
+    save: (value: DesignInput, existing = false) => api<SavedDesign>(existing ? `/api/designs/${encodeURIComponent(value.id)}` : '/api/designs', { method: existing ? 'PUT' : 'POST', ...json(value), headers: { 'Content-Type': 'application/json', 'X-Resource-Revision': String(value.revision) } }),
+    remove: (id: string, revision: number) => api(`/api/designs/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Resource-Revision': String(revision) } }),
+  },
   campaigns: {
     list: () => api<SharedCampaign[]>('/api/campaigns'),
     get: (id: string) => api<SharedCampaign>(`/api/campaigns/${encodeURIComponent(id)}`),

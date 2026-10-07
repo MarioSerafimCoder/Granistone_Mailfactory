@@ -1,4 +1,7 @@
+import { validRich } from '@/lib/rich-validation';
 import { defaultBrand } from '@/data/brand';
+import { sectionsValid } from '@/blocks/registry';
+import { designValid } from '@/lib/tokens/backgrounds';
 import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
 import { demoCampaigns } from '@/data/demo';
 import { emptyContent, languageStates } from '@/campaigns/model';
@@ -58,26 +61,8 @@ function recover(base: StudioData): StudioData {
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
-function validRich(value: unknown, depth = 0): boolean {
-  return (
-    depth < 25 &&
-    record(value) &&
-    typeof value.type === 'string' &&
-    (value.text === undefined || typeof value.text === 'string') &&
-    (value.content === undefined ||
-      (Array.isArray(value.content) &&
-        value.content.length <= 500 &&
-        value.content.every((node) => validRich(node, depth + 1)))) &&
-    (value.marks === undefined ||
-      (Array.isArray(value.marks) &&
-        value.marks.every(
-          (mark) =>
-            record(mark) && typeof mark.type === 'string' && (!mark.attrs || record(mark.attrs)),
-        )))
-  );
-}
-
 export function isCampaign(value: unknown): value is Campaign {
+  if (record(value) && ((value.sections !== undefined && !sectionsValid(value.sections)) || (value.design !== undefined && !designValid(value.design)))) return false;
   if (
     !record(value) ||
     !['id', 'title', 'date', 'audience', 'objective', 'notes', 'updatedAt'].every(

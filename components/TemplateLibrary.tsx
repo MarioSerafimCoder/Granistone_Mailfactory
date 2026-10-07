@@ -2,7 +2,9 @@ import { ArrowUpRight } from 'lucide-react';
 import TemplateThumbnail from './TemplateThumbnail';
 import { templates } from '@/templates/registry';
 import type { TemplateId } from '@/types/campaign';
-export default function TemplateLibrary({ onUse }: { onUse: (id: TemplateId) => void }) {
+import type { Blueprint } from '@/types/design';
+import SavedDesignLibrary from './SavedDesignLibrary';
+export default function TemplateLibrary({ onUse, onCustomUse }: { onUse: (id: TemplateId) => void; onCustomUse: (blueprint: Blueprint, title: string) => void }) {
   return (
     <div className="page">
       <div className="page-heading">
@@ -32,6 +34,7 @@ export default function TemplateLibrary({ onUse }: { onUse: (id: TemplateId) => 
           </button>
         ))}
       </div>
+      <section className="custom-templates"><h2>Templates Granistone</h2><p>Modelos personalizados do workspace. Para criar um, abra uma campanha e escolha “Salvar como template”.</p><SavedDesignLibrary kind="template" onUse={design => { if (design.kind === 'template') onCustomUse(design.payload, design.name); }} /></section>
     </div>
   );
 }

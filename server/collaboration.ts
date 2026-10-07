@@ -104,7 +104,7 @@ export class CollaborationRepository {
   private identity(input: Record<string, unknown>) { return { sessionId: identifier(String(input.sessionId || '')), tabId: identifier(String(input.tabId || '')) }; }
   async heartbeat(input: Record<string, unknown>) {
     const { sessionId, tabId } = this.identity(input), now = seconds();
-    const resourceType = ['campaign', 'material', 'asset', 'brand'].includes(String(input.resourceType)) ? String(input.resourceType) : '';
+    const resourceType = ['campaign', 'material', 'asset', 'brand', 'design'].includes(String(input.resourceType)) ? String(input.resourceType) : '';
     const resourceId = resourceType ? identifier(String(input.resourceId || '')) : '';
     const locations: Record<string, string> = { campaigns: 'Campanhas', templates: 'Templates', library: 'Biblioteca', members: 'Membros do workspace', brand: 'Marca e rodapé', campaign: 'Campanha', material: 'Material', asset: 'Imagem' };
     await this.env.DB.batch([
@@ -137,9 +137,9 @@ export class CollaborationRepository {
   async lock(input: Record<string, unknown>, action: string) {
     const { sessionId, tabId } = this.identity(input);
     const type = String(input.resourceType), id = identifier(String(input.resourceId || ''));
-    if (!['campaign', 'material', 'asset', 'brand'].includes(type)) throw new HttpError(400, 'Recurso inválido.');
+    if (!['campaign', 'material', 'asset', 'brand', 'design'].includes(type)) throw new HttpError(400, 'Recurso inválido.');
     requireRole(this.actor, type === 'brand' ? 'admin' : 'editor');
-    const table = { campaign: 'campaigns', material: 'materials', asset: 'assets' }[type];
+    const table = { campaign: 'campaigns', material: 'materials', asset: 'assets', design: 'reusable_designs' }[type];
     if (table && !await this.env.DB.prepare(`SELECT id FROM ${table} WHERE id=?`).bind(id).first()) throw new HttpError(404, 'Recurso não encontrado.');
     if (type === 'brand' && id !== 'brand') throw new HttpError(400, 'Configuração inválida.');
     const now = seconds();

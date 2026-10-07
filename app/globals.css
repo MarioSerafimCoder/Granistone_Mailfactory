@@ -2014,3 +2014,29 @@ td:first-child {
 .version-actions a:hover,.version-actions button:hover { background: var(--granistone-light); }
 @media (max-width: 900px) { .material-form-grid,.crop-layout { grid-template-columns: 1fr; }.preflight-groups { grid-template-columns: 1fr; }.version-list article { flex-direction: column; } }
 @media (max-width: 640px) { .asset-toolbar > * { width: 100%; }.asset-toolbar .button { margin-left: 0; }.asset-grid { grid-template-columns: 1fr 1fr; }.material-grid { grid-template-columns: 1fr; }.language-tabs { gap: 12px; }.language-tabs button { font-size: 9px; }.translation-bar > div { flex-direction: column; }.sidebar nav { flex-wrap: wrap; }.sidebar nav button { flex: 1 1 30%; }.preflight-steps { grid-template-columns: repeat(2,minmax(0,1fr)); }.workspace-trash { align-items: flex-start; flex-wrap: wrap; }.modal-actions.wrap-actions { justify-content: flex-start; } }
+
+/* Controlled email design and shared block library. */
+.background-editor { border:1px solid var(--granistone-line); padding:16px; margin:16px 0; }
+.background-editor > summary { cursor:pointer; font-size:14px; font-weight:600; }
+.background-editor > .field,.background-editor > .design-color { margin-top:16px; }
+.design-color { display:grid; grid-template-columns:minmax(110px,1fr) minmax(120px,1fr); gap:12px; align-items:end; margin:16px 0; }
+.design-color > label { display:grid; gap:8px; font-size:12px; }
+.design-color input[type=color] { width:100%; height:42px; padding:3px; border:1px solid var(--granistone-line); background:white; }
+.color-presets { display:flex; flex-wrap:wrap; gap:8px; }
+.color-presets button { width:30px; height:30px; border:1px solid #999; cursor:pointer; }
+.section-card { border:1px solid var(--granistone-line); padding:16px; margin:16px 0; background:white; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.section-heading label { white-space:nowrap; font-size:12px; }
+.section-fields { margin-top:20px; }
+.section-fields > label { display:grid; gap:10px; margin:20px 0; }
+.section-fields input[type=range] { width:100%; }
+.sections-editor .actions { flex-wrap:wrap; }
+.block-catalog,.saved-design-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
+.block-catalog .button { min-height:90px; justify-content:flex-start; white-space:normal; }
+.saved-design-card { padding:20px; border:1px solid var(--granistone-line); background:white; }
+.saved-design-card h3 { font-size:20px; margin:12px 0; }
+.saved-design-card p,.saved-design-card small { line-height:1.6; overflow-wrap:anywhere; }
+.saved-design-card .actions { flex-wrap:wrap; margin-top:20px; }
+.custom-templates { margin-top:48px; }
+.editor-tabs { flex-wrap:wrap; }
+@media(max-width:640px) { .design-color { grid-template-columns:1fr; } .section-heading { align-items:flex-start; } .section-heading .text-button { text-align:left; } }

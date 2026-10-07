@@ -1,4 +1,7 @@
 import { sqliteTable, text, integer, uniqueIndex, primaryKey, index } from 'drizzle-orm/sqlite-core';
+export const reusableDesigns = sqliteTable('reusable_designs', {
+  id: text('id').primaryKey(), kind: text('kind').notNull(), name: text('name').notNull(), description: text('description').notNull(), category: text('category').notNull(), data: text('data').notNull(), revision: integer('revision').notNull().default(1), createdAt: text('created_at').notNull(), createdBy: text('created_by').notNull(), updatedAt: text('updated_at').notNull(), updatedBy: text('updated_by').notNull(), deletedAt: text('deleted_at'),
+});
 
 export const campaigns = sqliteTable('campaigns', {
   id: text('id').primaryKey(), title: text('title').notNull(), date: text('date').notNull(),

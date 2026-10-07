@@ -7,6 +7,9 @@ import { AssetRepository } from './assets';
 import { inspectRemote } from './remote';
 import { HttpError, type Env } from './platform';
 import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
+import { campaignBackgrounds } from '@/export/design-checks';
+import { resolveBackground } from '@/lib/tokens/backgrounds';
+import { blockRegistry } from '@/blocks/registry';
 export function publicationInput(raw: unknown): PublicationInput {
   if (!raw || typeof raw !== 'object') throw new HttpError(400, 'Campanha inválida.');
   const value = raw as PublicationInput;
@@ -22,7 +25,7 @@ export function publicationInput(raw: unknown): PublicationInput {
   };
 }
 export function imageUrls(html: string) {
-  return [...new Set([...html.matchAll(/<img\b[^>]*\bsrc="([^"]*)"/gi)].map(m => m[1].replace(/&amp;/g, '&')))];
+  return [...new Set([...html.matchAll(/(?:<img\b[^>]*\bsrc|\bbackground)="([^"]*)"/gi)].map(m => m[1].replace(/&amp;/g, '&')))];
 }
 export async function runPreflight(input: PublicationInput, env: Env) {
   const html = await renderEmail(input.campaign, input.language, input.brand);
@@ -35,6 +38,8 @@ export async function runPreflight(input: PublicationInput, env: Env) {
   const campaignImages = new Set([
     input.campaign.content[input.language].heroImage,
     input.campaign.content[input.language].applicationImage,
+    ...campaignBackgrounds(input.campaign).map(item => resolveBackground(item.background)).flatMap(b => b.kind === 'image' ? [b.image] : []),
+    ...(input.campaign.sections ?? []).filter(s => s.enabled).flatMap(s => blockRegistry[s.type].fields.filter(f => f.kind === 'image').map(f => s.content[input.language][f.key])),
   ]);
   for (const url of images) {
     const kind = 'images' as const;
