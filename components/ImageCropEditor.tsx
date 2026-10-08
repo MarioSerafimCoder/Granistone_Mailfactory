@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { Crop, RotateCcw } from 'lucide-react';
-import { baseCropRect, cropControlsFromRect, cropHandles, cropRectFromControls, moveCropRect, resizeCropRect, type CropHandle, type CropRect } from '@/lib/image-crop';
+import { Check, Crop, RotateCcw } from 'lucide-react';
+import { baseCropRect, cropControlsFromRect, cropHandles, cropOutputSize, cropRectFromControls, fitCropRectToRatio, moveCropRect, resizeCropRect, type CropHandle, type CropRect } from '@/lib/image-crop';
 import { online } from '@/lib/online';
 import { Modal } from './ui';
 
@@ -25,7 +25,8 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
   src: string; alt: string; width: number; height: number;
   onApply: (url: string) => void; onClose: () => void;
 }) {
-  const [zoom, setZoom] = useState(1); const [x, setX] = useState(50); const [y, setY] = useState(50);
+  const [aspectLocked, setAspectLocked] = useState(true);
+  const [selection, setSelection] = useState<{ src: string; rect: CropRect }>();
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [loaded, setLoaded] = useState<{ src: string; image: HTMLImageElement }>();
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -33,7 +34,11 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
   const source = loaded?.src === src ? loaded.image : undefined;
   const sourceWidth = source?.naturalWidth ?? 1;
   const sourceHeight = source?.naturalHeight ?? 1;
-  const rect = cropRectFromControls(sourceWidth, sourceHeight, width, height, zoom, x, y);
+  const rect = selection?.src === src ? selection.rect : baseCropRect(sourceWidth, sourceHeight, width, height);
+  const ratioWidth = aspectLocked ? width : rect.width;
+  const ratioHeight = aspectLocked ? height : rect.height;
+  const { zoom, x, y } = cropControlsFromRect(rect, sourceWidth, sourceHeight, ratioWidth, ratioHeight);
+  const outputSize = cropOutputSize(rect, width, height, aspectLocked);
   const overflowX = sourceWidth - rect.width;
   const overflowY = sourceHeight - rect.height;
 
@@ -48,12 +53,23 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
   }, [src]);
 
   useEffect(() => {
-    if (source && canvas.current) drawPreview(canvas.current, source, rect, width, height);
-  }, [source, width, height, rect]);
+    if (source && canvas.current) drawPreview(canvas.current, source, rect, outputSize.width, outputSize.height);
+  }, [source, rect, outputSize.width, outputSize.height]);
 
   function applyRect(next: CropRect) {
-    const controls = cropControlsFromRect(next, sourceWidth, sourceHeight, width, height);
-    setZoom(controls.zoom); setX(controls.x); setY(controls.y);
+    setSelection({ src, rect: next });
+  }
+
+  function changeControl(nextZoom: number, nextX: number, nextY: number) {
+    applyRect(cropRectFromControls(sourceWidth, sourceHeight, ratioWidth, ratioHeight, nextZoom, nextX, nextY));
+  }
+
+  function toggleAspectRatio() {
+    if (aspectLocked) { setAspectLocked(false); return; }
+    const fitted = fitCropRectToRatio(rect, width, height);
+    const controls = cropControlsFromRect(fitted, sourceWidth, sourceHeight, width, height);
+    applyRect(cropRectFromControls(sourceWidth, sourceHeight, width, height, controls.zoom, controls.x, controls.y));
+    setAspectLocked(true);
   }
 
   function beginDrag(event: PointerEvent<HTMLElement>, kind: Drag['kind']) {
@@ -76,7 +92,7 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
     } else {
       const sourceDx = dx / bounds.width * sourceWidth, sourceDy = dy / bounds.height * sourceHeight;
       applyRect(start.handle
-        ? resizeCropRect(start.rect, start.handle, sourceDx, sourceDy, sourceWidth, sourceHeight, width, height)
+        ? resizeCropRect(start.rect, start.handle, sourceDx, sourceDy, sourceWidth, sourceHeight, width, height, aspectLocked)
         : moveCropRect(start.rect, sourceDx, sourceDy, sourceWidth, sourceHeight));
     }
   }
@@ -92,7 +108,7 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
     const dx = event.key === 'ArrowLeft' ? -sourceWidth * step : event.key === 'ArrowRight' ? sourceWidth * step : 0;
     const dy = event.key === 'ArrowUp' ? -sourceHeight * step : event.key === 'ArrowDown' ? sourceHeight * step : 0;
     applyRect(handle
-      ? resizeCropRect(rect, handle, dx, dy, sourceWidth, sourceHeight, width, height)
+      ? resizeCropRect(rect, handle, dx, dy, sourceWidth, sourceHeight, width, height, aspectLocked)
       : moveCropRect(rect, dx, dy, sourceWidth, sourceHeight));
   }
 
@@ -101,13 +117,13 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
     setBusy(true); setError('');
     try {
       const output = canvas.current;
-      const pixels = drawPreview(output, source, rect, width, height).getImageData(0, 0, width, height).data;
+      const pixels = drawPreview(output, source, rect, outputSize.width, outputSize.height).getImageData(0, 0, outputSize.width, outputSize.height).data;
       let transparent = false;
       for (let index = 3; index < pixels.length; index += 4) { if (pixels[index] < 255) { transparent = true; break; } }
       const mime = transparent ? 'image/png' : 'image/jpeg';
       const blob = await new Promise<Blob | null>(resolve => output.toBlob(resolve, mime, .94));
       if (!blob) throw new Error('Não foi possível gerar o recorte.');
-      const asset = await online.assets.upload(blob, { fileName: `recorte-${width}x${height}.${transparent ? 'png' : 'jpg'}`, name: `${alt || 'Imagem'} · recorte`, alt, category: 'outro' });
+      const asset = await online.assets.upload(blob, { fileName: `recorte-${outputSize.width}x${outputSize.height}.${transparent ? 'png' : 'jpg'}`, name: `${alt || 'Imagem'} · recorte`, alt, category: 'outro' });
       onApply(asset.url); onClose();
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Não foi possível salvar o recorte. Tente novamente.'); }
     finally { setBusy(false); }
@@ -117,6 +133,11 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
     <div className="crop-layout">
       <div className="crop-source-panel">
         <p className="crop-panel-label">Selecione a área da foto</p>
+        <button type="button" className={`crop-ratio-toggle${aspectLocked ? ' active' : ''}`} aria-label="Manter proporção recomendada" aria-pressed={aspectLocked} aria-describedby="crop-ratio-help" disabled={busy || !source} onClick={toggleAspectRatio}>
+          <span className="crop-ratio-check" aria-hidden="true">{aspectLocked && <Check size={14} strokeWidth={3} />}</span>
+          Manter proporção recomendada · {width} × {height}
+        </button>
+        <p className="crop-ratio-help" id="crop-ratio-help">Desmarque a proporção para criar um recorte personalizado arrastando as bordas ou os cantos.</p>
         <div className="crop-stage" style={{ aspectRatio: `${sourceWidth}/${sourceHeight}`, maxWidth: source ? Math.min(640, 480 * sourceWidth / sourceHeight) : 640 }}
           onPointerDown={event => beginDrag(event, 'selection')} onPointerMove={event => continueDrag(event, 'selection')}
           onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={endDrag}>
@@ -136,24 +157,24 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
         <p className="muted" id="crop-instructions">Arraste a área para mover. Puxe os cantos ou as bordas para definir o recorte. Use as setas para ajustar; Shift + seta move mais rápido.</p>
       </div>
       <div className="crop-controls">
-        <div className="crop-note"><Crop size={20} /><div><strong>{width} × {height} px</strong><p>O recorte será salvo como uma nova imagem e aplicado ao e-mail. A foto original será preservada.</p></div></div>
+        <div className="crop-note"><Crop size={20} /><div><strong>{outputSize.width} × {outputSize.height} px{!aspectLocked ? ' · recorte personalizado' : ''}</strong><p>O recorte será salvo como uma nova imagem e aplicado ao e-mail. A foto original será preservada.</p></div></div>
         <div className="crop-result"><p className="crop-panel-label">Resultado no e-mail</p>
-          <canvas ref={canvas} width={width} height={height} tabIndex={source && !busy ? 0 : -1} role="img" aria-label="Prévia final do recorte. Arraste para ajustar a posição." aria-describedby="crop-instructions"
+          <canvas ref={canvas} width={outputSize.width} height={outputSize.height} tabIndex={source && !busy ? 0 : -1} role="img" aria-label="Prévia final do recorte. Arraste para ajustar a posição." aria-describedby="crop-instructions"
             onPointerDown={event => beginDrag(event, 'preview')} onPointerMove={event => continueDrag(event, 'preview')}
             onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={endDrag}
             onKeyDown={event => {
               if (!source || busy || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
               event.preventDefault(); const step = event.shiftKey ? 10 : 2;
-              if (overflowX > .01 && event.key === 'ArrowLeft') setX(value => Math.min(100, value + step));
-              if (overflowX > .01 && event.key === 'ArrowRight') setX(value => Math.max(0, value - step));
-              if (overflowY > .01 && event.key === 'ArrowUp') setY(value => Math.min(100, value + step));
-              if (overflowY > .01 && event.key === 'ArrowDown') setY(value => Math.max(0, value - step));
+              if (overflowX > .01 && event.key === 'ArrowLeft') changeControl(zoom, Math.min(100, x + step), y);
+              if (overflowX > .01 && event.key === 'ArrowRight') changeControl(zoom, Math.max(0, x - step), y);
+              if (overflowY > .01 && event.key === 'ArrowUp') changeControl(zoom, x, Math.min(100, y + step));
+              if (overflowY > .01 && event.key === 'ArrowDown') changeControl(zoom, x, Math.max(0, y - step));
             }} />
         </div>
         <fieldset disabled={busy || !source}>
-          <label>Zoom · {Math.round(zoom * 100)}%<input aria-label="Zoom" type="range" min="1" max="8" step="0.01" value={zoom} onChange={event => setZoom(Number(event.target.value))} /></label>
-          <label>Posição horizontal · {Math.round(x)}%<input aria-label="Posição horizontal" type="range" min="0" max="100" step="0.1" value={x} disabled={overflowX < .01} onChange={event => setX(Number(event.target.value))} /></label>
-          <label>Posição vertical · {Math.round(y)}%<input aria-label="Posição vertical" type="range" min="0" max="100" step="0.1" value={y} disabled={overflowY < .01} onChange={event => setY(Number(event.target.value))} /></label>
+          <label>Zoom · {Math.round(zoom * 100)}%<input aria-label="Zoom" type="range" min="1" max="8" step="0.01" value={zoom} onChange={event => changeControl(Number(event.target.value), x, y)} /></label>
+          <label>Posição horizontal · {Math.round(x)}%<input aria-label="Posição horizontal" type="range" min="0" max="100" step="0.1" value={x} disabled={overflowX < .01} onChange={event => changeControl(zoom, Number(event.target.value), y)} /></label>
+          <label>Posição vertical · {Math.round(y)}%<input aria-label="Posição vertical" type="range" min="0" max="100" step="0.1" value={y} disabled={overflowY < .01} onChange={event => changeControl(zoom, x, Number(event.target.value))} /></label>
           <button className="button" type="button" onClick={() => { const center = baseCropRect(sourceWidth, sourceHeight, width, height); applyRect(center); }}><RotateCcw size={14} /> Redefinir recorte</button>
         </fieldset>
       </div>

@@ -30,7 +30,32 @@ export function moveCropRect(rect: CropRect, dx: number, dy: number, sourceWidth
   return { ...rect, left: clamp(rect.left + dx, 0, sourceWidth - rect.width), top: clamp(rect.top + dy, 0, sourceHeight - rect.height) };
 }
 
-export function resizeCropRect(rect: CropRect, handle: CropHandle, dx: number, dy: number, sourceWidth: number, sourceHeight: number, targetWidth: number, targetHeight: number): CropRect {
+export function fitCropRectToRatio(rect: CropRect, targetWidth: number, targetHeight: number): CropRect {
+  const ratio = targetWidth / targetHeight;
+  const width = Math.min(rect.width, rect.height * ratio);
+  const height = width / ratio;
+  return { left: rect.left + (rect.width - width) / 2, top: rect.top + (rect.height - height) / 2, width, height };
+}
+
+export function cropOutputSize(rect: CropRect, targetWidth: number, targetHeight: number, locked: boolean) {
+  if (locked) return { width: targetWidth, height: targetHeight };
+  const longSide = Math.max(targetWidth, targetHeight);
+  return rect.width >= rect.height
+    ? { width: longSide, height: Math.max(1, Math.round(longSide * rect.height / rect.width)) }
+    : { width: Math.max(1, Math.round(longSide * rect.width / rect.height)), height: longSide };
+}
+
+export function resizeCropRect(rect: CropRect, handle: CropHandle, dx: number, dy: number, sourceWidth: number, sourceHeight: number, targetWidth: number, targetHeight: number, lockAspectRatio = true): CropRect {
+  if (!lockAspectRatio) {
+    const minWidth = Math.min(rect.width, Math.max(1, sourceWidth / 8));
+    const minHeight = Math.min(rect.height, Math.max(1, sourceHeight / 8));
+    let left = rect.left, top = rect.top, right = rect.left + rect.width, bottom = rect.top + rect.height;
+    if (handle.includes('w')) left = clamp(left + dx, 0, right - minWidth);
+    if (handle.includes('e')) right = clamp(right + dx, left + minWidth, sourceWidth);
+    if (handle.includes('n')) top = clamp(top + dy, 0, bottom - minHeight);
+    if (handle.includes('s')) bottom = clamp(bottom + dy, top + minHeight, sourceHeight);
+    return { left, top, width: right - left, height: bottom - top };
+  }
   const ratio = targetWidth / targetHeight;
   const baseWidth = baseCropRect(sourceWidth, sourceHeight, targetWidth, targetHeight).width;
   const right = rect.left + rect.width, bottom = rect.top + rect.height;

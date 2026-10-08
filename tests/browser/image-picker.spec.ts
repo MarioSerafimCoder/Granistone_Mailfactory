@@ -107,3 +107,60 @@ test('legacy material does not hide folder images; selection and crop preserve t
   await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(frame.locator('[data-image-slot="hero"] img')).toHaveAttribute('src', 'https://images.example.com/crop.png');
 });
+
+test('crop ratio starts locked and a custom selection saves without stretching', async ({ page }) => {
+  const campaign = createCampaign({ title: 'Recorte livre', template: 'product-commercial' });
+  await page.addInitScript(value => localStorage.setItem('granistone-mail-studio:v2', JSON.stringify(value)), { version: 2, campaigns: [campaign], brand: defaultBrand });
+  await page.goto('/');
+  const source = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 600; canvas.height = 900;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = '#2370aa'; context.fillRect(0, 0, 600, 900);
+    context.clearRect(100, 100, 100, 100);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  const photo = Buffer.from(source, 'base64');
+  const asset = { id: 'photo', name: 'Pedra', fileName: 'pedra.png', mimeType: 'image/png', width: 600, height: 900, orientation: 'vertical', fileSize: photo.length, url: 'https://images.example.com/pedra.png', alt: 'Pedra natural', category: 'material', folderPaths: [], createdAt: '', updatedAt: '' };
+  await page.route('https://images.example.com/**', route => route.fulfill({ body: photo, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' } }));
+  await page.route('**/api/assets?**', route => route.fulfill({ json: [asset] }));
+  await page.route('**/api/materials', route => route.fulfill({ json: [] }));
+  await page.getByRole('button', { name: campaign.title, exact: true }).click();
+  await expect(page.locator('.preview-stage iframe')).toHaveAttribute('aria-busy', 'false');
+  await page.frameLocator('.preview-stage iframe').getByRole('button', { name: 'Adicionar foto do produto' }).click();
+  const picker = page.getByRole('dialog', { name: 'Imagem principal', exact: true });
+  await picker.getByRole('button', { name: /Abrir biblioteca de imagens/ }).click();
+  await picker.locator('.asset-card').getByRole('button', { name: 'Usar imagem' }).click();
+  await picker.getByRole('button', { name: 'Editar corte e tamanho' }).click();
+  const crop = page.getByRole('dialog', { name: 'Editar corte da imagem', exact: true });
+  const ratio = crop.getByRole('button', { name: 'Manter proporção recomendada' });
+  await expect(ratio).toHaveAttribute('aria-pressed', 'true');
+  await expect(crop.getByText('Desmarque a proporção para criar um recorte personalizado arrastando as bordas ou os cantos.')).toBeVisible();
+  await ratio.click();
+  await expect(ratio).toHaveAttribute('aria-pressed', 'false');
+  const before = await crop.locator('.crop-selection').boundingBox();
+  const edge = (await crop.getByRole('button', { name: 'Arrastar borda direita' }).boundingBox())!;
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2);
+  await page.mouse.down(); await page.mouse.move(edge.x + edge.width / 2 - 80, edge.y + edge.height / 2, { steps: 5 }); await page.mouse.up();
+  const after = await crop.locator('.crop-selection').boundingBox();
+  expect(after!.width).toBeLessThan(before!.width - 40);
+  expect(Math.abs(after!.height - before!.height)).toBeLessThan(2);
+  const preview = await crop.locator('canvas').evaluate((canvas: HTMLCanvasElement) => ({ width: canvas.width, height: canvas.height, image: canvas.toDataURL('image/png') }));
+  expect(preview.width / preview.height).toBeCloseTo(after!.width / after!.height, 2);
+  expect(preview.height).not.toBe(700);
+  let upload: Buffer | null = null; let uploadMime = '';
+  await page.route('**/api/assets', route => {
+    upload = route.request().postDataBuffer();
+    uploadMime = route.request().headers()['content-type'];
+    expect(['image/png', 'image/jpeg']).toContain(uploadMime);
+    return route.fulfill({ json: { ...asset, id: 'custom-crop', url: 'https://images.example.com/custom-crop.png', width: preview.width, height: preview.height } });
+  });
+  await crop.getByRole('button', { name: 'Salvar recorte' }).click();
+  await expect(crop).toHaveCount(0);
+  expect(upload).not.toBeNull();
+  const saved = await page.evaluate(async data => {
+    const image = new Image(); image.src = data; await image.decode();
+    return { width: image.width, height: image.height };
+  }, `data:${uploadMime};base64,${upload!.toString('base64')}`);
+  expect(saved).toEqual({ width: preview.width, height: preview.height });
+  await expect(picker.locator('.image-current img')).toHaveAttribute('src', 'https://images.example.com/custom-crop.png');
+});
