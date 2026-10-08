@@ -23,9 +23,11 @@ export function designChecks(c: Campaign, lang: Language): PreflightCheck[] {
     if (!section.enabled) continue;
     for (const field of blockRegistry[section.type].fields) {
       const value = section.content[lang][field.key];
+      const before = checks.length;
       if (field.required && !value.trim()) add('error', `${blockRegistry[section.type].name}: preencha ${field.label.toLowerCase()}.`, field.kind === 'image' || field.kind === 'alt' ? 'images' : 'content');
       if ((field.kind === 'image' || field.kind === 'url') && value && !publicHttpsUrl(value)) add('error', `${field.label}: use um endereço HTTPS público.`, field.kind === 'image' ? 'images' : 'links');
       if (/^\[.+\]$/.test(value)) add('warning', `${blockRegistry[section.type].name}: substitua o placeholder ${value}.`, 'content');
+      for (const check of checks.slice(before)) { check.sectionId = section.id; check.field = field.key; }
     }
   }
   for (const item of campaignBackgrounds(c)) {

@@ -3,6 +3,7 @@ import '@maily-to/core/style.css';
 import './globals.css';
 import './collaboration.css';
 import './theme.css';
+import './canvas.css';
 export const metadata: Metadata = {
   title: 'Granistone Mail Studio',
   description: 'Do planejamento de CRM a e-mails consistentes com a marca Granistone.',

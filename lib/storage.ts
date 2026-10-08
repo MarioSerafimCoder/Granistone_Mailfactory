@@ -1,4 +1,4 @@
-import { validRich } from '@/lib/rich-validation';
+import { validRich, validRichFields } from '@/lib/rich-validation';
 import { defaultBrand } from '@/data/brand';
 import { sectionsValid } from '@/blocks/registry';
 import { designValid } from '@/lib/tokens/backgrounds';
@@ -62,6 +62,7 @@ const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
 export function isCampaign(value: unknown): value is Campaign {
+  if (record(value) && !validRichFields(value.richFields, Object.keys(emptyContent()).filter(k => !/Url|Image|Alt/.test(k)))) return false;
   if (record(value) && ((value.sections !== undefined && !sectionsValid(value.sections)) || (value.design !== undefined && !designValid(value.design)))) return false;
   if (
     !record(value) ||

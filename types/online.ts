@@ -16,6 +16,8 @@ export interface OnlineMaterial extends Omit<StoneMaterial, 'images' | 'heroImag
   applicationAssetId?: string; assetIds: string[];
 }
 export interface PreflightCheck {
+  sectionId?: string;
+  field?: string;
   id: string; category: 'content' | 'images' | 'links' | 'compatibility';
   severity: 'pass' | 'warning' | 'error'; message: string;
 }

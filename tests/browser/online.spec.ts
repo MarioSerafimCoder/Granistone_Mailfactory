@@ -23,16 +23,16 @@ test('large transparent logos preserve alpha after client optimization', async (
   await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Logo transparente');
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
-  await page.frameLocator('.preview-stage iframe').getByRole('button', { name: 'Adicionar capa editorial' }).click();
-  await page.getByRole('dialog', { name: 'Imagem principal' }).getByRole('button', { name: 'Computador', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar Imagem principal', exact: true }).click();
+  await page.getByRole('complementary', { name: 'Propriedades do elemento' }).getByRole('button', { name: 'Computador', exact: true }).click();
   const base64 = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 1800; canvas.height = 900;
     const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#111'; ctx.fillRect(300, 100, 900, 600);
     return canvas.toDataURL().split(',')[1];
   });
-  await page.locator('dialog input[aria-label="Carregar imagem principal"]').setInputFiles({ name: 'logo-transparente.png', mimeType: 'image/png', buffer: Buffer.from(base64, 'base64') });
+  await page.locator('.canvas-inspector input[aria-label="Carregar imagem principal"]').setInputFiles({ name: 'logo-transparente.png', mimeType: 'image/png', buffer: Buffer.from(base64, 'base64') });
   await expect(page.getByText('logo-transparente.png · imagem pronta')).toBeVisible();
-  const src = await page.locator('dialog .image-dropzone img').getAttribute('src'); expect(src).toMatch(/^data:image\/png/);
+  const src = await page.locator('.canvas-inspector .image-dropzone img').getAttribute('src'); expect(src).toMatch(/^data:image\/png/);
   const alpha = await page.evaluate(async uri => { const image = new Image(); image.src = uri!; await image.decode(); const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height; const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0); return ctx.getImageData(0, 0, 1, 1).data[3]; }, src);
   expect(alpha).toBe(0);
 });

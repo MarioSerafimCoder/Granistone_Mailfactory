@@ -2,7 +2,7 @@ import type { Language, TemplateId } from '@/types/campaign';
 import type { Section, SectionType } from '@/types/design';
 import { backgroundValid, colorValid, backgroundColors } from '@/lib/tokens/backgrounds';
 import { sectionRenderers } from './renderers';
-import { validRich } from '@/lib/rich-validation';
+import { validRich, validRichFields } from '@/lib/rich-validation';
 export interface BlockField { key: string; label: string; kind: 'text' | 'textarea' | 'image' | 'url' | 'alt'; required?: boolean }
 const title: BlockField = { key: 'title', label: 'Título do bloco', kind: 'text' };
 const text: BlockField = { key: 'text', label: 'Texto do bloco', kind: 'textarea' };
@@ -44,6 +44,7 @@ export function isSection(value: unknown): value is Section {
   if (!value || typeof value !== 'object') return false;
   const s = value as Section;
   const d = typeof s.type === 'string' && Object.hasOwn(blockRegistry, s.type) ? blockRegistry[s.type] : undefined;
+  if (!validRichFields(s.richFields, d?.fields.filter(f => ['text', 'textarea'].includes(f.kind)).map(f => f.key) ?? [])) return false;
   if (s.richBody !== undefined && (!s.richBody || typeof s.richBody !== 'object' || !Object.entries(s.richBody).every(([lang, body]) => ['pt', 'en', 'es'].includes(lang) && validRich(body)))) return false;
   return !!d && typeof s.id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(s.id) && typeof s.enabled === 'boolean' &&
     !!s.content && ['pt', 'en', 'es'].every(lang => d.validate(s.content[lang as Language])) &&

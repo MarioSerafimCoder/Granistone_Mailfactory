@@ -46,13 +46,13 @@ test('HTTPS image entry and guided publication remain clear at desktop and narro
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
   await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-  await page.frameLocator('.preview-stage iframe').getByRole('button', { name: 'Adicionar capa editorial' }).click();
-  const image = page.getByRole('dialog', { name: 'Imagem principal' });
+  await page.getByRole('button', { name: 'Editar Imagem principal', exact: true }).click();
+  const image = page.getByRole('complementary', { name: 'Propriedades do elemento' });
   await image.getByRole('button', { name: 'Link da web' }).click();
   await image.getByLabel('URL · imagem principal').fill('http://example.com/photo.png');
   await image.getByRole('button', { name: 'Usar imagem da web' }).click();
   await expect(image.getByText('Use uma URL pública HTTPS.')).toBeVisible();
-  await image.getByRole('button', { name: 'Fechar' }).click();
+  await page.getByRole('button', { name: 'Recolher propriedades' }).click();
   await page.getByRole('button', { name: 'Publicar online' }).click();
   const publish = page.getByRole('dialog', { name: 'Publicar e-mail · PT' });
   await expect(publish.getByRole('heading', { name: 'STATUS' })).toBeVisible();
@@ -62,7 +62,7 @@ test('HTTPS image entry and guided publication remain clear at desktop and narro
   await expect(publish.getByText('Ver detalhes do pré-flight')).toBeVisible();
   await expect(publish.getByRole('button', { name: 'Publicar versão' })).toBeDisabled();
   await publish.getByRole('button', { name: 'Fechar' }).click();
-  for (const [width, height] of [[1366, 768], [1440, 900], [1920, 1080], [390, 844]]) {
+  for (const [width, height] of [[1366, 768], [1440, 900], [1920, 1080]]) {
     await page.setViewportSize({ width, height });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }

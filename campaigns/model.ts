@@ -7,7 +7,7 @@ export const richText = (text: string): RichNode => ({
     .map((line) => ({ type: 'paragraph', content: line ? [{ type: 'text', text: line }] : [] })),
 });
 export const plainText = (node: RichNode): string =>
-  node.text ?? node.content?.map(plainText).join(node.type === 'doc' ? '\n' : '') ?? '';
+  node.type === 'hardBreak' ? '\n' : node.text ?? node.content?.map(plainText).join(['doc', 'bulletList', 'orderedList', 'listItem'].includes(node.type) ? '\n' : '') ?? '';
 export function emptyContent(): CampaignContent {
   return {
     subject: '',
@@ -93,8 +93,8 @@ export function reconcileLanguageState(previous: Campaign, next: Campaign, actor
   const sharedChanged = ['template', 'blocks', 'alignment', 'materialId', 'design'].some(key => JSON.stringify(previous[key as keyof Campaign]) !== JSON.stringify(next[key as keyof Campaign]));
   const now = new Date().toISOString();
   for (const lang of ['pt', 'en', 'es'] as const) {
-    const sectionView = (c: Campaign) => c.sections?.map(s => ({ ...s, content: s.content[lang], richBody: s.richBody?.[lang] }));
-    const changed = sharedChanged || JSON.stringify(previous.content[lang]) !== JSON.stringify(next.content[lang]) || JSON.stringify(sectionView(previous)) !== JSON.stringify(sectionView(next));
+    const sectionView = (c: Campaign) => c.sections?.map(s => ({ ...s, content: s.content[lang], richBody: s.richBody?.[lang], richFields: s.richFields?.[lang] }));
+    const changed = sharedChanged || JSON.stringify(previous.richFields?.[lang]) !== JSON.stringify(next.richFields?.[lang]) || JSON.stringify(previous.content[lang]) !== JSON.stringify(next.content[lang]) || JSON.stringify(sectionView(previous)) !== JSON.stringify(sectionView(next));
     const status = changed && ['Aprovado', 'Exportado'].includes(state[lang].status) ? 'Em produção' : state[lang].status;
     state[lang] = { ...state[lang], status, updatedAt: changed ? now : before[lang].updatedAt };
     if (status === 'Aprovado') {

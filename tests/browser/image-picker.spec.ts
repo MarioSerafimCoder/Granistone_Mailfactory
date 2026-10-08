@@ -22,9 +22,9 @@ test('legacy material does not hide folder images; selection and crop preserve t
   await page.route('**/api/materials', route => route.fulfill({ json: [] }));
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
   await expect(page.locator('.preview-stage iframe')).toHaveAttribute('aria-busy', 'false');
-  const frame = page.frameLocator('.preview-stage iframe');
-  await frame.getByRole('button', { name: 'Adicionar foto do produto' }).click();
-  const picker = page.getByRole('dialog', { name: 'Imagem principal', exact: true });
+  const emailCanvas = page.locator('.visual-email');
+  await page.getByRole('button', { name: 'Editar Imagem principal', exact: true }).click();
+  const picker = page.getByRole('complementary', { name: 'Propriedades do elemento' });
   await picker.getByRole('button', { name: /Abrir biblioteca de imagens/ }).click();
   await picker.getByRole('button', { name: 'Imagens Catálogo 2 imagens', exact: true }).click();
   await picker.getByRole('button', { name: 'Amazonita Amazon Green 2 imagens', exact: true }).click();
@@ -100,12 +100,12 @@ test('legacy material does not hide folder images; selection and crop preserve t
   }, { preview, saved: `data:image/png;base64,${upload!.toString('base64')}` });
   expect(difference).toEqual({ width: 1200, height: 700, maxDifference: 0 });
   await expect(picker.locator('.image-current img')).toHaveAttribute('src', 'https://images.example.com/crop.png');
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1366, height: 768 });
   expect(await picker.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
-  await picker.screenshot({ path: 'test-results/image-picker-mobile.png' });
-  await picker.getByRole('button', { name: 'Concluir', exact: true }).click();
+  await picker.screenshot({ path: 'test-results/image-picker-desktop.png' });
+  await page.getByRole('button', { name: 'Recolher propriedades' }).click();
   await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
-  await expect(frame.locator('[data-image-slot="hero"] img')).toHaveAttribute('src', 'https://images.example.com/crop.png');
+  await expect(emailCanvas.locator('.canvas-picture img').first()).toHaveAttribute('src', 'https://images.example.com/crop.png');
 });
 
 test('crop ratio starts locked and a custom selection saves without stretching', async ({ page }) => {
@@ -126,8 +126,8 @@ test('crop ratio starts locked and a custom selection saves without stretching',
   await page.route('**/api/materials', route => route.fulfill({ json: [] }));
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
   await expect(page.locator('.preview-stage iframe')).toHaveAttribute('aria-busy', 'false');
-  await page.frameLocator('.preview-stage iframe').getByRole('button', { name: 'Adicionar foto do produto' }).click();
-  const picker = page.getByRole('dialog', { name: 'Imagem principal', exact: true });
+  await page.getByRole('button', { name: 'Editar Imagem principal', exact: true }).click();
+  const picker = page.getByRole('complementary', { name: 'Propriedades do elemento' });
   await picker.getByRole('button', { name: /Abrir biblioteca de imagens/ }).click();
   await picker.locator('.asset-card').getByRole('button', { name: 'Usar imagem' }).click();
   await picker.getByRole('button', { name: 'Editar corte e tamanho' }).click();

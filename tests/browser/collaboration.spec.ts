@@ -31,18 +31,18 @@ test('members UI grants access; two browsers coordinate editing and show presenc
     await expect(second.locator('.edit-lease-bar')).toContainText('está editando');
     await expect(second.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
     await expect(page.locator('.topbar-team summary .member-avatar[title="Flavia"]').first()).toBeVisible({ timeout: 20000 });
-    await page.getByLabel('Headline', { exact: true }).fill('Texto da equipe');
+    await page.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true }).fill('Texto da equipe');
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await page.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
     await expect(page.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
     await second.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
     await expect(second.getByLabel('Status da campanha', { exact: true })).toBeEnabled();
-    await expect(second.getByLabel('Headline', { exact: true })).toHaveValue('Texto da equipe');
-    await second.getByLabel('Headline', { exact: true }).fill('Texto atualizado por Flavia');
+    await expect(second.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true })).toHaveText('Texto da equipe');
+    await second.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true }).fill('Texto atualizado por Flavia');
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await second.setViewportSize({ width: 390, height: 844 });
+    await second.setViewportSize({ width: 1366, height: 768 });
     expect(await second.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
-    await second.screenshot({ path: 'test-results/collaboration-mobile.png', fullPage: true });
+    await second.screenshot({ path: 'test-results/collaboration-desktop.png', fullPage: true });
   } finally { await context.close(); }
 });
 test('unauthorized account gets a dedicated access screen', async ({ page }) => {

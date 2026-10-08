@@ -3,6 +3,7 @@ import type { Blueprint, Section, SectionType } from '@/types/design';
 import { createSection, blockRegistry } from './registry';
 import { defaultDesign } from '@/lib/tokens/backgrounds';
 import { plainText, createCampaign } from '@/campaigns/model';
+import { fieldDocument } from '@/lib/canvas-model';
 export function duplicateCampaign(source: Campaign): Campaign {
   const now = new Date().toISOString();
   const copy = structuredClone(source);
@@ -25,13 +26,23 @@ export function moveSectionTo(sections: Section[], from: number, to: number): Se
 export function convertSections(campaign: Campaign): Section[] {
   if (campaign.sections) return structuredClone(campaign.sections);
   const sections: Section[] = [];
+  function copyFormatting(section: Section, mapping: Record<string, string[]>) {
+    for (const lang of ['pt', 'en', 'es'] as const) for (const [target, fields] of Object.entries(mapping)) {
+      if (!fields.some(field => campaign.richFields?.[lang]?.[field])) continue;
+      const documents = fields.filter(field => String(campaign.content[lang][field as keyof typeof campaign.content.pt] ?? '').length).map(field => fieldDocument(String(campaign.content[lang][field as keyof typeof campaign.content.pt] ?? ''), campaign.richFields?.[lang]?.[field]));
+      const doc = { type: 'doc', content: documents.flatMap(doc => doc.content ?? []) };
+      if (plainText(doc) === section.content[lang][target]) section.richFields = { ...section.richFields, [lang]: { ...section.richFields?.[lang], [target]: doc } };
+    }
+  }
   function add(type: SectionType, values: (lang: Language) => Record<string, string>, enabled = true) {
     const section = createSection(type); section.enabled = enabled;
     for (const lang of ['pt', 'en', 'es'] as const) section.content[lang] = { ...Object.fromEntries(blockRegistry[type].fields.map(f => [f.key, ''])), ...values(lang) };
     sections.push(section);
   }
   add('centeredText', lang => ({ title: campaign.content[lang].headline, text: [campaign.content[lang].kicker, campaign.content[lang].subheadline].filter(Boolean).join('\n') }));
+  copyFormatting(sections[0], { title: ['headline'], text: ['kicker', 'subheadline'] });
   for (const block of campaign.blocks) {
+    const start = sections.length;
     if (block.id === 'hero' || block.id === 'application') {
       const primary = block.id === 'hero'; add('banner', lang => ({ image: campaign.content[lang][primary ? 'heroImage' : 'applicationImage'], alt: campaign.content[lang][primary ? 'heroAlt' : 'applicationAlt'] }), block.enabled);
     } else if (block.id === 'cta') add('cta', lang => ({ label: campaign.content[lang].cta, link: campaign.content[lang].ctaUrl }), block.enabled);
@@ -43,6 +54,12 @@ export function convertSections(campaign: Campaign): Section[] {
       add('centeredText', lang => ({ title: campaign.content[lang][`${id}Title`], text: campaign.content[lang][`${id}Text`] }), block.enabled);
       if (id === 'article' && Object.values(campaign.content).some(c => c.articleUrl)) add('cta', lang => ({ label: campaign.content[lang].articleTitle, link: campaign.content[lang].articleUrl }), block.enabled);
     }
+    for (const section of sections.slice(start)) {
+      if (block.id === 'cta') copyFormatting(section, { label: ['cta'] });
+      else if (block.id === 'specs') copyFormatting(section, { title: ['materialName'], text: ['features', 'applications'] });
+      else if (block.id === 'availability') copyFormatting(section, { text: ['availability'] });
+      else if (['article', 'event', 'project'].includes(block.id)) copyFormatting(section, section.type === 'cta' ? { label: [`${block.id}Title`] } : { title: [`${block.id}Title`], text: [`${block.id}Text`] });
+    }
   }
   return sections;
 }
@@ -51,6 +68,7 @@ export function blueprintFromCampaign(campaign: Campaign, keepContent = false): 
   if (!keepContent) for (const section of sections) {
     section.content = blockRegistry[section.type].defaults();
     delete section.richBody;
+    delete section.richFields;
     // Backgrounds are design choices; the user explicitly sees them in the template.
   }
   return { template: campaign.template, sections, design: structuredClone(campaign.design ?? defaultDesign()), alignment: campaign.alignment, language: campaign.language };

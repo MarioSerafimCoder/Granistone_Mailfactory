@@ -1,6 +1,14 @@
 import type { CampaignContent, RichNode, Campaign, Language } from '@/types/campaign';
 import { blockRegistry } from '@/blocks/registry';
 import type { TranslationItem, TranslationResult } from '@/types/online';
+import { plainText } from '@/campaigns/model';
+
+export function richFieldItems(fields: Record<string, RichNode> | undefined, prefix: string): TranslationItem[] {
+  return Object.entries(fields ?? {}).filter(([field]) => field !== 'body').flatMap(([field, doc]) => richItems(doc).map(item => ({ ...item, id: `${prefix}.${field}.${item.id}` })));
+}
+export function translatedFields(fields: Record<string, RichNode> | undefined, prefix: string, result: TranslationResult): Record<string, RichNode> {
+  return Object.fromEntries(Object.entries(fields ?? {}).filter(([field]) => field !== 'body').map(([field, doc]) => [field, translateRich(doc, [], new Map(result.items.filter(item => item.id.startsWith(`${prefix}.${field}.`)).map(item => [item.id.slice(`${prefix}.${field}.`.length), item.text])))]));
+}
 
 const textFields = [
   'subject', 'preheader', 'kicker', 'headline', 'subheadline', 'cta', 'heroAlt',
@@ -53,6 +61,7 @@ export function sectionTranslationItems(campaign: Campaign, language: Language):
   return (campaign.sections ?? []).flatMap((section, index) => [
     ...blockRegistry[section.type].fields.filter(f => !['image', 'url'].includes(f.kind) && !(f.key === 'text' && section.richBody?.[language])).flatMap(f => section.content[language][f.key]?.trim() ? [{ id: `section.${index}.${f.key}`, text: section.content[language][f.key] }] : []),
     ...(section.richBody?.[language] ? richItems(section.richBody[language]).map(item => ({ ...item, id: `section.${index}.${item.id}` })) : []),
+    ...richFieldItems(Object.fromEntries(Object.entries(section.richFields?.[language] ?? {}).filter(([field, doc]) => plainText(doc) === section.content[language][field] && !(field === 'text' && section.richBody?.[language]))), `section.${index}.rich`),
   ]);
 }
 export function applySectionTranslation(campaign: Campaign, target: 'en' | 'es', result: TranslationResult, replace: boolean) {
@@ -64,6 +73,14 @@ export function applySectionTranslation(campaign: Campaign, target: 'en' | 'es',
       else if (replace || !next.content[target][field.key].trim()) next.content[target][field.key] = translated.get(`section.${index}.${field.key}`) ?? next.content[target][field.key];
     }
     if (section.richBody?.pt && (replace || !section.richBody[target])) next.richBody = { ...next.richBody, [target]: translateRich(section.richBody.pt, [], new Map(result.items.filter(item => item.id.startsWith(`section.${index}.body.`)).map(item => [item.id.slice(`section.${index}.`.length), item.text]))) };
+    const rich = translatedFields(section.richFields?.pt, `section.${index}.rich`, result);
+    for (const [field, doc] of Object.entries(rich)) {
+      if (plainText(section.richFields!.pt![field]) !== section.content.pt[field] || (field === 'text' && section.richBody?.pt) || (!replace && section.content[target][field]?.trim())) continue;
+      if (!result.items.some(item => item.id.startsWith(`section.${index}.rich.${field}.`))) continue;
+      next.richFields = { ...next.richFields, [target]: { ...next.richFields?.[target], [field]: doc } };
+      next.content[target][field] = plainText(doc);
+    }
+    if (next.richBody?.[target]) next.content[target].text = plainText(next.richBody[target]);
     return next;
   });
 }

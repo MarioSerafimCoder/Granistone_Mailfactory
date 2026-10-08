@@ -30,20 +30,21 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   await page.getByRole('button', { name: 'Importar 2 campanhas' }).click();
   await expect(page.getByRole('status')).toContainText('2 campanhas importadas');
   await page.getByRole('button', { name: 'Crystal Palace', exact: true }).first().click();
-  await page.getByLabel('Assunto', { exact: true }).fill('Crystal Palace · arquitetura');
-  await page.getByLabel('Preheader', { exact: true }).fill('Conheça a coleção');
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
+  await page.locator('.edit-panel').getByLabel('Assunto', { exact: true }).fill('Crystal Palace · arquitetura');
+  await page.locator('.edit-panel').getByLabel('Preheader', { exact: true }).fill('Conheça a coleção');
   await page.getByLabel('Headline', { exact: true }).fill('Arquitetura com identidade');
-  await page.locator('.tiptap').fill('Um texto produzido no Maily.');
+  await page.locator('.edit-panel .tiptap').fill('Um texto produzido no Maily.');
   await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(page.getByLabel('Headline', { exact: true })).toHaveValue('');
   await page.getByLabel('Headline', { exact: true }).fill('Architecture with identity');
-  await page.getByLabel('Assunto', { exact: true }).fill('Crystal Palace · architecture');
-  await page.locator('.tiptap').fill('English editorial content.');
+  await page.locator('.edit-panel').getByLabel('Assunto', { exact: true }).fill('Crystal Palace · architecture');
+  await page.locator('.edit-panel .tiptap').fill('English editorial content.');
   await page.getByRole('button', { name: 'PORTUGUÊS', exact: true }).click();
   await expect(page.getByLabel('Headline', { exact: true })).toHaveValue(
     'Arquitetura com identidade',
   );
-  await expect(page.locator('.tiptap')).toContainText('Um texto produzido no Maily.');
+  await expect(page.locator('.edit-panel .tiptap')).toContainText('Um texto produzido no Maily.');
   await expect(page.locator('iframe')).toHaveAttribute('title', 'Preview desktop do e-mail');
   await page.getByRole('button', { name: 'Preview mobile', exact: true }).click();
   await expect(page.locator('iframe')).toHaveAttribute('title', 'Preview mobile do e-mail');
@@ -94,6 +95,7 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   await expect(page.getByLabel('Status da campanha', { exact: true })).toHaveValue('Exportado');
   await page.reload();
   await page.getByRole('button', { name: 'Crystal Palace', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await expect(page.getByLabel('Headline', { exact: true })).toHaveValue(
     'Arquitetura com identidade',
   );
@@ -113,6 +115,7 @@ test('template library, creation, newsletter reorder and narrow screen', async (
   await page.getByRole('button', { name: /Newsletter.*Usar template/ }).click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Newsletter de teste');
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByRole('button', { name: 'Estrutura', exact: true }).click();
   await page.getByRole('button', { name: 'Subir Evento', exact: true }).click();
   await expect(page.getByLabel('Template', { exact: true })).toHaveValue('newsletter');
@@ -141,6 +144,7 @@ test('translation keeps Portuguese and creates Spanish, while visual library sta
   await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Campanha trilíngue');
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByLabel('Headline', { exact: true }).fill('Pedra natural');
   await page.getByRole('button', { name: 'Converter para espanhol', exact: true }).click();
   await page.getByRole('button', { name: 'Gerar em espanhol', exact: true }).click();
@@ -191,6 +195,7 @@ test('new campaign dialog creates the email with the selected template', async (
   await expect(page.getByText('Vitrine em duas colunas: fotografia à esquerda e chamada comercial à direita.')).toBeVisible();
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Campanha comercial');
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByRole('button', { name: 'Estrutura', exact: true }).click();
   await expect(page.getByLabel('Template', { exact: true })).toHaveValue('product-commercial');
 });

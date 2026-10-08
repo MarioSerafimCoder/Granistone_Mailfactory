@@ -13,14 +13,12 @@ import {
 } from 'lucide-react';
 import type { BrandSettings, Campaign, Language, TemplateId } from '@/types/campaign';
 import { campaignTypes, statuses } from '@/types/campaign';
-import { changeTemplate, editCampaign, languageStates } from '@/campaigns/model';
+import { changeTemplate, languageStates } from '@/campaigns/model';
 import { saveLabels } from '@/lib/workspace-sync';
 import { editorName, activityTime } from '@/lib/workspace-display';
 import type { SyncMetadata } from '@/types/workspace';
 import { templates, getTemplate, blockLabels, suggestTemplate } from '@/templates/registry';
 import { Field, Select, TextArea, Modal } from './ui';
-import ImagePicker from './ImagePicker';
-import type { ImageSlot } from '@/lib/images';
 import ContentFields from './ContentFields';
 import { ExportDialog } from './ExportDialog';
 import PublishDialog from './PublishDialog';
@@ -33,6 +31,8 @@ import AlignmentControl from './AlignmentControl';
 import SavedDesignDialog from './SavedDesignDialog';
 import { blueprintFromCampaign, convertSections } from '@/blocks/model';
 import { defaultDesign } from '@/lib/tokens/backgrounds';
+import VisualWorkspace from './canvas/VisualWorkspace';
+import { useCampaignHistory } from '@/lib/use-campaign-history';
 export default function CampaignEditor({
   campaign,
   brand,
@@ -59,37 +59,44 @@ export default function CampaignEditor({
   onDuplicate?: () => void;
 }) {
   const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
+  const history = useCampaignHistory(campaign, language, readOnly, onChange);
+  const [advanced, setAdvanced] = useState(false), [review, setReview] = useState(false);
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if ((event.target as HTMLElement).closest('input,textarea,select,[contenteditable="true"],[role="dialog"]')) return;
+      if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+        if (event.shiftKey || event.key.toLowerCase() === 'y') history.redo(); else history.undo();
+      }
+    };
+    window.addEventListener('keydown', keydown);
+    return () => window.removeEventListener('keydown', keydown);
+  }, [history]);
   const [saveTemplate, setSaveTemplate] = useState(false), [converting, setConverting] = useState(false);
   const [notice, setNotice] = useState('');
   const design = campaign.design ?? defaultDesign();
   const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
   const [tab, setTab] = useState('content');
-  const [focusSection, setFocusSection] = useState<{ id: string; sequence: number }>();
   const [mobile, setMobile] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
-  const [imageSlot, setImageSlot] = useState<ImageSlot>();
   const [editImages, setEditImages] = useState(true);
-  const [preview, setPreview] = useState({ html: '', editorHtml: '', signature: '', error: '' });
+  const [preview, setPreview] = useState({ html: '', signature: '', error: '' });
   const [loadedPreview, setLoadedPreview] = useState('');
-  const previewSource = editImages ? preview.editorHtml : preview.html;
+  const previewSource = preview.html;
   const signature = JSON.stringify({ campaign, language, brand });
   const ready = preview.signature === signature && !!preview.html;
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      Promise.all([
-        renderEmail(campaign, language, brand),
-        renderEmail(campaign, language, brand, !readOnly),
-      ])
-        .then(([html, editorHtml]) => {
-          if (!cancelled) setPreview({ html, editorHtml, signature, error: '' });
+      renderEmail(campaign, language, brand)
+        .then((html) => {
+          if (!cancelled) setPreview({ html, signature, error: '' });
         })
         .catch((error: Error) => {
           if (!cancelled) {
             setPreview({
               html: '',
-              editorHtml: '',
               signature,
               error: error.message || 'Não foi possível gerar o preview.',
             });
@@ -101,9 +108,7 @@ export default function CampaignEditor({
       clearTimeout(timer);
     };
   }, [brand, campaign, language, signature, readOnly]);
-  const update = (patch: Partial<Campaign>) => { if (!readOnly) onChange(editCampaign(campaign, patch, language)); };
-  const imageField = imageSlot === 'application' ? 'applicationImage' : 'heroImage';
-  const altField = imageSlot === 'application' ? 'applicationAlt' : 'heroAlt';
+  const update = history.change;
   const resolvedIssues = (field: NonNullable<Campaign['importIssues']>[number]['field']) =>
     campaign.importIssues?.filter((issue) => issue.field !== field);
   function reorder(index: number, direction: number) {
@@ -130,8 +135,10 @@ export default function CampaignEditor({
           </span>
           {activity?.updatedAt && <span className="editor-activity" title={activityTime(activity.updatedAt)}>Última alteração por {editorName(activity.updatedBy)} · {activityTime(activity.updatedAt)}</span>}
           {campaignRevision && <button className="text-button" onClick={onHistory}>Histórico</button>}
-          {onDuplicate && <button className="button" title="Criar uma cópia completa desta campanha" onClick={onDuplicate}>Duplicar campanha</button>}
-          <button className="button" title="Criar um modelo reutilizável com textos para preencher" disabled={readOnly} onClick={() => setSaveTemplate(true)}>Salvar como template</button>
+          <details className="editor-secondary"><summary className="button">Mais ações</summary><div>
+            {onDuplicate && <button className="button" title="Criar uma cópia completa desta campanha" onClick={onDuplicate}>Duplicar campanha</button>}
+            <button className="button" title="Criar um modelo reutilizável com textos para preencher" disabled={readOnly} onClick={() => setSaveTemplate(true)}>Salvar como template</button>
+          </div></details>
           <select
             aria-label="Status da campanha"
             disabled={readOnly}
@@ -161,9 +168,20 @@ export default function CampaignEditor({
           </div>
         </div>
       )}
-      <div className="editor-workspace">
-        <div className="edit-panel">
-          <div className="language-tabs" aria-label="Idioma do conteúdo">
+      <div className="editor-global-tools">
+        <div className="language-tabs" aria-label="Idioma do canvas">{(['pt', 'en', 'es'] as const).map(lang => <button key={lang} className={language === lang ? 'active' : ''} onClick={() => setLanguage(lang)}>{lang === 'pt' ? 'PORTUGUÊS' : lang === 'en' ? 'ENGLISH' : 'ESPAÑOL'}</button>)}</div>
+        <button className="button" disabled={!history.canUndo} onClick={history.undo}>↶ Desfazer</button><button className="button" disabled={!history.canRedo} onClick={history.redo}>↷ Refazer</button>
+        <button className={`button ${editImages && !advanced ? 'primary' : ''}`} onClick={() => { setEditImages(true); setAdvanced(false); }}>Editar no canvas</button>
+        <button className={`button ${!editImages ? 'primary' : ''}`} onClick={() => { setEditImages(false); setAdvanced(false); }}>Visualizar final</button>
+        <button className="button" onClick={() => { setReview(true); setEditImages(true); setAdvanced(false); }}>Revisar</button>
+        {advanced && <button className="text-button" onClick={() => { setAdvanced(false); setEditImages(true); }}>Fechar configurações</button>}
+      </div>
+      <div hidden={!editImages || advanced}>
+        <VisualWorkspace campaign={campaign} brand={brand} language={language} onLanguage={setLanguage} readOnly={readOnly} onChange={update} onUndo={history.undo} onRedo={history.redo} saveState={saveState} onAdvanced={(tab = 'content') => { setAdvanced(true); setTab(tab); }} review={review} onReviewClose={() => setReview(false)} />
+      </div>
+      <div className={`editor-workspace${!advanced ? ' final-workspace' : ''}`} hidden={editImages && !advanced}>
+        {advanced && <div className="edit-panel">
+          <div className="language-tabs" aria-label="Idioma do conteúdo" hidden>
             <button className={language === 'pt' ? 'active' : ''} onClick={() => setLanguage('pt')}>
               PORTUGUÊS
             </button>
@@ -203,7 +221,7 @@ export default function CampaignEditor({
             {tab === 'content' && campaign.sections && <>
               <Field label="Assunto" value={campaign.content[language].subject} onChange={e => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], subject: e.target.value } } })} />
               <Field label="Preheader" value={campaign.content[language].preheader} onChange={e => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], preheader: e.target.value } } })} />
-              <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} focusRequest={focusSection} />
+              <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} />
             </>}
             {tab === 'design' && <>
               <BackgroundEditor label="Fundo do e-mail" value={design.email} onChange={email => update({ design: { ...design, email } })} />
@@ -303,7 +321,7 @@ export default function CampaignEditor({
             )}
             {tab === 'blocks' && (
               <>
-                {campaign.sections ? <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} focusRequest={focusSection} /> : <><p className="muted">Este e-mail usa a estrutura original do template.</p><button className="button primary" type="button" onClick={() => setConverting(true)}>Usar blocos livres</button>
+                {campaign.sections ? <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} /> : <><p className="muted">Este e-mail usa a estrutura original do template.</p><button className="button primary" type="button" onClick={() => setConverting(true)}>Usar blocos livres</button>
                 <section className="form-section">
                   <h3>Template Granistone</h3>
                   <Select
@@ -380,13 +398,14 @@ export default function CampaignEditor({
             )}
           </div>
         </div>
+        }
         <div className="preview-panel">
           <div className="canvas-mode">
             <div>
-              <button className={editImages ? 'active' : ''} onClick={() => setEditImages(true)}>Montar e-mail</button>
-              <button className={!editImages ? 'active' : ''} onClick={() => setEditImages(false)}>Visualizar final</button>
+              <button onClick={() => { setEditImages(true); setAdvanced(false); }}>Voltar ao canvas</button>
+              <button className={!editImages ? 'active' : ''} onClick={() => setEditImages(false)}>HTML final</button>
             </div>
-            <span>{campaign.sections ? editImages ? 'Clique em um bloco para abrir sua edição' : 'HTML final, sem controles de edição' : editImages ? 'Clique nas áreas de imagem para adicionar ou trocar fotos' : 'HTML final, sem os controles de edição'}</span>
+            <span>HTML final, sem controles de edição</span>
           </div>
           <div className="preview-toolbar">
             <div>
@@ -430,23 +449,7 @@ export default function CampaignEditor({
                 onLoad={(event) => {
                   const document = event.currentTarget.contentDocument;
                   if (!document) return;
-                  const choose = (target: EventTarget | null) => {
-                    const element = target as HTMLElement | null;
-                    const sectionId = element?.closest?.('[data-section-id]')?.getAttribute('data-section-id');
-                    if (campaign.sections?.some(section => section.id === sectionId)) {
-                      setTab('content'); setFocusSection({ id: sectionId!, sequence: Date.now() }); return;
-                    }
-                    const slot = element?.closest?.('[data-image-slot]')?.getAttribute('data-image-slot');
-                    if (!readOnly && (slot === 'hero' || slot === 'application')) setImageSlot(slot);
-                  };
-                  document.addEventListener('click', (click) => { click.preventDefault(); if (editImages) choose(click.target); });
-                  document.addEventListener('keydown', (key) => {
-                    if (editImages && (key.key === 'Enter' || key.key === ' ')) {
-                      if ((key.target as HTMLElement)?.closest?.('[data-image-slot],[data-section-id]')) {
-                        key.preventDefault(); choose(key.target);
-                      }
-                    }
-                  });
+                  document.addEventListener('click', event => event.preventDefault());
                   setLoadedPreview(previewSource);
                 }}
                 aria-busy={loadedPreview !== previewSource}
@@ -456,38 +459,19 @@ export default function CampaignEditor({
               <div className="preview-loading">Preparando seu e-mail…</div>
             )}
             <div className="preview-caption">
-              {ready ? editImages ? 'Layout editável · Atualizado' : 'HTML final · Atualizado' : 'Atualizando preview…'}
+              {ready ? 'HTML final · Atualizado' : 'Atualizando preview…'}
               <span>{getTemplate(campaign.template).name}</span>
             </div>
           </div>
         </div>
       </div>
-      {imageSlot && <Modal title={imageSlot === 'hero' ? 'Imagem principal' : 'Imagem de aplicação'} onClose={() => setImageSlot(undefined)} wide>
-        <ImagePicker
-          key={`${imageSlot}-${language}`}
-          label={imageSlot === 'hero' ? 'Imagem principal' : 'Imagem de aplicação'}
-          saveState={saveState}
-          value={campaign.content[language][imageField]}
-          alt={campaign.content[language][altField]}
-          recommended={imageSlot === 'hero' ? '1200 × 700 px' : '1200 × 800 px'}
-          materialId={campaign.materialId}
-          onChange={(value, suggestedAlt) => update({ content: {
-            pt: { ...campaign.content.pt, [imageField]: value },
-            en: { ...campaign.content.en, [imageField]: value },
-            es: { ...campaign.content.es, [imageField]: value },
-            [language]: { ...campaign.content[language], [imageField]: value, ...(suggestedAlt ? { [altField]: suggestedAlt } : {}) },
-          } })}
-          onAlt={(value) => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], [altField]: value } } })}
-        />
-        <div className="modal-actions"><button className="button primary" onClick={() => setImageSlot(undefined)}>Concluir</button></div>
-      </Modal>}
       {saveTemplate && <SavedDesignDialog initial={{ kind: 'template', payload: blueprintFromCampaign(campaign) }} onClose={() => setSaveTemplate(false)} onSaved={() => setNotice('Template salvo na biblioteca compartilhada.')} />}
       {converting && <Modal title="Converter em blocos livres" onClose={() => setConverting(false)}><p>A estrutura será reorganizada em seções independentes. Revise a nova composição no preview. O conteúdo original continuará preservado na campanha e no histórico.</p><div className="modal-actions"><button className="button" onClick={() => setConverting(false)}>Cancelar</button><button className="button primary" onClick={() => { update({ sections: convertSections(campaign) }); setConverting(false); setTab('content'); }}>Converter estrutura</button></div></Modal>}
       {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} campaignRevision={campaignRevision} saveState={saveState} onChange={onChange} onClose={() => setPublishOpen(false)} />}
       {translateTarget && <TranslateDialog
         campaign={campaign}
         target={translateTarget}
-        onApply={(next, selected) => { onChange(next); setLanguage(selected); }}
+          onApply={(next, selected) => { update(next); setLanguage(selected); }}
         onClose={() => setTranslateTarget(undefined)}
       />}
       {exportOpen && (

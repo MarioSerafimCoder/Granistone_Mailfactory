@@ -1,4 +1,5 @@
 import { renderRichBody } from './rich-body';
+import { prepareRichFields } from './rich-fields';
 
 
 import { renderSection } from '@/blocks/renderers';
@@ -11,7 +12,8 @@ import { GranistoneFooter, GranistoneHeader } from '@/components/email/brand';
 import { AvailabilityPanel, CommercialSpecs, CTA, EditorialSection, NoticeBody, StoneSpecs, TextBlock } from '@/components/email/blocks';
 
 export async function renderEmail(campaign: Campaign, language: Language, brand: BrandSettings, editor = false): Promise<string> {
-  const c = campaign.content[language];
+  const prepared = prepareRichFields(campaign.content[language], campaign.richFields?.[language], ['headline', 'kicker', 'subheadline', 'cta', 'materialName', 'features', 'applications', 'availability', 'articleTitle', 'articleText', 'eventTitle', 'eventText', 'projectTitle', 'projectText']);
+  const c = prepared.content;
   const en = language === 'en';
   const es = language === 'es';
   const has = (id: string) => campaign.blocks.some((block) => block.id === id && block.enabled);
@@ -72,6 +74,7 @@ export async function renderEmail(campaign: Campaign, language: Language, brand:
       visible = row(heading(campaign.alignment === 'left' ? 'center' : campaign.alignment, true)) + row(photo('hero', 528, 140, 'Faixa do comunicado')) + row(has('body') ? NoticeBody(body, campaign.alignment === 'left' ? 'center' : campaign.alignment) : '');
       break;
   }
+  visible = prepared.finish(visible);
   if (campaign.sections) visible = (await Promise.all(campaign.sections.map(section => renderSection(section, language, blockRegistry[section.type].render, editor)))).join('');
   const emailBackground = campaign.design?.email ?? { kind: 'solid' as const, color: t.pageBackground };
   const contentBackground = campaign.design?.content ?? { kind: 'solid' as const, color: t.contentBackground };

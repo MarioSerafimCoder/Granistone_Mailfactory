@@ -16,6 +16,7 @@ test('app theme follows system, persists choice and leaves the email HTML untouc
   expect(darkSurface).toBe('rgb(36, 39, 42)');
   await dialog.getByLabel('Nome da campanha', { exact: true }).fill('Tema independente');
   await dialog.getByRole('button', { name: 'Criar campanha' }).click();
+  await page.getByRole('button', { name: 'Visualizar final', exact: true }).click();
   await expect(page.frameLocator('.preview-stage iframe').locator('html')).toHaveAttribute('lang', 'pt-BR');
   await page.screenshot({ path: 'test-results/theme-editor-dark.png', fullPage: true });
   const before = await page.locator('.preview-stage iframe').getAttribute('srcdoc');
@@ -25,7 +26,7 @@ test('app theme follows system, persists choice and leaves the email HTML untouc
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.getByRole('button', { name: 'Ativar modo escuro' }).click();
-  for (const width of [1366, 1024, 820]) {
+  for (const width of [1440, 1366]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
@@ -59,6 +60,7 @@ test('block search and material catalog show previews, filters and a compact det
   await drawer.getByRole('button', { name: 'Fechar', exact: true }).last().click();
   await page.getByRole('button', { name: 'Campanhas' }).click();
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
   await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
   await page.getByRole('button', { name: 'Inserir bloco salvo' }).click();

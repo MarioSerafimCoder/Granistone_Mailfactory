@@ -29,6 +29,7 @@ test('the four new templates have distinct live previews and editable sections',
   await page.getByRole('button', { name: /Promo · Impacto.*Usar template/ }).click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Campanha com blocos');
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   const cards = page.locator('.sections-editor .section-card');
   await expect(cards).toHaveCount(9);
   const thirdId = await cards.nth(2).getAttribute('data-section-id');
@@ -41,6 +42,7 @@ test('the four new templates have distinct live previews and editable sections',
   await expect(cards.first()).toHaveAttribute('data-section-id', thirdId!);
   await page.reload();
   await page.getByRole('button', { name: 'Campanha com blocos', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await expect(cards.first()).toHaveAttribute('data-section-id', thirdId!);
   await cards.nth(1).getByRole('button', { name: 'Subir bloco' }).focus();
   await page.keyboard.press('Enter');
@@ -49,9 +51,8 @@ test('the four new templates have distinct live previews and editable sections',
   await cards.first().getByRole('button', { name: 'Alinhar à direita' }).click();
   await expect(cards.first().getByRole('button', { name: 'Alinhar à direita' })).toHaveAttribute('aria-pressed', 'true');
   const frame = page.frameLocator('.preview-stage iframe');
-  await expect(frame.locator('[data-section-id]').first()).toBeVisible();
-  await expect(frame.locator('[data-section-id]').first().locator('td[align="right"]').first()).toBeVisible();
-  await frame.locator('[data-section-id]').nth(2).click();
+  await expect(frame.locator('.email-container td[align="right"]').first()).toBeVisible();
+  await cards.nth(2).locator('.section-heading-main .text-button').click();
   await expect(cards.nth(2).locator('.section-fields')).toBeVisible();
   await page.getByRole('button', { name: 'Preview mobile' }).click();
   await expect.poll(() => frame.locator('html').evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(375);
@@ -65,6 +66,7 @@ for (const id of modernTemplateIds) test(`${id} creates an editable layout with 
   await card.click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill(`Teste ${id}`);
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   const sections = page.locator('.sections-editor .section-card');
   await expect(sections).toHaveCount(id === 'promo-impact' ? 9 : 8);
   const imageIndex = id === 'promo-impact' ? 3 : id === 'brand-story' ? 1 : 0;
@@ -95,6 +97,7 @@ test('rich paragraph alignment persists and appears in the final email', async (
   }, { version: 2, campaigns: [campaign], brand: defaultBrand });
   await page.goto('/');
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   const card = page.locator('.sections-editor .section-card').first();
   await card.locator('.section-heading-main .text-button').click();
   await card.getByRole('textbox', { name: 'Texto editorial' }).click();
@@ -104,6 +107,7 @@ test('rich paragraph alignment persists and appears in the final email', async (
   await expect(frame.locator('p[style*="text-align:right"]')).toContainText('Texto de prova');
   await page.reload();
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByRole('button', { name: 'Visualizar final' }).click();
   await expect(frame.locator('p[style*="text-align:right"]')).toContainText('Texto de prova');
 });
@@ -118,11 +122,13 @@ test('section order and alignment synchronize between collaborators', async ({ p
     await page.locator('.template-card').filter({ has: page.locator('.mini-catalog-color') }).click();
     await page.getByLabel('Nome da campanha', { exact: true }).fill(title);
     await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     const firstCards = page.locator('.sections-editor .section-card');
     const movedId = await firstCards.nth(2).getAttribute('data-section-id');
     await second.goto('/');
     await second.getByRole('button', { name: title, exact: true }).click();
+  await second.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
     await expect(second.locator('.sections-editor .section-card')).toHaveCount(8);
     await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
     await firstCards.nth(2).getByRole('button', { name: 'Subir bloco' }).click();

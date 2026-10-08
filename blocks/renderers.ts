@@ -4,6 +4,7 @@ import { escapeHtml as e, safeUrl } from '@/lib/safety';
 import { emailTokens as t } from '@/lib/tokens/email';
 import { backgroundAttributes } from '@/export/background';
 import { renderRichBody } from '@/export/rich-body';
+import { prepareRichFields } from '@/export/rich-fields';
 
 type Renderer = (c: Record<string, string>, section: Section, richBody?: string, editor?: boolean) => string;
 const text = (value = '') => value ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:inherit">${e(value).replace(/\n/g, '<br/>')}</p>` : '';
@@ -42,7 +43,8 @@ export const sectionRenderers: Record<SectionType, Renderer> = {
 export async function renderSection(section: Section, language: Language, renderer: Renderer = sectionRenderers[section.type], editor = false): Promise<string> {
   if (!section.enabled) return '';
   const settings = section.settings;
+  const prepared = prepareRichFields(section.content[language], section.richFields?.[language], ['title', 'title2', 'text', 'text2', 'label', 'label2'], ['specifications', 'applications'].includes(section.type) ? ['text'] : []);
   const richBody = section.richBody?.[language] ? await renderRichBody(section.richBody[language], settings.textColor) : undefined;
   const marker = editor ? ` data-section-id="${e(section.id)}" title="Clique para editar este bloco" tabindex="0"` : '';
-  return `<tr${marker}><td ${backgroundAttributes(settings.background)}><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="${settings.alignment}" style="padding:${settings.padding}px;text-align:${settings.alignment};font-family:${t.typography.body};color:${settings.textColor}">${renderer(section.content[language], section, richBody, editor)}</td></tr></table></td></tr>`;
+  return `<tr${marker}><td ${backgroundAttributes(settings.background)}><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="${settings.alignment}" style="padding:${settings.padding}px;text-align:${settings.alignment};font-family:${t.typography.body};color:${settings.textColor}">${prepared.finish(renderer(prepared.content, section, richBody, editor))}</td></tr></table></td></tr>`;
 }

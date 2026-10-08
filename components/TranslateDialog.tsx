@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react';
 import { Languages, Sparkles } from 'lucide-react';
 import type { Campaign, Language } from '@/types/campaign';
 import { online } from '@/lib/online';
-import { applyTranslation, translationItems, sectionTranslationItems, applySectionTranslation } from '@/lib/translation';
+import { applyTranslation, translationItems, sectionTranslationItems, applySectionTranslation, richFieldItems, translatedFields } from '@/lib/translation';
 import { Modal } from './ui';
-import { reconcileLanguageState } from '@/campaigns/model';
+import { reconcileLanguageState, plainText } from '@/campaigns/model';
 
 export default function TranslateDialog({ campaign, target, onApply, onClose }: {
   campaign: Campaign;
@@ -17,7 +17,7 @@ export default function TranslateDialog({ campaign, target, onApply, onClose }: 
   const [error, setError] = useState('');
   const [replace, setReplace] = useState(true);
   const label = target === 'en' ? 'inglês' : 'espanhol';
-  const items = useMemo(() => [...translationItems(campaign.content.pt), ...sectionTranslationItems(campaign, 'pt')], [campaign]);
+  const items = useMemo(() => [...translationItems(campaign.content.pt), ...sectionTranslationItems(campaign, 'pt'), ...richFieldItems(campaign.richFields?.pt, 'rich')], [campaign]);
   const hasTarget = translationItems(campaign.content[target]).length + sectionTranslationItems(campaign, target).length > 0;
   async function generate() {
     setBusy(true); setError('');
@@ -38,12 +38,19 @@ export default function TranslateDialog({ campaign, target, onApply, onClose }: 
           return key === 'body' || (typeof current === 'string' && !current.trim() && typeof value === 'string');
         })),
       };
+      const rich = translatedFields(campaign.richFields?.pt, 'rich', translated);
+      const fields = { ...campaign.richFields?.[target] };
+      for (const [field, doc] of Object.entries(rich)) {
+        if (plainText(campaign.richFields!.pt![field]) !== campaign.content.pt[field as keyof typeof next] || (!replace && String(campaign.content[target][field as keyof typeof next] ?? '').trim())) continue;
+        Object.assign(next, { [field]: plainText(doc) }); fields[field] = doc;
+      }
       onApply(reconcileLanguageState(campaign, {
         ...campaign,
         language: target === 'en'
           ? campaign.language.includes('ES') ? 'PT / EN / ES' : 'PT / EN'
           : campaign.language.includes('EN') ? 'PT / EN / ES' : 'PT / ES',
         content: { ...campaign.content, [target]: next },
+        richFields: { ...campaign.richFields, [target]: fields },
         sections: applySectionTranslation(campaign, target, translated, replace),
         updatedAt: new Date().toISOString(),
       }), target);

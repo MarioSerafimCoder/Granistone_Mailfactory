@@ -63,6 +63,7 @@ export interface CampaignContent {
   projectText: string;
 }
 export interface Campaign {
+  richFields?: import('@/lib/canvas-model').RichFields;
   sections?: import('./design').Section[];
   design?: import('./design').CampaignDesign;
   languageState?: Record<Language, { status: Status; updatedAt: string; approvedAt?: string; approvedBy?: string }>;

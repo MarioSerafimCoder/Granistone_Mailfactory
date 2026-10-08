@@ -16,6 +16,7 @@ test('free blocks, saved library, campaign copy and shared custom templates work
   expect((await request.post('/api/campaigns', { headers: auth, data: { campaign, requestId: crypto.randomUUID() } })).status()).toBe(201);
   await authenticate(page); await page.goto('/');
   await page.getByRole('button', { name, exact: true }).click(); await editing(page);
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByRole('button', { name: 'Adicionar bloco', exact: true }).click();
   const catalog = page.getByRole('dialog', { name: 'Adicionar bloco' });
   await expect(catalog.locator('.block-catalog button')).toHaveCount(16);
@@ -45,6 +46,7 @@ test('free blocks, saved library, campaign copy and shared custom templates work
   await expect(cards).toHaveCount(2);
   await expect(cards.last().getByLabel('Título do bloco', { exact: true })).toHaveValue('Pedra natural');
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+  await page.locator('.editor-secondary summary').click();
   await page.getByRole('button', { name: 'Salvar como template', exact: true }).click();
   const saveTemplate = page.getByRole('dialog', { name: 'Salvar como template' });
   await saveTemplate.getByLabel('Nome', { exact: true }).fill(templateName);
@@ -68,15 +70,16 @@ test('free blocks, saved library, campaign copy and shared custom templates work
     await expect(edit).toHaveCount(0);
     await expect(tile).toContainText('Compartilhado entre navegadores');
     await tile.getByRole('button', { name: 'Usar template', exact: true }).click();
+    await second.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
     await expect(second.locator('.section-card')).toHaveCount(2);
     await expect(second.frameLocator('.preview-stage iframe').getByText('[Título do bloco]', { exact: true })).toHaveCount(2);
     await editing(second);
     await second.locator('.section-card').first().getByRole('button', { name: '01 · Texto centralizado' }).click();
-    await second.getByLabel('Título do bloco', { exact: true }).fill('Campanha derivada');
+    await second.locator('.edit-panel').getByLabel('Título do bloco', { exact: true }).fill('Campanha derivada');
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await second.setViewportSize({ width: 390, height: 844 });
+    await second.setViewportSize({ width: 1366, height: 768 });
     expect(await second.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await second.screenshot({ path: 'test-results/design-mobile.png', fullPage: true });
+    await second.screenshot({ path: 'test-results/design-notebook.png', fullPage: true });
     await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
     await page.getByRole('button', { name: /Templates 9/ }).click();
     await expect(page.locator('.saved-design-card').filter({ hasText: templateName })).toContainText('Compartilhado entre navegadores');
@@ -95,6 +98,7 @@ test('legacy conversion and solid, gradient, image backgrounds match exported HT
   const title = 'Fundos ' + Date.now();
   await page.getByLabel('Nome da campanha', { exact: true }).fill(title);
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click(); await editing(page);
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByLabel('Headline', { exact: true }).fill('Composição mineral');
   await expect(page.frameLocator('.preview-stage iframe').getByRole('heading', { name: 'Composição mineral' })).toBeVisible();
   await page.getByRole('button', { name: 'Estrutura', exact: true }).click();

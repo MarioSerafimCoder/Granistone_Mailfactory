@@ -21,7 +21,8 @@ test('shared campaign coordinates two browsers, preserves edits, trash and resto
     await second.getByRole('button', { name: title, exact: true }).click();
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await second.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
-    await second.getByLabel('Headline', { exact: true }).fill('Conteúdo de outro funcionário');
+    await expect(second.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true })).toHaveAttribute('contenteditable', 'true');
+    await second.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true }).fill('Conteúdo de outro funcionário');
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
     await expect(page.locator('.edit-lease-bar')).toContainText('está editando');
@@ -53,10 +54,11 @@ test('legacy migration requires an explicit choice and status stays independent 
     await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
     await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(page.getByLabel('Status da campanha', { exact: true })).toHaveValue('Pendente');
-  await page.getByLabel('Headline', { exact: true }).fill('English copy');
+  await expect(page.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true })).toHaveAttribute('contenteditable', 'true');
+  await page.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true }).fill('English copy');
   await page.getByRole('button', { name: 'PORTUGUÊS', exact: true }).click();
   await expect(page.getByLabel('Status da campanha', { exact: true })).toHaveValue('Aprovado');
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1366, height: 768 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   await page.screenshot({ path: 'test-results/workspace-mobile.png', fullPage: true });
 });

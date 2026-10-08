@@ -68,12 +68,13 @@ test('all stone folders appear as materials and remain usable in campaigns', asy
   await page.getByLabel('Template inicial', { exact: true }).selectOption('product-architect');
   await page.getByLabel('Nome da campanha', { exact: true }).fill(`Campanha pedra ${stamp}`);
   await page.getByRole('button', { name: 'Criar campanha' }).click();
+  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
-  const bodyBefore = await page.locator('.tiptap').innerText();
+  const bodyBefore = await page.locator('.edit-panel .tiptap').innerText();
   const option = page.getByRole('option', { name: `${folderNames[0]} Pedra natural`, exact: true });
   await expect(option).toBeVisible();
   await option.click();
   await page.getByRole('button', { name: 'Substituir conteúdo' }).click();
   await expect(page.getByLabel('Nome do material', { exact: true })).toHaveValue(folderNames[0]);
-  await expect(page.locator('.tiptap')).toHaveText(bodyBefore);
+  await expect(page.locator('.edit-panel .tiptap')).toHaveText(bodyBefore);
 });
