@@ -21,6 +21,7 @@ for (const [width, height] of [[1440, 900], [1366, 768], [1920, 1080]] as const)
     await expect(page.locator('.visual-workspace-bar')).toHaveCount(0);
     expect(await header.evaluate(node => Math.round(node.getBoundingClientRect().height))).toBe(64);
     await expect(page.locator('.visual-email')).toHaveCSS('width', '600px');
+    expect(await page.locator('.visual-email').evaluate(node => Math.round(node.getBoundingClientRect().top))).toBeLessThan(200);
     await page.getByRole('button', { name: 'Abrir biblioteca' }).click();
     await page.getByRole('button', { name: 'Abrir propriedades' }).click();
     await expect(page.getByRole('complementary', { name: 'Propriedades do elemento' })).toBeVisible();
@@ -28,6 +29,7 @@ for (const [width, height] of [[1440, 900], [1366, 768], [1920, 1080]] as const)
     await expect(page.locator('.visual-email')).toHaveCSS('width', '600px');
     expect(await stage.evaluate(node => node.scrollHeight > node.clientHeight)).toBeTruthy();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+    await page.mouse.move(100, 32);
     await page.screenshot({ path: `docs/screenshots/depois-${width}x${height}.png` });
     const title = page.locator('.visual-email').getByRole('textbox', { name: 'Título do bloco', exact: true }).first();
     await title.fill('Título atualizado');
@@ -88,6 +90,9 @@ test('shared edit lease remains compact and permission-aware at notebook width',
   await page.route('**/api/**', async route => route.fulfill({ response: await route.fetch({ headers: { ...route.request().headers(), ...auth } }) }));
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto('/');
+  await expect(page.getByRole('button', { name: campaign.title, exact: true })).toBeVisible();
+  const migration = page.getByRole('button', { name: 'Manter somente local por enquanto' });
+  if (await migration.isVisible()) await migration.click();
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
   const lease = page.locator('.editor-heading .edit-lease-bar');
   await expect(lease).toContainText('Somente leitura');
@@ -96,6 +101,7 @@ test('shared edit lease remains compact and permission-aware at notebook width',
   await expect(lease).toContainText('Em edição');
   await expect(page.locator('.visual-email').getByRole('textbox', { name: 'Título do bloco', exact: true }).first()).toHaveAttribute('contenteditable', 'true');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.mouse.move(100, 32);
   await page.screenshot({ path: 'docs/screenshots/depois-colaboracao-1366x768.png' });
   await lease.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
   await expect(lease).toContainText('Somente leitura');
