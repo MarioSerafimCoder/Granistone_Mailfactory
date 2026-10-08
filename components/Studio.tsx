@@ -22,7 +22,7 @@ import { getTemplate, templates } from '@/templates/registry';
 import { templateContent } from '@/templates/starter';
 import { downloadFile } from '@/export/download';
 import { decodeBackup, isCampaign, STORAGE_KEY } from '@/lib/storage';
-import type { Campaign, TemplateId } from '@/types/campaign';
+import type { TemplateId } from '@/types/campaign';
 import CampaignList from './CampaignList';
 import CampaignEditor from './CampaignEditor';
 import TemplateLibrary from './TemplateLibrary';
@@ -84,13 +84,7 @@ export default function Studio() {
     const context = document.modelContext;
     if (!context?.registerTool) return;
     const lifecycle = new AbortController();
-    const allowedTemplates: TemplateId[] = [
-      'institutional',
-      'product-architect',
-      'product-commercial',
-      'newsletter',
-      'notice',
-    ];
+    const allowedTemplates: TemplateId[] = templates.map(template => template.id);
     void Promise.resolve(
       context.registerTool(
         {
@@ -118,13 +112,7 @@ export default function Studio() {
             }
             const current = data;
             const template = value.template as TemplateId;
-            const campaignType: Campaign['campaignType'] = template.startsWith('product')
-              ? 'Produto'
-              : template === 'newsletter'
-                ? 'Newsletter'
-                : template === 'notice'
-                  ? 'Aviso'
-                  : 'Institucional';
+            const campaignType = getTemplate(template).campaignType;
             const campaign = createCampaign({
               title,
               template,
@@ -150,13 +138,7 @@ export default function Studio() {
   }
   function create() {
     if (!data || !canEdit || !newTemplate || !name.trim()) return;
-    const type: Campaign['campaignType'] = newTemplate.startsWith('product')
-      ? 'Produto'
-      : newTemplate === 'newsletter'
-        ? 'Newsletter'
-        : newTemplate === 'notice'
-          ? 'Aviso'
-          : 'Institucional';
+    const type = getTemplate(newTemplate).campaignType;
     const c = createCampaign({ title: name.trim(), template: newTemplate, campaignType: type, content: templateContent(newTemplate, name.trim()) });
     save({ ...data, campaigns: [c, ...data.campaigns] });
     setNewTemplate(undefined);
@@ -248,7 +230,7 @@ export default function Studio() {
             }}
           >
             <LayoutGrid size={18} />
-            Templates<span className="nav-count">5</span>
+            Templates<span className="nav-count">{templates.length}</span>
           </button>
           <button
             className={view === 'library' ? 'active' : ''}

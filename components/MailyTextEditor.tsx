@@ -1,7 +1,9 @@
 'use client';
 import { useState } from 'react';
+import { AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { Editor } from '@maily-to/core';
 import { Extension, Node, type Editor as TiptapEditor } from '@tiptap/core';
+import TextAlign from '@tiptap/extension-text-align';
 import type {} from '@tiptap/starter-kit';
 import type {} from '@tiptap/extension-underline';
 import { MailyKit, PlaceholderExtension, VariableExtension } from '@maily-to/core/extensions';
@@ -15,7 +17,7 @@ const restrictedKit = MailyKit.extend({
     // The upstream document explicitly requires a columns group. Replace it when
     // disabling columns, while retaining native storage used by bubble menus.
     return [
-      ...base.filter((extension) => extension.name !== 'doc'),
+      ...base.filter((extension) => extension.name !== 'doc' && extension.name !== 'textAlign'),
       Node.create({ name: 'doc', topNode: true, content: 'block+' }),
     ];
   },
@@ -35,6 +37,7 @@ const disabled = ['slash-command', 'htmlCodeBlock', 'inlineImage'].map((name) =>
 );
 const extensions = [
   restrictedKit,
+  TextAlign.configure({ types: ['paragraph'], alignments: ['left', 'center', 'right'] }),
   ...disabled,
   VariableExtension.configure({ variables: [] }),
   PlaceholderExtension.configure({ placeholder: 'Escreva o texto da campanha…' }),
@@ -76,6 +79,12 @@ export default function MailyTextEditor({
         <button type="button" onClick={() => editor?.chain().focus().toggleBulletList().run()}>
           Lista
         </button>
+        <button type="button" aria-label="Alinhar texto à esquerda" title="Alinhar texto à esquerda" aria-pressed={!!editor?.isActive({ textAlign: 'left' })}
+          onClick={() => editor?.chain().focus().setTextAlign('left').run()}><AlignLeft size={16} /></button>
+        <button type="button" aria-label="Centralizar texto" title="Centralizar texto" aria-pressed={!!editor?.isActive({ textAlign: 'center' })}
+          onClick={() => editor?.chain().focus().setTextAlign('center').run()}><AlignCenter size={16} /></button>
+        <button type="button" aria-label="Alinhar texto à direita" title="Alinhar texto à direita" aria-pressed={!!editor?.isActive({ textAlign: 'right' })}
+          onClick={() => editor?.chain().focus().setTextAlign('right').run()}><AlignRight size={16} /></button>
         <button
           type="button"
           onClick={() => {

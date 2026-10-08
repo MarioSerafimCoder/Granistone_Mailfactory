@@ -16,8 +16,10 @@ export const campaignTypes = [
   'Aviso',
 ] as const;
 export type CampaignType = (typeof campaignTypes)[number];
+export type ContentAlignment = 'left' | 'center' | 'right';
 export type TemplateId =
-  'institutional' | 'product-architect' | 'product-commercial' | 'newsletter' | 'notice';
+  'institutional' | 'product-architect' | 'product-commercial' | 'newsletter' | 'notice' |
+  'promo-impact' | 'catalog-color' | 'editorial-organic' | 'brand-story';
 export type BlockId =
   | 'hero'
   | 'body'
@@ -76,7 +78,7 @@ export interface Campaign {
   template: TemplateId;
   content: Record<Language, CampaignContent>;
   blocks: { id: BlockId; enabled: boolean }[];
-  alignment: 'left' | 'center';
+  alignment: ContentAlignment;
   materialId?: string;
   sourceKey?: string;
   importIssues?: ImportIssue[];

@@ -16,6 +16,10 @@ export function moveSection(sections: Section[], index: number, direction: numbe
   if (index + direction < 0 || index + direction >= sections.length) return sections;
   const next = [...sections]; [next[index], next[index + direction]] = [next[index + direction], next[index]]; return next;
 }
+export function moveSectionTo(sections: Section[], from: number, to: number): Section[] {
+  if (from < 0 || from >= sections.length || to < 0 || to >= sections.length || from === to) return sections;
+  const next = [...sections]; const [section] = next.splice(from, 1); next.splice(to, 0, section); return next;
+}
 // Opt-in conversion: untouched campaigns keep their existing renderer and payload.
 // The original content remains in Campaign.content and in the revision history.
 export function convertSections(campaign: Campaign): Section[] {

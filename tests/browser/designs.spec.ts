@@ -25,7 +25,7 @@ test('free blocks, saved library, campaign copy and shared custom templates work
   await cards.first().getByLabel('Texto do bloco', { exact: true }).fill('Conteúdo reutilizável');
   await cards.first().getByRole('button', { name: 'Duplicar bloco', exact: true }).click();
   await expect(cards).toHaveCount(2);
-  await cards.nth(1).getByRole('button', { name: '2. Texto centralizado' }).click();
+  await cards.nth(1).getByRole('button', { name: '02 · Texto centralizado' }).click();
   await cards.nth(1).getByLabel('Título do bloco', { exact: true }).fill('Segundo bloco');
   await cards.nth(1).getByRole('button', { name: 'Subir bloco' }).click();
   await expect(cards.first().getByLabel('Título do bloco', { exact: true })).toHaveValue('Segundo bloco');
@@ -57,7 +57,7 @@ test('free blocks, saved library, campaign copy and shared custom templates work
   const ctx = await browser.newContext(), second = await ctx.newPage();
   try {
     await authenticate(second); await second.goto('/');
-    await second.getByRole('button', { name: /Templates 5/ }).click();
+    await second.getByRole('button', { name: /Templates 9/ }).click();
     const tile = second.locator('.saved-design-card').filter({ hasText: templateName });
     await expect(tile).toBeVisible();
     await tile.getByRole('button', { name: 'Editar', exact: true }).click();
@@ -71,14 +71,14 @@ test('free blocks, saved library, campaign copy and shared custom templates work
     await expect(second.locator('.section-card')).toHaveCount(2);
     await expect(second.frameLocator('.preview-stage iframe').getByText('[Título do bloco]', { exact: true })).toHaveCount(2);
     await editing(second);
-    await second.locator('.section-card').first().getByRole('button', { name: '1. Texto centralizado' }).click();
+    await second.locator('.section-card').first().getByRole('button', { name: '01 · Texto centralizado' }).click();
     await second.getByLabel('Título do bloco', { exact: true }).fill('Campanha derivada');
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await second.setViewportSize({ width: 390, height: 844 });
     expect(await second.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await second.screenshot({ path: 'test-results/design-mobile.png', fullPage: true });
     await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
-    await page.getByRole('button', { name: /Templates 5/ }).click();
+    await page.getByRole('button', { name: /Templates 9/ }).click();
     await expect(page.locator('.saved-design-card').filter({ hasText: templateName })).toContainText('Compartilhado entre navegadores');
     await page.locator('.saved-design-card').filter({ hasText: templateName }).getByRole('button', { name: 'Duplicar', exact: true }).click();
     const copied = page.locator('.saved-design-card').filter({ has: page.getByRole('heading', { name: templateName + ' · cópia', exact: true }) });

@@ -40,6 +40,7 @@ const nodeTypes = new Set([
 export function hasRestrictedFormatting(node: RichNode): boolean {
   return (
     !nodeTypes.has(node.type) ||
+    (node.type === 'paragraph' && node.attrs?.textAlign !== undefined && !['left', 'center', 'right', null].includes(node.attrs.textAlign as string)) ||
     !!node.marks?.some((m) => !['bold', 'italic', 'underline', 'link'].includes(m.type)) ||
     !!node.content?.some(hasRestrictedFormatting)
   );
@@ -51,6 +52,8 @@ export function sanitizeRichText(node: RichNode, depth = 0): RichNode {
   return {
     type: node.type,
     ...(node.type === 'text' ? { text: String(node.text ?? '') } : {}),
+    ...(node.type === 'paragraph' && ['left', 'center', 'right'].includes(String(node.attrs?.textAlign))
+      ? { attrs: { textAlign: node.attrs?.textAlign } } : {}),
     ...(node.marks
       ? {
           marks: node.marks

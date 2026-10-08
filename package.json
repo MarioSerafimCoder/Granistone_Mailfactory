@@ -20,6 +20,7 @@
     "@react-email/render": "^1.4.0",
     "@tiptap/core": "^2.27.3",
     "@tiptap/extension-link": "^2.27.3",
+    "@tiptap/extension-text-align": "2.27.3",
     "@tiptap/extension-underline": "^2.27.3",
     "@tiptap/starter-kit": "^2.27.3",
     "drizzle-orm": "^0.45.3",

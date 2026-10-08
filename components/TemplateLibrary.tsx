@@ -13,14 +13,15 @@ export default function TemplateLibrary({ onUse, onCustomUse }: { onUse: (id: Te
           <h1>Templates</h1>
           <p>Estruturas prontas para o conteúdo da Granistone.</p>
         </div>
-        <span className="collection-label">COLEÇÃO / 01—05</span>
+        <span className="collection-label">COLEÇÃO / 01—{String(templates.length).padStart(2, '0')}</span>
       </div>
-      <div className="template-grid">
-        {templates.map((t, i) => (
+      {(['essential', 'new'] as const).map(category => <section className="template-group" key={category}>
+        <h2 className="template-group-label">{category === 'essential' ? 'ESSENCIAIS' : 'NOVOS LAYOUTS'}</h2>
+        <div className="template-grid">{templates.filter(t => t.visualCategory === category).map(t => (
           <button key={t.id} className="template-card" onClick={() => onUse(t.id)}>
             <div className={`template-mini mini-${t.id}`}>
               <TemplateThumbnail template={t.id} label={t.label} />
-              <span className="template-index">0{i + 1}</span>
+              <span className="template-index">{String(templates.indexOf(t) + 1).padStart(2, '0')}</span>
             </div>
             <div className="template-description">
               <span className="eyebrow">{t.label}</span>
@@ -32,8 +33,8 @@ export default function TemplateLibrary({ onUse, onCustomUse }: { onUse: (id: Te
               <span className="use-template">Usar template →</span>
             </div>
           </button>
-        ))}
-      </div>
+        ))}</div>
+      </section>)}
       <section className="custom-templates"><h2>Templates Granistone</h2><p>Modelos personalizados do workspace. Para criar um, abra uma campanha e escolha “Salvar como template”.</p><SavedDesignLibrary kind="template" onUse={design => { if (design.kind === 'template') onCustomUse(design.payload, design.name); }} /></section>
     </div>
   );

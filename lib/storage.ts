@@ -72,7 +72,7 @@ export function isCampaign(value: unknown): value is Campaign {
     !statuses.includes(value.status as Campaign['status']) ||
     !templates.some((template) => template.id === value.template) ||
     !['PT', 'EN', 'ES', 'PT / EN', 'PT / ES', 'EN / ES', 'PT / EN / ES'].includes(String(value.language)) ||
-    !['left', 'center'].includes(String(value.alignment))
+    !['left', 'center', 'right'].includes(String(value.alignment))
   )
     return false;
   if (

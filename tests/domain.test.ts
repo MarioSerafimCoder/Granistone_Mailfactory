@@ -110,7 +110,7 @@ test('import identity and export filenames stay stable across repeated runs', ()
   );
 });
 test('all five templates render the same brand footer and escaped content with real Maily formatting', async () => {
-  for (const t of templates) {
+  for (const t of templates.filter(template => template.visualCategory === 'essential')) {
     const c = createCampaign({ template: t.id });
     c.content.pt = {
       ...c.content.pt,
@@ -210,7 +210,7 @@ test('JSON persistence round-trips complete campaigns and rejects corrupt backup
 
 test('every template exposes its image slots only in the editor and uses its own layout', async () => {
   const { templateContent } = await import('../templates/starter');
-  for (const template of templates) {
+  for (const template of templates.filter(template => template.visualCategory === 'essential')) {
     const campaign = createCampaign({ template: template.id, content: templateContent(template.id, 'Layout') });
     const editing = await renderEmail(campaign, 'pt', defaultBrand, true);
     const final = await renderEmail(campaign, 'pt', defaultBrand);

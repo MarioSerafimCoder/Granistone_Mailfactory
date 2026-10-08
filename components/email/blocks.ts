@@ -1,6 +1,6 @@
 import { emailTokens as t } from '@/lib/tokens/email';
 import { escapeHtml as e, safeUrl } from '@/lib/safety';
-import type { Language } from '@/types/campaign';
+import type { ContentAlignment, Language } from '@/types/campaign';
 const { colors: c, typography: font, spacing: s } = t;
 export function TextBlock(text: string) {
   return `<p style="margin:0 0 ${s.small}px;color:${c.text};font-family:${font.body};font-size:${font.bodySize}px;line-height:1.7">${e(text).replace(/\n/g, '<br/>')}</p>`;
@@ -34,23 +34,23 @@ export function EditorialSection(
   if (!title && !text) return '';
   return `${Divider()}<p style="margin:0 0 12px;color:${c.gray};font-family:${font.body};font-size:10px;letter-spacing:1.8px;text-transform:uppercase">${e(label)}</p>${ArticleBlock(title, text, url)}`;
 }
-export function AvailabilityPanel(text: string, lang: Language) {
+export function AvailabilityPanel(text: string, lang: Language, align: ContentAlignment = 'left') {
   if (!text) return '';
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${c.lightGray}"><tr><td style="padding:24px"><p style="margin:0 0 8px;color:${c.gray};font-family:${font.body};font-size:10px;letter-spacing:1.5px">${lang === 'en' ? 'COMMERCIAL AVAILABILITY' : lang === 'es' ? 'DISPONIBILIDAD COMERCIAL' : 'DISPONIBILIDADE COMERCIAL'}</p>${TextBlock(text)}</td></tr></table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${c.lightGray}"><tr><td align="${align}" style="padding:24px;text-align:${align}"><p style="margin:0 0 8px;color:${c.gray};font-family:${font.body};font-size:10px;letter-spacing:1.5px">${lang === 'en' ? 'COMMERCIAL AVAILABILITY' : lang === 'es' ? 'DISPONIBILIDAD COMERCIAL' : 'DISPONIBILIDADE COMERCIAL'}</p>${TextBlock(text)}</td></tr></table>`;
 }
-export function CommercialSpecs(name: string, features: string, applications: string, lang: Language) {
+export function CommercialSpecs(name: string, features: string, applications: string, lang: Language, align: ContentAlignment = 'left') {
   if (!name && !features && !applications) return '';
   const cell = (label: string, value: string) =>
-    `<td width="50%" valign="top" style="padding:18px;border:1px solid ${t.border}"><p style="margin:0 0 8px;color:${c.gray};font-family:${font.body};font-size:10px;letter-spacing:1.3px">${e(label)}</p>${TextBlock(value)}</td>`;
+    `<td width="50%" valign="top" align="${align}" style="padding:18px;border:1px solid ${t.border};text-align:${align}"><p style="margin:0 0 8px;color:${c.gray};font-family:${font.body};font-size:10px;letter-spacing:1.3px">${e(label)}</p>${TextBlock(value)}</td>`;
   return `${name ? `<p style="margin:0 0 18px;font-family:${font.editorial};font-size:26px">${e(name)}</p>` : ''}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${cell(lang === 'en' ? 'FEATURES' : lang === 'es' ? 'DIFERENCIALES' : 'DIFERENCIAIS', features)}${cell(lang === 'en' ? 'APPLICATIONS' : lang === 'es' ? 'APLICACIONES' : 'APLICAÇÕES', applications)}</tr></table>`;
 }
-export function NoticeBody(html: string) {
+export function NoticeBody(html: string, align: ContentAlignment = 'center') {
   if (!html) return '';
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${c.lightGray}"><tr><td align="center" style="padding:28px 32px">${html}</td></tr></table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${c.lightGray}"><tr><td align="${align}" style="padding:28px 32px;text-align:${align}">${html}</td></tr></table>`;
 }
-export function CTA(label: string, url: string, subtle: boolean) {
+export function CTA(label: string, url: string, subtle: boolean, align: ContentAlignment = 'left') {
   if (!label || !safeUrl(url)) return '';
-  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td bgcolor="${subtle ? c.white : c.black}" style="border:1px solid ${c.black};text-align:center"><a href="${e(safeUrl(url))}" target="_blank" style="display:inline-block;padding:16px 28px;border:1px solid ${subtle ? c.white : c.black};font-family:${font.body};font-size:14px;color:${subtle ? c.black : c.white};text-decoration:none;mso-padding-alt:0"><!--[if mso]><i style="mso-font-width:200%;mso-text-raise:24pt" hidden>&emsp;</i><![endif]--><span style="mso-text-raise:12pt">${e(label)}</span><!--[if mso]><i style="mso-font-width:200%" hidden>&emsp;&#8203;</i><![endif]--></a></td></tr></table>`;
+  return `<table role="presentation" align="${align}" border="0" cellpadding="0" cellspacing="0"><tr><td bgcolor="${subtle ? c.white : c.black}" align="center" style="border:1px solid ${c.black};text-align:center"><a href="${e(safeUrl(url))}" target="_blank" style="display:inline-block;padding:16px 28px;border:1px solid ${subtle ? c.white : c.black};font-family:${font.body};font-size:14px;color:${subtle ? c.black : c.white};text-decoration:none;mso-padding-alt:0"><!--[if mso]><i style="mso-font-width:200%;mso-text-raise:24pt" hidden>&emsp;</i><![endif]--><span style="mso-text-raise:12pt">${e(label)}</span><!--[if mso]><i style="mso-font-width:200%" hidden>&emsp;&#8203;</i><![endif]--></a></td></tr></table>`;
 }
 export function Divider() {
   return `<hr style="border:0;border-top:1px solid ${c.lightGray};margin:${s.section}px 0"/>`;

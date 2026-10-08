@@ -43,6 +43,30 @@ export function templateContent(template: TemplateId, title: string): Record<Lan
       subheadline: 'Inclua a data ou o período do comunicado.',
       body: richText('Escreva aqui as informações de atendimento, horários ou orientações para clientes e parceiros.\nAgradecemos pela compreensão.'),
     },
+    'promo-impact': {
+      kicker: 'GRANISTONE · EM DESTAQUE', headline: 'Matéria que transforma espaços.',
+      preheader: 'Uma seleção para projetos que pedem presença.',
+      body: richText('Apresente aqui o motivo desta campanha e convide seu público a conhecer a seleção.'),
+      cta: 'Explorar materiais',
+    },
+    'catalog-color': {
+      kicker: 'SELEÇÃO GRANISTONE', headline: 'A matéria encontra o projeto.',
+      preheader: 'Uma seleção mineral para espaços com identidade.',
+      body: richText('Apresente os materiais da coleção sem inventar especificações técnicas.'),
+      cta: 'Ver catálogo',
+    },
+    'editorial-organic': {
+      kicker: 'CADERNO DE ARQUITETURA', headline: 'Terra, tempo e forma.',
+      preheader: 'Uma história sobre matéria e arquitetura.',
+      body: richText('Conte uma história sobre projetos, materiais e novas perspectivas.'),
+      cta: 'Ver coleção',
+    },
+    'brand-story': {
+      kicker: 'GRANISTONE', headline: 'Cada superfície tem uma origem.',
+      preheader: 'Conheça a história que a matéria carrega.',
+      body: richText('Compartilhe a visão da marca e a relação entre natureza, arquitetura e permanência.'),
+      cta: 'Conheça a Granistone',
+    },
   };
   return { pt: { ...common, ...variants[template] }, en: emptyContent(), es: emptyContent() };
 }

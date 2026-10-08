@@ -29,6 +29,7 @@ import { renderEmail } from '@/export/render';
 import TranslateDialog from './TranslateDialog';
 import SectionsEditor from './SectionsEditor';
 import BackgroundEditor, { ColorField } from './BackgroundEditor';
+import AlignmentControl from './AlignmentControl';
 import SavedDesignDialog from './SavedDesignDialog';
 import { blueprintFromCampaign, convertSections } from '@/blocks/model';
 import { defaultDesign } from '@/lib/tokens/backgrounds';
@@ -63,6 +64,7 @@ export default function CampaignEditor({
   const design = campaign.design ?? defaultDesign();
   const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
   const [tab, setTab] = useState('content');
+  const [focusSection, setFocusSection] = useState<{ id: string; sequence: number }>();
   const [mobile, setMobile] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -201,7 +203,7 @@ export default function CampaignEditor({
             {tab === 'content' && campaign.sections && <>
               <Field label="Assunto" value={campaign.content[language].subject} onChange={e => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], subject: e.target.value } } })} />
               <Field label="Preheader" value={campaign.content[language].preheader} onChange={e => update({ content: { ...campaign.content, [language]: { ...campaign.content[language], preheader: e.target.value } } })} />
-              <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} />
+              <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} focusRequest={focusSection} />
             </>}
             {tab === 'design' && <>
               <BackgroundEditor label="Fundo do e-mail" value={design.email} onChange={email => update({ design: { ...design, email } })} />
@@ -301,7 +303,7 @@ export default function CampaignEditor({
             )}
             {tab === 'blocks' && (
               <>
-                {campaign.sections ? <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} /> : <><p className="muted">Este e-mail usa a estrutura original do template.</p><button className="button primary" type="button" onClick={() => setConverting(true)}>Usar blocos livres</button>
+                {campaign.sections ? <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} focusRequest={focusSection} /> : <><p className="muted">Este e-mail usa a estrutura original do template.</p><button className="button primary" type="button" onClick={() => setConverting(true)}>Usar blocos livres</button>
                 <section className="form-section">
                   <h3>Template Granistone</h3>
                   <Select
@@ -321,14 +323,7 @@ export default function CampaignEditor({
                     ))}
                   </Select>
                   <p className="muted">{getTemplate(campaign.template).description}</p>
-                  <Select
-                    label="Alinhamento"
-                    value={campaign.alignment}
-                    onChange={(e) => update({ alignment: e.target.value as Campaign['alignment'] })}
-                  >
-                    <option value="left">À esquerda</option>
-                    <option value="center">Centralizado</option>
-                  </Select>
+                  <AlignmentControl value={campaign.alignment} onChange={alignment => update({ alignment })} />
                 </section>
                 <section className="form-section">
                   <h3>Blocos do e-mail</h3>
@@ -391,7 +386,7 @@ export default function CampaignEditor({
               <button className={editImages ? 'active' : ''} onClick={() => setEditImages(true)}>Montar e-mail</button>
               <button className={!editImages ? 'active' : ''} onClick={() => setEditImages(false)}>Visualizar final</button>
             </div>
-            <span>{campaign.sections ? 'Edite as seções na aba Conteúdo · prévia do HTML final' : editImages ? 'Clique nas áreas de imagem para adicionar ou trocar fotos' : 'HTML final, sem os controles de edição'}</span>
+            <span>{campaign.sections ? editImages ? 'Clique em um bloco para abrir sua edição' : 'HTML final, sem controles de edição' : editImages ? 'Clique nas áreas de imagem para adicionar ou trocar fotos' : 'HTML final, sem os controles de edição'}</span>
           </div>
           <div className="preview-toolbar">
             <div>
@@ -437,13 +432,17 @@ export default function CampaignEditor({
                   if (!document) return;
                   const choose = (target: EventTarget | null) => {
                     const element = target as HTMLElement | null;
+                    const sectionId = element?.closest?.('[data-section-id]')?.getAttribute('data-section-id');
+                    if (campaign.sections?.some(section => section.id === sectionId)) {
+                      setTab('content'); setFocusSection({ id: sectionId!, sequence: Date.now() }); return;
+                    }
                     const slot = element?.closest?.('[data-image-slot]')?.getAttribute('data-image-slot');
                     if (!readOnly && (slot === 'hero' || slot === 'application')) setImageSlot(slot);
                   };
                   document.addEventListener('click', (click) => { click.preventDefault(); if (editImages) choose(click.target); });
                   document.addEventListener('keydown', (key) => {
                     if (editImages && (key.key === 'Enter' || key.key === ' ')) {
-                      if ((key.target as HTMLElement)?.closest?.('[data-image-slot]')) {
+                      if ((key.target as HTMLElement)?.closest?.('[data-image-slot],[data-section-id]')) {
                         key.preventDefault(); choose(key.target);
                       }
                     }

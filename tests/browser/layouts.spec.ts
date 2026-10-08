@@ -9,7 +9,7 @@ test('real layouts, clickable slots, large local photo, web image and portable e
   await page.route('https://images.example.com/material.png', (route) => route.fulfill({ path: 'public/brand/granistone-logo.png', contentType: 'image/png' }));
   await page.goto('/');
   await page.getByRole('button', { name: /Templates/ }).first().click();
-  await expect(page.locator('.template-live-preview iframe')).toHaveCount(5);
+  await expect(page.locator('.template-live-preview iframe')).toHaveCount(9);
   await page.screenshot({ path: 'test-results/layout-library.png', fullPage: true });
   await page.getByRole('button', { name: /Produto · Comercial.*Usar template/ }).click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Layout com fotos');

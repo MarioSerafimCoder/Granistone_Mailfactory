@@ -21,6 +21,7 @@ test('legacy material does not hide folder images; selection and crop preserve t
   await page.route('**/api/assets?**', route => route.fulfill({ json: assets }));
   await page.route('**/api/materials', route => route.fulfill({ json: [] }));
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
+  await expect(page.locator('.preview-stage iframe')).toHaveAttribute('aria-busy', 'false');
   const frame = page.frameLocator('.preview-stage iframe');
   await frame.getByRole('button', { name: 'Adicionar foto do produto' }).click();
   const picker = page.getByRole('dialog', { name: 'Imagem principal', exact: true });

@@ -48,7 +48,7 @@ export function isSection(value: unknown): value is Section {
   return !!d && typeof s.id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(s.id) && typeof s.enabled === 'boolean' &&
     !!s.content && ['pt', 'en', 'es'].every(lang => d.validate(s.content[lang as Language])) &&
     !!s.settings && backgroundValid(s.settings.background) && colorValid(s.settings.textColor) &&
-    ['left', 'center'].includes(s.settings.alignment) && Number.isInteger(s.settings.padding) && s.settings.padding >= 0 && s.settings.padding <= 80 &&
+    ['left', 'center', 'right'].includes(s.settings.alignment) && Number.isInteger(s.settings.padding) && s.settings.padding >= 0 && s.settings.padding <= 80 &&
     Number.isInteger(s.settings.height) && s.settings.height >= 8 && s.settings.height <= 200;
 }
 export function sectionsValid(value: unknown): value is Section[] {

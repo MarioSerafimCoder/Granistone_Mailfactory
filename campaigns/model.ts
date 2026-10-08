@@ -38,19 +38,22 @@ export function emptyContent(): CampaignContent {
 type CampaignDraft = Omit<Partial<Campaign>, 'content'> & { content?: Partial<Record<Language, CampaignContent>> };
 export function createCampaign(partial: CampaignDraft = {}): Campaign {
   const template = partial.template ?? 'institutional';
+  const definition = getTemplate(template);
   const supplied = partial.content;
   return {
     id: crypto.randomUUID(),
     date: '',
     title: 'Nova campanha',
-    campaignType: 'Institucional',
+    campaignType: definition.campaignType,
     audience: '',
     objective: '',
     language: 'PT',
     notes: '',
     status: 'Pendente',
     template,
-    blocks: getTemplate(template).blocks.map((id) => ({ id, enabled: true })),
+    blocks: definition.blocks.map((id) => ({ id, enabled: true })),
+    ...(definition.createSections ? { sections: definition.createSections() } : {}),
+    ...(definition.defaultDesign ? { design: definition.defaultDesign() } : {}),
     alignment: 'left',
     updatedAt: new Date().toISOString(),
     ...partial,
@@ -62,10 +65,13 @@ export function createCampaign(partial: CampaignDraft = {}): Campaign {
   };
 }
 export function changeTemplate(c: Campaign, template: TemplateId): Campaign {
+  const definition = getTemplate(template);
   return {
     ...c,
     template,
-    blocks: getTemplate(template).blocks.map((id) => ({
+    campaignType: definition.campaignType,
+    ...(definition.createSections ? { sections: definition.createSections(), design: definition.defaultDesign?.() } : {}),
+    blocks: definition.blocks.map((id) => ({
       id,
       enabled: c.blocks.find((b) => b.id === id)?.enabled ?? true,
     })),

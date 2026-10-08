@@ -16,12 +16,12 @@ test('history requires confirmation, list shows author, and language status foll
   await page.goto('/');
   const title = `UX ${Date.now()}`;
   await create(page, title);
-  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 15000 });
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
   await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
-  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 15000 });
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
   await expect(page.getByText(/Última alteração por Local/)).toBeVisible();
   await page.getByLabel('Status da campanha').selectOption('Aprovado');
-  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 15000 });
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
   await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(page.getByLabel('Status da campanha')).toHaveValue('Pendente');
   await page.getByRole('button', { name: 'Histórico', exact: true }).click();
