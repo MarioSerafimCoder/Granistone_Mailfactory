@@ -110,7 +110,7 @@ test('template creation, live synchronization and lease permissions cover the in
     await page.getByLabel('Template inicial', { exact: true }).selectOption('promo-impact');
     await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
     const title = page.locator('.visual-email').getByRole('textbox', { name: 'Título do bloco', exact: true }).first();
     await expect(title).toHaveAttribute('contenteditable', 'true');
     await second.goto('/'); await second.getByRole('button', { name, exact: true }).click();
@@ -121,7 +121,7 @@ test('template creation, live synchronization and lease permissions cover the in
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await page.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
     await expect(title).toHaveAttribute('contenteditable', 'false');
-    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
     await expect(other.locator('strong')).toHaveText('Título compartilhado');
     await expect(other).toHaveAttribute('contenteditable', 'true');
     await other.fill('Revisado por colaborador'); await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
@@ -155,6 +155,7 @@ test('paste sanitization, link editing, list formatting and review navigation wo
 test('contextual styles, spacing, color and block alignment share export and global history', async ({ page }) => {
   await seed(page);
   const card = page.locator('[data-canvas-block]').first(); await card.focus();
+  await card.locator('.canvas-block-more summary').click();
   await card.getByRole('button', { name: 'Propriedades do bloco', exact: true }).click();
   const inspector = page.locator('.canvas-inspector');
   await inspector.getByLabel('Aplicar estilo do bloco', { exact: true }).selectOption('premium');

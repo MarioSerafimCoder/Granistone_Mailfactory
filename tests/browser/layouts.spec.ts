@@ -66,7 +66,7 @@ test('real layouts, clickable slots, large local photo, web image and portable e
   expect(html).not.toContain('<script');
   expect(html).not.toContain('Clique para adicionar');
   await page.getByRole('button', { name: 'Fechar', exact: true }).click();
-  await expect(page.locator('.save-indicator')).toHaveText('Salvo localmente · ainda não compartilhado');
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo local');
   await page.reload();
   await page.getByRole('button', { name: 'Layout com fotos', exact: true }).click();
   await expect(canvas.getByRole('img', { name: 'Foto carregada do computador' })).toHaveAttribute('src', source!);
@@ -94,7 +94,7 @@ test('existing localStorage campaigns migrate to photo-capable storage without l
   await page.getByRole('button', { name: 'Campanha anterior', exact: true }).click();
   await expect(page.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true })).toHaveText('Texto preservado');
   await page.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true }).fill('Texto novo preservado');
-  await expect(page.locator('.save-indicator')).toHaveText('Salvo localmente · ainda não compartilhado');
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo local');
   await page.reload();
   await page.getByRole('button', { name: 'Campanha anterior', exact: true }).click();
   await expect(page.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true })).toHaveText('Texto novo preservado');

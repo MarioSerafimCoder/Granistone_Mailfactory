@@ -8,7 +8,7 @@ test('material autofill, image preview and restricted rich formatting remain edi
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await page.getByRole('button', { name: 'Crystal Palace · Arquitetura', exact: true }).click();
-  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
+  await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByRole('option', { name: /Speranza/ }).click();
   await expect(page.getByText('Como aplicar Speranza?')).toBeVisible();
   await page.getByRole('button', { name: 'Substituir conteúdo', exact: true }).click();
@@ -41,7 +41,7 @@ test('material autofill, image preview and restricted rich formatting remain edi
   await page.getByRole('button', { name: 'Voltar às campanhas', exact: true }).click();
   await page.reload();
   await page.getByRole('button', { name: 'Crystal Palace · Arquitetura', exact: true }).click();
-  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
+  await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await expect(page.getByLabel('Nome do material', { exact: true })).toHaveValue(
     'Speranza revisado',
   );

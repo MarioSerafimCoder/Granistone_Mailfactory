@@ -7,7 +7,7 @@ async function authenticate(page: Page) {
 }
 async function editing(page: Page) {
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
 }
 test('free blocks, saved library, campaign copy and shared custom templates work across two browsers', async ({ page, browser, request }) => {
   test.setTimeout(120000);
@@ -16,7 +16,7 @@ test('free blocks, saved library, campaign copy and shared custom templates work
   expect((await request.post('/api/campaigns', { headers: auth, data: { campaign, requestId: crypto.randomUUID() } })).status()).toBe(201);
   await authenticate(page); await page.goto('/');
   await page.getByRole('button', { name, exact: true }).click(); await editing(page);
-  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
+  await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByRole('button', { name: 'Adicionar bloco', exact: true }).click();
   const catalog = page.getByRole('dialog', { name: 'Adicionar bloco' });
   await expect(catalog.locator('.block-catalog button')).toHaveCount(16);
@@ -70,7 +70,7 @@ test('free blocks, saved library, campaign copy and shared custom templates work
     await expect(edit).toHaveCount(0);
     await expect(tile).toContainText('Compartilhado entre navegadores');
     await tile.getByRole('button', { name: 'Usar template', exact: true }).click();
-    await second.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
+    await second.locator('.editor-secondary summary').click(); await second.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
     await expect(second.locator('.section-card')).toHaveCount(2);
     await expect(second.frameLocator('.preview-stage iframe').getByText('[Título do bloco]', { exact: true })).toHaveCount(2);
     await editing(second);
@@ -98,7 +98,7 @@ test('legacy conversion and solid, gradient, image backgrounds match exported HT
   const title = 'Fundos ' + Date.now();
   await page.getByLabel('Nome da campanha', { exact: true }).fill(title);
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click(); await editing(page);
-  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
+  await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByLabel('Headline', { exact: true }).fill('Composição mineral');
   await expect(page.frameLocator('.preview-stage iframe').getByRole('heading', { name: 'Composição mineral' })).toBeVisible();
   await page.getByRole('button', { name: 'Estrutura', exact: true }).click();

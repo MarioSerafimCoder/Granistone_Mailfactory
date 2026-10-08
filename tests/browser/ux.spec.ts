@@ -17,14 +17,15 @@ test('history requires confirmation, list shows author, and language status foll
   const title = `UX ${Date.now()}`;
   await create(page, title);
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
-  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
+  await page.locator('.editor-secondary summary').click();
   await expect(page.getByText(/Última alteração por Local/)).toBeVisible();
   await page.getByLabel('Status da campanha').selectOption('Aprovado');
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
   await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(page.getByLabel('Status da campanha')).toHaveValue('Pendente');
-  await page.getByRole('button', { name: 'Histórico', exact: true }).click();
+  await page.getByRole('button', { name: 'Histórico de versões', exact: true }).click();
   const history = page.getByRole('dialog', { name: 'Histórico da campanha' });
   await expect(history.getByText(/Mudou o status PT para Aprovado/)).toBeVisible();
   await history.getByRole('button', { name: 'Restaurar esta versão' }).first().click();
@@ -44,7 +45,7 @@ test('HTTPS image entry and guided publication remain clear at desktop and narro
   await page.goto('/');
   await create(page, `Preparação ${Date.now()}`);
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
   await page.getByRole('button', { name: 'Editar Imagem principal', exact: true }).click();
   const image = page.getByRole('complementary', { name: 'Propriedades do elemento' });

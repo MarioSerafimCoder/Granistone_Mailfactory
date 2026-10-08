@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { ArrowDown, ArrowUp, Copy, Eye, GripVertical, Plus, Settings2, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, Eye, GripVertical, Images, LayoutGrid, MoreHorizontal, PanelLeftOpen, PanelRightOpen, Plus, Search, Settings2, Trash2, X } from 'lucide-react';
 import type { BrandSettings, Campaign, Language } from '@/types/campaign';
 import type { Section, SectionType } from '@/types/design';
 import { blockRegistry, createSection } from '@/blocks/registry';
@@ -16,14 +16,30 @@ import BackgroundEditor, { ColorField } from '../BackgroundEditor';
 import AlignmentControl from '../AlignmentControl';
 import SavedDesignDialog from '../SavedDesignDialog';
 import SavedDesignLibrary from '../SavedDesignLibrary';
+import AssetLibrary from '../AssetLibrary';
+import { templates } from '@/templates/registry';
 import { Field, Modal } from '../ui';
+
+const blockGroups: { title: string; types: SectionType[] }[] = [
+  { title: 'Básicos', types: ['centeredText', 'cta'] },
+  { title: 'Imagens', types: ['heroEditorial', 'imageText', 'textImage', 'gallery', 'banner'] },
+  { title: 'Produtos', types: ['heroProduct', 'product', 'twoProducts', 'specifications', 'applications'] },
+  { title: 'Editorial', types: ['quote'] },
+  { title: 'Estrutura', types: ['divider', 'spacer'] },
+  { title: 'Institucional', types: ['complementaryFooter'] },
+];
+const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 
 export default function VisualWorkspace({ campaign, brand, language, readOnly, onChange, onUndo, onRedo, saveState, onAdvanced, review, onReviewClose, onLanguage }: {
   campaign: Campaign; brand: BrandSettings; language: Language; readOnly: boolean; onChange: (patch: Partial<Campaign>, group?: string) => void;
-  onUndo: () => void; onRedo: () => void; saveState: SaveState; onAdvanced: (tab?: 'content' | 'blocks') => void; review: boolean; onReviewClose: () => void; onLanguage: (language: Language) => void;
+  onUndo: () => void; onRedo: () => void; saveState: SaveState; onAdvanced: (tab?: 'content' | 'blocks' | 'design') => void; review: boolean; onReviewClose: () => void; onLanguage: (language: Language) => void;
 }) {
   const [selected, setSelected] = useState<CanvasSelection>();
   const [library, setLibrary] = useState(false), [inspector, setInspector] = useState(false);
+  const [libraryTab, setLibraryTab] = useState<'blocks' | 'templates' | 'images' | 'saved'>('blocks');
+  const [inspectorTab, setInspectorTab] = useState<'content' | 'style' | 'advanced'>('content');
+  const [blockQuery, setBlockQuery] = useState('');
+  const [libraryHint, setLibraryHint] = useState('');
   const [insertion, setInsertion] = useState<number>();
   const [saved, setSaved] = useState(false), [saving, setSaving] = useState<Section>();
   const [dragging, setDragging] = useState<string>(), [drop, setDrop] = useState<{ id: string; after: boolean }>();
@@ -32,7 +48,7 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
   const sections = campaign.sections;
   const section = sections?.find(s => s.id === selected?.id);
   const design = campaign.design ?? defaultDesign();
-  const select = (next: CanvasSelection) => { setSelected(next); if (next.kind === 'image') setInspector(true); };
+  const select = (next: CanvasSelection) => { setSelected(next); if (next.kind === 'image') { setInspectorTab('content'); setInspector(true); } };
   const changeSection = (next: Section, group?: string) => onChange({ sections: sections?.map(s => s.id === next.id ? next : s) }, group);
   const settings = (patch: Partial<Section['settings']>) => { if (section) changeSection({ ...section, settings: { ...section.settings, ...patch } }); };
   const insert = (source: Section) => {
@@ -99,7 +115,7 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
     }
     pointer.current = undefined; setDragging(undefined); setDrop(undefined);
   }
-  const addAt = (index: number) => <button className="canvas-insert" disabled={readOnly || (sections?.length ?? 0) >= 40} aria-label={`Inserir bloco na posição ${index + 1}`} onClick={() => { setInsertion(index); setLibrary(true); }}><Plus size={13} /></button>;
+  const addAt = (index: number) => <button className="canvas-insert" disabled={readOnly || (sections?.length ?? 0) >= 40} aria-label={`Inserir bloco na posição ${index + 1}`} onClick={() => { setInsertion(index); setLibraryTab('blocks'); setLibrary(true); }}><Plus size={13} /></button>;
   const imageKey = selected?.kind === 'image' ? selected.field : undefined;
   const imageAlt = imageKey === 'image2' ? 'alt2' : imageKey === 'applicationImage' ? 'applicationAlt' : imageKey === 'heroImage' ? 'heroAlt' : 'alt';
   const imageContent = section?.content[language] ?? campaign.content[language] as unknown as Record<string, string>;
@@ -120,12 +136,14 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
   };
   const imageAltChange = (value: string) => section ? changeSection({ ...section, content: { ...section.content, [language]: { ...section.content[language], [imageAlt]: value } } }) : onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], [imageAlt]: value } } });
   return <div className="visual-workspace">
-    <div className="visual-workspace-bar"><div><button className="button" aria-expanded={library} onClick={() => setLibrary(!library)}>＋ Biblioteca</button><button className="button" aria-expanded={inspector} onClick={() => setInspector(!inspector)}><Settings2 size={14} /> Propriedades</button></div><span>{readOnly ? 'Somente leitura · inicie uma sessão para editar' : 'Clique para escrever · selecione um trecho para formatar'}</span><button className="text-button" onClick={() => onAdvanced()}>Configurações avançadas</button></div>
     <div className="visual-columns">
-      {library && <aside className="canvas-library" aria-label="Biblioteca de blocos"><header><strong>Biblioteca</strong><button aria-label="Recolher biblioteca" onClick={() => setLibrary(false)}><X size={16} /></button></header>
-        {sections ? <><p className="muted">{insertion === undefined ? 'Adicionar ao final' : `Inserir na posição ${insertion + 1}`} · {sections.length}/40 blocos</p><div className="quick-blocks">{Object.entries(blockRegistry).map(([type, definition]) => <button className="button" key={type} disabled={readOnly || sections.length >= 40} onClick={() => insert(createSection(type as SectionType))}>{definition.name}</button>)}</div><button className="button" disabled={readOnly || sections.length >= 40} onClick={() => setSaved(true)}>Inserir bloco salvo</button></> : <><p>Esta campanha preserva a composição original do template.</p><p className="muted">Para adicionar blocos livres, use a conversão reversível em Estrutura nas configurações avançadas.</p><button className="button" onClick={() => onAdvanced('blocks')}>Abrir estrutura e templates</button></>}
-        <p className="muted">Para trocar fotografias, clique na imagem e escolha Biblioteca. Os materiais compartilhados continuam disponíveis.</p>
-      </aside>}
+      {library ? <aside className="canvas-library" aria-label="Biblioteca de blocos"><header><strong>Biblioteca</strong><button aria-label="Recolher biblioteca" title="Recolher biblioteca" onClick={() => setLibrary(false)}><X size={17} /></button></header>
+        <div className="canvas-panel-tabs" role="tablist" aria-label="Categorias da biblioteca">{([['blocks', 'Blocos'], ['templates', 'Templates'], ['images', 'Imagens'], ['saved', 'Salvos']] as const).map(([key, label]) => <button key={key} role="tab" aria-selected={libraryTab === key} className={libraryTab === key ? 'active' : ''} onClick={() => setLibraryTab(key)}>{label}</button>)}</div>
+        {libraryTab === 'blocks' && (sections ? <><p className="canvas-panel-context">{insertion === undefined ? 'Adicionar ao final' : `Inserir na posição ${insertion + 1}`} · {sections.length}/40 blocos</p><label className="canvas-search"><Search size={16} /><input aria-label="Buscar blocos" placeholder="Buscar bloco" value={blockQuery} onChange={event => setBlockQuery(event.target.value)} /></label>{blockGroups.map(group => { const types = group.types.filter(type => normalize(blockRegistry[type].name).includes(normalize(blockQuery))); return types.length ? <section className="canvas-library-group" key={group.title}><h3>{group.title}</h3><div className="quick-blocks">{types.map(type => <button className="canvas-block-card" key={type} disabled={readOnly || sections.length >= 40} onClick={() => insert(createSection(type))}><span className={`canvas-block-mini mini-${type}`} aria-hidden="true"><i /><i /><i /></span><span>{blockRegistry[type].name}</span><Plus size={14} /></button>)}</div></section> : null; })}{!blockGroups.some(group => group.types.some(type => normalize(blockRegistry[type].name).includes(normalize(blockQuery)))) && <p className="muted">Nenhum bloco encontrado.</p>}</> : <><p>Esta campanha preserva a composição original do template.</p><p className="muted">Para adicionar blocos livres, use a conversão reversível em Estrutura.</p><button className="button" onClick={() => onAdvanced('blocks')}>Abrir estrutura e templates</button></>)}
+        {libraryTab === 'templates' && <><p className="canvas-panel-context">Escolha a estrutura nas configurações da campanha.</p><div className="quick-blocks">{templates.map(template => <button className="canvas-block-card" key={template.id} onClick={() => onAdvanced('blocks')}><span className="canvas-block-mini mini-template" aria-hidden="true"><i /><i /><i /></span><span>{template.name}</span></button>)}</div></>}
+        {libraryTab === 'images' && <><p className="canvas-panel-context">Selecione uma imagem no e-mail para substituí-la por um arquivo da biblioteca ou de um material.</p>{libraryHint && <p role="status" className="canvas-panel-context">{libraryHint}</p>}<AssetLibrary embedded lazy materialId={campaign.materialId} onSelect={asset => { if (selected?.kind === 'image') { imageChange(asset.url, asset.alt); setLibraryHint('Imagem aplicada.'); } else setLibraryHint('Selecione primeiro uma imagem na composição.'); }} /></>}
+        {libraryTab === 'saved' && (sections ? <SavedDesignLibrary kind="block" onUse={design => { if (design.kind === 'block') insert(design.payload); }} /> : <p className="canvas-panel-context">Os blocos salvos ficam disponíveis após ativar blocos livres em Estrutura.</p>)}
+      </aside> : <div className="canvas-panel-rail"><button aria-label="Abrir biblioteca" title="Abrir biblioteca" onClick={() => setLibrary(true)}><PanelLeftOpen size={19} /></button><button aria-label="Abrir imagens e materiais" title="Imagens e materiais" onClick={() => { setLibraryTab('images'); setLibrary(true); }}><Images size={18} /></button><button aria-label="Abrir templates" title="Templates" onClick={() => { setLibraryTab('templates'); setLibrary(true); }}><LayoutGrid size={18} /></button></div>}
       <div className="visual-stage" ref={stage} onClick={event => { if (!(event.target as HTMLElement).closest('[data-canvas-block],.canvas-text,.canvas-picture')) { setSelected(undefined); setInspector(false); } }}>
         <div className="canvas-envelope"><Field label="Assunto" disabled={readOnly} value={campaign.content[language].subject} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], subject: event.target.value } } }, 'subject:' + language)} /><Field label="Preheader" disabled={readOnly} value={campaign.content[language].preheader} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], preheader: event.target.value } } }, 'preheader:' + language)} /></div>
         <div className="visual-email" aria-label="Composição do e-mail" style={{ ...backgroundStyle(design.content), color: design.textColor }}>
@@ -135,13 +153,15 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
               {!readOnly && <div className="canvas-block-actions" aria-label="Ações do bloco" onClick={event => event.stopPropagation()}>
                 <button className="canvas-grip" aria-label="Arrastar bloco" title="Arraste para mover; use Subir e Descer pelo teclado" onPointerDown={event => start(event, s.id)} onPointerMove={move} onPointerUp={event => stop(event)} onPointerCancel={event => stop(event, true)} onLostPointerCapture={event => stop(event, true)}><GripVertical size={16} /></button>
                 <span>{blockRegistry[s.type].name}</span>
-                <button aria-label="Subir bloco" disabled={index === 0} onClick={() => onChange({ sections: moveSection(sections, index, -1) })}><ArrowUp size={14} /></button>
-                <button aria-label="Descer bloco" disabled={index === sections.length - 1} onClick={() => onChange({ sections: moveSection(sections, index, 1) })}><ArrowDown size={14} /></button>
                 <button aria-label="Duplicar bloco" disabled={sections.length >= 40} onClick={() => { const copy = duplicateSection(s); onChange({ sections: [...sections.slice(0, index + 1), copy, ...sections.slice(index + 1)] }); select({ id: copy.id, kind: 'block' }); }}><Copy size={14} /></button>
                 <button aria-label={s.enabled ? 'Ocultar bloco' : 'Exibir bloco'} onClick={() => changeSection({ ...s, enabled: !s.enabled })}><Eye size={14} /></button>
                 <button aria-label="Remover bloco" onClick={() => remove(s.id)}><Trash2 size={14} /></button>
-                <button aria-label="Propriedades do bloco" onClick={() => { select({ id: s.id, kind: 'block' }); setInspector(true); }}><Settings2 size={14} /></button>
-                <button aria-label="Salvar bloco reutilizável" onClick={() => setSaving(s)}>Salvar</button>
+                <details className="canvas-block-more"><summary aria-label="Mais opções do bloco" title="Mais opções"><MoreHorizontal size={17} /></summary><div>
+                  <button aria-label="Subir bloco" disabled={index === 0} onClick={() => onChange({ sections: moveSection(sections, index, -1) })}><ArrowUp size={14} /> Subir</button>
+                  <button aria-label="Descer bloco" disabled={index === sections.length - 1} onClick={() => onChange({ sections: moveSection(sections, index, 1) })}><ArrowDown size={14} /> Descer</button>
+                  <button aria-label="Propriedades do bloco" onClick={() => { select({ id: s.id, kind: 'block' }); setInspectorTab('style'); setInspector(true); }}><Settings2 size={14} /> Propriedades</button>
+                  <button aria-label="Salvar bloco reutilizável" onClick={() => setSaving(s)}>Salvar como bloco</button>
+                </div></details>
               </div>}
               {!s.enabled ? <button className="canvas-hidden-label" onClick={() => { select({ id: s.id, kind: 'block' }); setInspector(true); }}>Bloco oculto · {blockRegistry[s.type].name}</button> : <SectionContent section={s} language={language} readOnly={readOnly} onChange={changeSection} onSelect={select} onUndo={onUndo} onRedo={onRedo} />}
             </article>{addAt(index + 1)}
@@ -149,29 +169,32 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
           <table className="canvas-brand" role="presentation" aria-label="Rodapé fixo" onClick={event => event.preventDefault()}><tbody dangerouslySetInnerHTML={{ __html: GranistoneFooter(brand, language) }} /></table>
         </div><p className="canvas-footnote">600 px · {language.toUpperCase()} · Cabeçalho e rodapé configurados em Marca</p>
       </div>
-      {inspector && <aside className="canvas-inspector" aria-label="Propriedades do elemento"><header><strong>{selected?.kind === 'image' ? 'Imagem' : selected?.kind === 'text' ? 'Texto' : section ? blockRegistry[section.type].name : 'E-mail'}</strong><button aria-label="Recolher propriedades" onClick={() => setInspector(false)}><X size={16} /></button></header><div inert={readOnly} aria-disabled={readOnly}>
+      {inspector ? <aside className="canvas-inspector" aria-label="Propriedades do elemento"><header><strong>{selected?.kind === 'image' ? 'Imagem' : selected?.kind === 'text' ? 'Texto' : section ? blockRegistry[section.type].name : 'E-mail'}</strong><button aria-label="Recolher propriedades" title="Recolher propriedades" onClick={() => setInspector(false)}><X size={17} /></button></header><div className="canvas-panel-tabs" role="tablist" aria-label="Abas de propriedades">{([['content', 'Conteúdo'], ['style', 'Estilo'], ['advanced', 'Avançado']] as const).map(([key, label]) => <button key={key} role="tab" aria-selected={inspectorTab === key} className={inspectorTab === key ? 'active' : ''} onClick={() => setInspectorTab(key)}>{label}</button>)}</div><div className="canvas-inspector-body" inert={readOnly} aria-disabled={readOnly}>
         {selected && <p className="muted">{section ? blockRegistry[section.type].name : 'Template original'}{selected.field && section ? ' · ' + (blockRegistry[section.type].fields.find(f => f.key === selected.field)?.label ?? '') : ''}</p>}
+        {inspectorTab === 'content' && <>
+        {selected?.kind === 'text' && <p className="canvas-panel-context">Edite o texto diretamente na composição. Selecione um trecho para formatar.</p>}
         {imageKey && <ImagePicker key={`${selected?.id}:${imageKey}:${language}`} label={imageKey === 'image2' ? 'Imagem do bloco 2' : section ? 'Imagem do bloco' : imageKey === 'heroImage' ? 'Imagem principal' : 'Imagem de aplicação'} value={imageContent[imageKey] || ''} alt={imageContent[imageAlt] || ''} recommended={imageSize} materialId={campaign.materialId} saveState={saveState} onChange={imageChange} onAlt={imageAltChange} />}
-        {section ? <>
+        {section && blockRegistry[section.type].fields.filter(f => f.kind === 'url').map(f => <Field key={f.key} label={f.label} value={section.content[language][f.key]} onChange={event => changeSection({ ...section, content: { ...section.content, [language]: { ...section.content[language], [f.key]: event.target.value } } })} />)}
+        {!section && !sections && selected && <><Field label="Link do botão" value={campaign.content[language].ctaUrl} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], ctaUrl: event.target.value } } })} />{selected?.field?.startsWith('article') && <Field label="Link do artigo" value={campaign.content[language].articleUrl} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], articleUrl: event.target.value } } })} />}</>}
+        {!selected && <p className="canvas-panel-context">Selecione um texto, imagem ou bloco para ver seu conteúdo.</p>}
+        </>}
+        {inspectorTab === 'style' && (!selected ? <><p className="canvas-panel-context">Selecione um bloco ou elemento para ajustar seu estilo. Os fundos gerais ficam em Configurações avançadas.</p><button className="button" onClick={() => onAdvanced('design')}>Configurações gerais do e-mail</button></> : section ? <>
           <label className="field"><span>Estilo do bloco</span><select aria-label="Aplicar estilo do bloco" value="" onChange={event => {
             const presets: Record<string, Partial<Section['settings']>> = { editorial: { background: { kind: 'solid', color: '#FFFFFF' }, textColor: '#111111', padding: 36, alignment: 'left' }, mineral: { background: { kind: 'solid', color: '#F5F3EF' }, textColor: '#111111', padding: 36, alignment: 'center' }, premium: { background: { kind: 'solid', color: '#111111' }, textColor: '#FFFFFF', padding: 40, alignment: 'center' } };
             if (presets[event.target.value]) settings(presets[event.target.value]);
           }}><option value="">Escolher um estilo…</option><option value="editorial">Branco editorial</option><option value="mineral">Mineral</option><option value="premium">Preto premium</option></select></label>
-          {blockRegistry[section.type].fields.filter(f => f.kind === 'url').map(f => <Field key={f.key} label={f.label} value={section.content[language][f.key]} onChange={event => changeSection({ ...section, content: { ...section.content, [language]: { ...section.content[language], [f.key]: event.target.value } } })} />)}
           <AlignmentControl label="Alinhamento do bloco" value={section.settings.alignment} onChange={alignment => settings({ alignment })} />
           <ColorField label="Cor do texto do bloco" value={section.settings.textColor} onChange={textColor => settings({ textColor })} />
           <BackgroundEditor label="Fundo do bloco" value={section.settings.background} onChange={(background, textColor) => settings({ background, ...(textColor ? { textColor } : {}) })} />
           <label>Espaçamento interno · {section.settings.padding} px<input aria-label="Espaçamento interno" type="range" min="0" max="80" step="4" value={section.settings.padding} onChange={event => settings({ padding: Number(event.target.value) })} /></label>
-          {section.type === 'spacer' && <label>Altura do espaçador<input aria-label="Altura do espaçador" type="range" min="8" max="200" step="4" value={section.settings.height} onChange={event => settings({ height: Number(event.target.value) })} /></label>}
-          <label><input type="checkbox" checked={section.enabled} onChange={event => changeSection({ ...section, enabled: event.target.checked })} /> Exibir bloco</label>
         </> : <>
-          {!sections && <><Field label="Link do botão" value={campaign.content[language].ctaUrl} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], ctaUrl: event.target.value } } })} />{selected?.field?.startsWith('article') && <Field label="Link do artigo" value={campaign.content[language].articleUrl} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], articleUrl: event.target.value } } })} />}<AlignmentControl value={campaign.alignment} onChange={alignment => onChange({ alignment })} /></>}
+          {!sections && selected && <AlignmentControl value={campaign.alignment} onChange={alignment => onChange({ alignment })} />}
           <BackgroundEditor label="Fundo do e-mail" value={design.email} onChange={email => onChange({ design: { ...design, email } })} />
           <BackgroundEditor label="Fundo do conteúdo" value={design.content} onChange={(content, textColor) => onChange({ design: { ...design, content, ...(textColor ? { textColor } : {}) } })} />
           <ColorField label="Cor do texto do conteúdo" value={design.textColor} onChange={textColor => onChange({ design: { ...design, textColor } })} />
-        </>}
-        <p className="muted">Tipografia editorial Granistone. Selecione um trecho no canvas para formatar.</p>
-      </div></aside>}
+        </>)}
+        {inspectorTab === 'advanced' && <>{section ? <><label><input type="checkbox" checked={section.enabled} onChange={event => changeSection({ ...section, enabled: event.target.checked })} /> Exibir bloco</label>{section.type === 'spacer' && <label>Altura do espaçador<input aria-label="Altura do espaçador" type="range" min="8" max="200" step="4" value={section.settings.height} onChange={event => settings({ height: Number(event.target.value) })} /></label>}</> : <p className="canvas-panel-context">Configurações da composição original.</p>}<button className="button" onClick={() => onAdvanced()}>Configurações avançadas da campanha</button></>}
+      </div></aside> : <div className="canvas-panel-rail right"><button aria-label="Abrir propriedades" title="Abrir propriedades" onClick={() => setInspector(true)}><PanelRightOpen size={19} /></button></div>}
     </div>
     {saving && !readOnly && <SavedDesignDialog initial={{ kind: 'block', payload: saving }} onClose={() => setSaving(undefined)} />}
     {saved && <Modal title="Blocos Granistone" onClose={() => setSaved(false)} wide><SavedDesignLibrary kind="block" onUse={design => { if (design.kind === 'block') insert(design.payload); }} /></Modal>}

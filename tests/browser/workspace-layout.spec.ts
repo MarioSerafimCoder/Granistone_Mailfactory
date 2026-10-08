@@ -1,0 +1,102 @@
+import { test, expect } from '@playwright/test';
+import { createCampaign } from '../../campaigns/model';
+import { createSection } from '../../blocks/registry';
+import { defaultBrand } from '../../data/brand';
+
+for (const [width, height] of [[1440, 900], [1366, 768], [1920, 1080]] as const) {
+  test(`workspace keeps one header and a 600px canvas at ${width}×${height}`, async ({ page }) => {
+    const first = createSection('heroEditorial'), second = createSection('centeredText');
+    first.content.pt.title = 'Pedra natural';
+    first.content.pt.text = 'Coleção editorial Granistone';
+    second.content.pt.title = 'Aplicações';
+    const campaign = createCampaign({ title: 'Workspace visual', sections: [first, second] });
+    await page.addInitScript(data => localStorage.setItem('granistone-mail-studio:v2', JSON.stringify(data)), { version: 2, campaigns: [campaign], brand: defaultBrand });
+    await page.setViewportSize({ width, height });
+    await page.goto('/');
+    await page.getByRole('button', { name: campaign.title, exact: true }).click();
+    const header = page.locator('.editor-heading'), stage = page.locator('.visual-stage');
+    await expect(header).toBeVisible();
+    await expect(page.locator('.studio.editing .topbar')).toBeHidden();
+    await expect(page.locator('.workspace-panel > .actions')).toBeHidden();
+    await expect(page.locator('.visual-workspace-bar')).toHaveCount(0);
+    expect(await header.evaluate(node => Math.round(node.getBoundingClientRect().height))).toBe(64);
+    await expect(page.locator('.visual-email')).toHaveCSS('width', '600px');
+    await page.getByRole('button', { name: 'Abrir biblioteca' }).click();
+    await page.getByRole('button', { name: 'Abrir propriedades' }).click();
+    await expect(page.getByRole('complementary', { name: 'Propriedades do elemento' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Biblioteca de blocos' })).toBeVisible();
+    await expect(page.locator('.visual-email')).toHaveCSS('width', '600px');
+    expect(await stage.evaluate(node => node.scrollHeight > node.clientHeight)).toBeTruthy();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+    await page.screenshot({ path: `docs/screenshots/depois-${width}x${height}.png` });
+    const title = page.locator('.visual-email').getByRole('textbox', { name: 'Título do bloco', exact: true }).first();
+    await title.fill('Título atualizado');
+    await title.press('Control+a');
+    await expect(page.getByRole('toolbar', { name: 'Formatação da seleção' })).toBeVisible();
+    await page.getByRole('button', { name: 'Recolher biblioteca' }).click();
+    await page.getByRole('button', { name: 'Recolher propriedades' }).click();
+    await expect(title).toHaveText('Título atualizado');
+    await page.getByRole('button', { name: 'Visualizar final' }).click();
+    await expect(page.frameLocator('.preview-stage iframe').getByRole('heading', { name: 'Título atualizado' })).toBeVisible();
+  });
+}
+
+test('library search and contextual inspector expose only relevant groups', async ({ page }) => {
+  const section = createSection('heroEditorial');
+  const campaign = createCampaign({ title: 'Biblioteca visual', sections: [section] });
+  await page.addInitScript(data => localStorage.setItem('granistone-mail-studio:v2', JSON.stringify(data)), { version: 2, campaigns: [campaign], brand: defaultBrand });
+  await page.goto('/');
+  await page.getByRole('button', { name: campaign.title, exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir biblioteca' }).click();
+  const library = page.getByRole('complementary', { name: 'Biblioteca de blocos' });
+  await library.getByLabel('Buscar blocos').fill('galeria');
+  await expect(library.locator('.canvas-block-card')).toHaveCount(1);
+  await library.getByRole('button', { name: 'Galeria' }).click();
+  await expect(page.locator('[data-canvas-block]')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Editar Imagem do bloco' }).first().click();
+  const inspector = page.getByRole('complementary', { name: 'Propriedades do elemento' });
+  await expect(inspector.getByRole('tab', { name: 'Conteúdo' })).toHaveAttribute('aria-selected', 'true');
+  await expect(inspector.locator('.image-picker')).toBeVisible();
+  await inspector.getByRole('tab', { name: 'Estilo' }).click();
+  await expect(inspector.getByLabel('Alinhamento do bloco')).toBeVisible();
+  await inspector.getByRole('tab', { name: 'Avançado' }).click();
+  await expect(inspector.getByRole('button', { name: 'Configurações avançadas da campanha' })).toBeVisible();
+});
+
+test('header renames inline and empty inspector keeps general style behind an explicit action', async ({ page }) => {
+  const campaign = createCampaign({ title: 'Nome original', sections: [createSection('heroEditorial')] });
+  await page.addInitScript(data => localStorage.setItem('granistone-mail-studio:v2', JSON.stringify(data)), { version: 2, campaigns: [campaign], brand: defaultBrand });
+  await page.goto('/');
+  await page.getByRole('button', { name: campaign.title, exact: true }).click();
+  await page.getByRole('heading', { name: campaign.title }).getByRole('button').click();
+  await page.getByLabel('Título da campanha no editor').fill('Nome atualizado');
+  await page.getByLabel('Título da campanha no editor').press('Enter');
+  await expect(page.getByRole('heading', { name: 'Nome atualizado' })).toBeVisible();
+  await page.getByRole('button', { name: 'Abrir propriedades' }).click();
+  const inspector = page.getByRole('complementary', { name: 'Propriedades do elemento' });
+  await inspector.getByRole('tab', { name: 'Estilo' }).click();
+  await expect(inspector.getByText('Selecione um bloco ou elemento para ajustar seu estilo.')).toBeVisible();
+  await expect(inspector.getByLabel('Fundo do e-mail')).toHaveCount(0);
+  await inspector.getByRole('button', { name: 'Configurações gerais do e-mail' }).click();
+  await expect(page.getByRole('button', { name: 'Fundos', exact: true })).toHaveClass(/active/);
+});
+
+test('shared edit lease remains compact and permission-aware at notebook width', async ({ page, request }) => {
+  const auth = { 'oai-authenticated-user-id': 'layout-owner', 'oai-authenticated-user-email': 'local@studio.test', origin: 'https://studio.example.com', 'sec-fetch-site': 'same-origin' };
+  const campaign = createCampaign({ title: `Sessão compacta ${Date.now()}`, sections: [createSection('heroEditorial')] });
+  expect((await request.post('/api/campaigns', { headers: auth, data: { campaign, requestId: crypto.randomUUID() } })).status()).toBe(201);
+  await page.route('**/api/**', async route => route.fulfill({ response: await route.fetch({ headers: { ...route.request().headers(), ...auth } }) }));
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/');
+  await page.getByRole('button', { name: campaign.title, exact: true }).click();
+  const lease = page.locator('.editor-heading .edit-lease-bar');
+  await expect(lease).toContainText('Somente leitura');
+  await expect(page.locator('.studio.editing .topbar')).toBeHidden();
+  await lease.getByRole('button', { name: 'Iniciar edição' }).click();
+  await expect(lease).toContainText('Em edição');
+  await expect(page.locator('.visual-email').getByRole('textbox', { name: 'Título do bloco', exact: true }).first()).toHaveAttribute('contenteditable', 'true');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: 'docs/screenshots/depois-colaboracao-1366x768.png' });
+  await lease.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
+  await expect(lease).toContainText('Somente leitura');
+});

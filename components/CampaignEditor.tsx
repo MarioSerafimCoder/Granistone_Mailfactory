@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -33,6 +33,7 @@ import { blueprintFromCampaign, convertSections } from '@/blocks/model';
 import { defaultDesign } from '@/lib/tokens/backgrounds';
 import VisualWorkspace from './canvas/VisualWorkspace';
 import { useCampaignHistory } from '@/lib/use-campaign-history';
+const compactSaveLabels = { ...saveLabels, local: 'Salvo local', offline: 'Offline · pendente', paused: 'Pendente' };
 export default function CampaignEditor({
   campaign,
   brand,
@@ -45,6 +46,8 @@ export default function CampaignEditor({
   onHistory,
   readOnly = false,
   onDuplicate,
+  leaseControls,
+  onSync,
 }: {
   campaign: Campaign;
   brand: BrandSettings;
@@ -57,10 +60,13 @@ export default function CampaignEditor({
   onHistory: () => void;
   readOnly?: boolean;
   onDuplicate?: () => void;
+  leaseControls?: ReactNode;
+  onSync?: () => void;
 }) {
   const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
   const history = useCampaignHistory(campaign, language, readOnly, onChange);
   const [advanced, setAdvanced] = useState(false), [review, setReview] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if ((event.target as HTMLElement).closest('input,textarea,select,[contenteditable="true"],[role="dialog"]')) return;
@@ -118,46 +124,44 @@ export default function CampaignEditor({
   }
   return (
     <div className="editor-page">
-      <div className="editor-heading">
+      <header className="editor-heading">
         <div className="editor-name">
-          <button className="icon-button" aria-label="Voltar às campanhas" onClick={onBack}>
+          <button className="icon-button" title="Voltar às campanhas" aria-label="Voltar às campanhas" onClick={onBack}>
             <ArrowLeft size={20} />
           </button>
-          <div>
-            <span className="eyebrow">CAMPANHA {campaign.demo ? '· DEMONSTRAÇÃO' : ''}</span>
-            <h1>{campaign.title}</h1>
+          <div className="editor-title-group">
+            <span className="editor-title-label">{campaign.demo ? 'DEMONSTRAÇÃO' : 'CAMPANHA'}</span>
+            {renaming && !readOnly ? <input autoFocus className="editor-title-input" aria-label="Título da campanha no editor" value={campaign.title} onChange={event => update({ title: event.target.value }, 'campaign:title')} onBlur={() => setRenaming(false)} onKeyDown={event => { if (['Enter', 'Escape'].includes(event.key)) setRenaming(false); }} /> : <h1 className="editor-title-heading">{readOnly ? campaign.title : <button title="Clique para renomear a campanha" onClick={() => setRenaming(true)}>{campaign.title}</button>}</h1>}
           </div>
+          {leaseControls}
         </div>
-        <div className="actions">
-          <span className={`save-indicator ${saveState === 'error' ? 'unsaved' : ''}`} role="status">
-            <Check size={14} />
-            {saveLabels[saveState]}
+        <div className="editor-global-tools">
+          <div className="language-tabs" aria-label="Idioma do canvas">{(['pt', 'en', 'es'] as const).map(lang => <button key={lang} aria-label={lang === 'pt' ? 'PORTUGUÊS' : lang === 'en' ? 'ENGLISH' : 'ESPAÑOL'} title={lang === 'pt' ? 'Português' : lang === 'en' ? 'English' : 'Español'} className={language === lang ? 'active' : ''} onClick={() => setLanguage(lang)}>{lang.toUpperCase()}</button>)}</div>
+          <div className="editor-history-tools"><button className="icon-button" title="Desfazer · Ctrl+Z" aria-label="↶ Desfazer" disabled={!history.canUndo} onClick={history.undo}>↶</button><button className="icon-button" title="Refazer · Ctrl+Shift+Z" aria-label="↷ Refazer" disabled={!history.canRedo} onClick={history.redo}>↷</button></div>
+          <span className={`save-indicator save-${saveState}`} role={['error', 'conflict'].includes(saveState) ? 'alert' : 'status'} title={saveLabels[saveState]}>
+            <Check size={14} aria-hidden="true" />
+            {compactSaveLabels[saveState]}
           </span>
-          {activity?.updatedAt && <span className="editor-activity" title={activityTime(activity.updatedAt)}>Última alteração por {editorName(activity.updatedBy)} · {activityTime(activity.updatedAt)}</span>}
-          {campaignRevision && <button className="text-button" onClick={onHistory}>Histórico</button>}
-          <details className="editor-secondary"><summary className="button">Mais ações</summary><div>
+        </div>
+        <div className="editor-heading-actions">
+          <div className="editor-view-switch" role="group" aria-label="Modo de visualização"><button aria-label="Editar no canvas" className={editImages && !advanced ? 'active' : ''} aria-pressed={editImages && !advanced} onClick={() => { setEditImages(true); setAdvanced(false); }}><span className="mode-full">Editar no canvas</span><span className="mode-short">Editar</span></button><button aria-label="Visualizar final" className={!editImages && !advanced ? 'active' : ''} aria-pressed={!editImages && !advanced} onClick={() => { setEditImages(false); setAdvanced(false); }}><span className="mode-full">Visualizar final</span><span className="mode-short">Prévia</span></button></div>
+          <button className="button editor-review" onClick={() => { setReview(true); setEditImages(true); setAdvanced(false); }}>Revisar</button>
+          <button className="button editor-export" disabled={!ready} onClick={() => setExportOpen(true)}><Download size={16} />Exportar</button>
+          <button className="button primary editor-publish" disabled={readOnly || ['saving', 'conflict', 'offline', 'error'].includes(saveState)} onClick={() => setPublishOpen(true)}>Publicar online</button>
+          <details className="editor-secondary"><summary className="icon-button" aria-label="Mais ações" title="Mais ações">•••</summary><div>
+            <button className="button editor-overflow-review" onClick={() => { setReview(true); setEditImages(true); setAdvanced(false); }}>Revisar</button>
+            <button className="button editor-overflow-export" disabled={!ready} onClick={() => setExportOpen(true)}>Exportar</button>
+            {campaignRevision && <button className="button" onClick={onHistory}>Histórico de versões</button>}
             {onDuplicate && <button className="button" title="Criar uma cópia completa desta campanha" onClick={onDuplicate}>Duplicar campanha</button>}
             <button className="button" title="Criar um modelo reutilizável com textos para preencher" disabled={readOnly} onClick={() => setSaveTemplate(true)}>Salvar como template</button>
+            <button className="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setAdvanced(true); setTab('content'); }}>Configurações avançadas</button>
+            {advanced && <button className="button" onClick={() => { setAdvanced(false); setEditImages(true); }}>Fechar configurações</button>}
+            {onSync && <button className="button" onClick={onSync}>Sincronizar agora</button>}
+            <label className="editor-overflow-status">Status {language.toUpperCase()}<select aria-label="Status da campanha" disabled={readOnly} value={languageStates(campaign)[language].status} onChange={(e) => update({ status: e.target.value as Campaign['status'] })}>{statuses.map(s => <option key={s}>{s}</option>)}</select></label>
+            {activity?.updatedAt && <small className="editor-activity" title={activityTime(activity.updatedAt)}>Última alteração por {editorName(activity.updatedBy)} · {activityTime(activity.updatedAt)}</small>}
           </div></details>
-          <select
-            aria-label="Status da campanha"
-            disabled={readOnly}
-            title={`Status de ${language.toUpperCase()}`}
-            value={languageStates(campaign)[language].status}
-            onChange={(e) => update({ status: e.target.value as Campaign['status'] })}
-          >
-            {statuses.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-          <small className="language-status-label">{language.toUpperCase()}</small>
-          <button className="button primary" disabled={!ready} onClick={() => setExportOpen(true)}>
-            <Download size={16} />
-            Exportar
-          </button>
-          <button className="button" disabled={readOnly || ['saving', 'conflict', 'offline', 'error'].includes(saveState)} onClick={() => setPublishOpen(true)}>Publicar online</button>
         </div>
-      </div>
+      </header>
       {notice && <p className="action-feedback" role="status">{notice} <button type="button" className="text-button" aria-label="Dispensar mensagem" onClick={() => setNotice('')}>Fechar</button></p>}
       {!!campaign.importIssues?.length && (
         <div className="import-issue-banner" role="status">
@@ -168,14 +172,6 @@ export default function CampaignEditor({
           </div>
         </div>
       )}
-      <div className="editor-global-tools">
-        <div className="language-tabs" aria-label="Idioma do canvas">{(['pt', 'en', 'es'] as const).map(lang => <button key={lang} className={language === lang ? 'active' : ''} onClick={() => setLanguage(lang)}>{lang === 'pt' ? 'PORTUGUÊS' : lang === 'en' ? 'ENGLISH' : 'ESPAÑOL'}</button>)}</div>
-        <button className="button" disabled={!history.canUndo} onClick={history.undo}>↶ Desfazer</button><button className="button" disabled={!history.canRedo} onClick={history.redo}>↷ Refazer</button>
-        <button className={`button ${editImages && !advanced ? 'primary' : ''}`} onClick={() => { setEditImages(true); setAdvanced(false); }}>Editar no canvas</button>
-        <button className={`button ${!editImages ? 'primary' : ''}`} onClick={() => { setEditImages(false); setAdvanced(false); }}>Visualizar final</button>
-        <button className="button" onClick={() => { setReview(true); setEditImages(true); setAdvanced(false); }}>Revisar</button>
-        {advanced && <button className="text-button" onClick={() => { setAdvanced(false); setEditImages(true); }}>Fechar configurações</button>}
-      </div>
       <div hidden={!editImages || advanced}>
         <VisualWorkspace campaign={campaign} brand={brand} language={language} onLanguage={setLanguage} readOnly={readOnly} onChange={update} onUndo={history.undo} onRedo={history.redo} saveState={saveState} onAdvanced={(tab = 'content') => { setAdvanced(true); setTab(tab); }} review={review} onReviewClose={() => setReview(false)} />
       </div>

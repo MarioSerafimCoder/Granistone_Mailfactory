@@ -327,7 +327,7 @@ export default function Studio() {
             {error}
           </div>
         )}
-        {workspace && <WorkspacePanel workspace={workspace} activeId={activeId} trashOpen={trashOpen} onTrashClose={() => setTrashOpen(false)} historyOpen={historyOpen} onHistoryClose={() => setHistoryOpen(false)} />}
+        {workspace && <WorkspacePanel workspace={workspace} activeId={activeId} compact={!!active} trashOpen={trashOpen} onTrashClose={() => setTrashOpen(false)} historyOpen={historyOpen} onHistoryClose={() => setHistoryOpen(false)} />}
         {feedback && (
           <div className="feedback global-feedback" role="status">
             {feedback}
@@ -338,7 +338,6 @@ export default function Studio() {
         )}
         {active ? (
           <>
-          {workspace?.meta.revisions[active.id] && <EditLeaseBar lease={campaignLease} type="campaign" id={active.id} onBegin={() => workspace.refresh()} onFinish={async () => { await workspace.flush(); if (workspace.meta.pending[active.id]) { setFeedback('As alterações estão pendentes. Retome a conexão ou recupere uma cópia.'); throw new Error('Salvamento pendente.'); } }} onCopy={copyActive} />}
           <CampaignEditor
             key={active.id}
             campaign={active}
@@ -347,6 +346,8 @@ export default function Studio() {
             brand={data.brand}
             saveState={workspace?.campaignState(active.id) ?? saveState}
             readOnly={!campaignLease.editing}
+            leaseControls={workspace?.meta.revisions[active.id] ? <EditLeaseBar compact lease={campaignLease} type="campaign" id={active.id} onBegin={() => workspace.refresh()} onFinish={async () => { await workspace.flush(); if (workspace.meta.pending[active.id]) { setFeedback('As alterações estão pendentes. Retome a conexão ou recupere uma cópia.'); throw new Error('Salvamento pendente.'); } }} onCopy={copyActive} /> : undefined}
+            onSync={workspace ? () => { void workspace.refresh().then(() => workspace.sync()).catch(caught => setFeedback(caught instanceof Error ? caught.message : 'Não foi possível sincronizar.')); } : undefined}
             onBack={() => void leaveEditor()}
             onSettings={showBrand}
             onHistory={() => setHistoryOpen(true)}

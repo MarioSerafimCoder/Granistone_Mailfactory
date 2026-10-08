@@ -60,9 +60,9 @@ test('block search and material catalog show previews, filters and a compact det
   await drawer.getByRole('button', { name: 'Fechar', exact: true }).last().click();
   await page.getByRole('button', { name: 'Campanhas' }).click();
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
-  await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
+  await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Editar', exact: true }).click();
+  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
   await page.getByRole('button', { name: 'Inserir bloco salvo' }).click();
   const library = page.getByRole('dialog', { name: 'Blocos Granistone' });
   await library.getByLabel('Buscar blocos').fill('agata');

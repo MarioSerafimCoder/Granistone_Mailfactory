@@ -25,8 +25,8 @@ function dayLabel(value: string) {
   if (date === new Date(Date.now() - 86400000).toDateString()) return 'Ontem';
   return new Date(value).toLocaleDateString('pt-BR');
 }
-export default function WorkspacePanel({ workspace, activeId, trashOpen, onTrashClose, historyOpen, onHistoryClose }: {
-  workspace: WorkspaceSync; activeId?: string; trashOpen: boolean; onTrashClose: () => void; historyOpen: boolean; onHistoryClose: () => void;
+export default function WorkspacePanel({ workspace, activeId, trashOpen, onTrashClose, historyOpen, onHistoryClose, compact = false }: {
+  workspace: WorkspaceSync; activeId?: string; trashOpen: boolean; onTrashClose: () => void; historyOpen: boolean; onHistoryClose: () => void; compact?: boolean;
 }) {
   const [deferred, setDeferred] = useState(false);
   const [dismissedConflict, setDismissedConflict] = useState('');
@@ -56,12 +56,12 @@ export default function WorkspacePanel({ workspace, activeId, trashOpen, onTrash
     ...(history || []).map((item, index) => ({ key: `r${item.revision}`, date: item.createdAt, title: historyAction(item, history?.[index + 1]), author: item.changedBy, revision: item.revision, item })),
     ...publications.map(item => ({ key: `p${item.id}`, date: item.publishedAt, title: `Publicou ${item.language.toUpperCase()} v${item.version}`, author: '', revision: 0, item: undefined })),
   ].sort((a, b) => b.date.localeCompare(a.date));
-  return <section className={`workspace-panel sync-${workspace.state}`} aria-label="Sincronização do workspace">
-    <div className="actions">
+  return <section className={`workspace-panel sync-${workspace.state}${compact ? ' workspace-panel-compact' : ''}`} aria-label="Sincronização do workspace">
+    {!compact && <div className="actions">
       <span aria-live="polite" className="workspace-save-label">{saveLabels[workspace.state]}</span>
       <button className="button" disabled={busy} onClick={() => void run(async () => { await workspace.refresh(); await workspace.sync(); })}>Sincronizar agora</button>
       {deferred && !!local.length && workspace.editor && <button className="button" onClick={() => setDeferred(false)}>Enviar campanhas locais ({local.length})</button>}
-    </div>
+    </div>}
     {workspace.editor && !deferred && (!!local.length || (!meta.brandRevision && meta.localBrand)) && <div className="workspace-notice">
       <strong>Encontramos {local.length} campanhas salvas neste navegador.</strong>
       <p>Enviar para o workspace Granistone? As imagens serão hospedadas automaticamente. {meta.localBrand && !meta.brandRevision ? 'Suas configurações locais de marca também serão importadas.' : ''}</p>
