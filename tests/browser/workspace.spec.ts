@@ -12,7 +12,7 @@ test('shared campaign coordinates two browsers, preserves edits, trash and resto
   try {
     const title = `Workspace ${Date.now()}`;
     await page.goto('/');
-    await expect(page.getByText('ChatGPT conectado')).toBeVisible();
+    await expect(page.locator('.topbar-team')).toBeVisible();
     await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
     await page.getByLabel('Nome da campanha', { exact: true }).fill(title);
     await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
@@ -30,9 +30,11 @@ test('shared campaign coordinates two browsers, preserves edits, trash and resto
     await expect(page.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
     await second.getByRole('button', { name: 'Voltar às campanhas' }).click();
-    await second.getByRole('button', { name: `Excluir ${title}`, exact: true }).click();
+    await second.getByLabel(`Ações de ${title}`).click();
+    await second.locator('.campaign-menu[open]').getByRole('button', { name: 'Excluir' }).click();
     await second.getByRole('dialog', { name: 'Excluir e-mail' }).getByRole('button', { name: 'Excluir e-mail', exact: true }).click();
-    await second.getByRole('button', { name: /^Lixeira/ }).click();
+    await second.getByRole('button', { name: 'Configurações', exact: true }).click();
+    await second.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: /Lixeira/ }).click();
     const trash = second.getByRole('dialog', { name: 'Lixeira' }).locator('.workspace-trash').filter({ hasText: title });
     await expect(trash.getByText(/Excluída por Local/)).toBeVisible();
     await expect(trash.getByRole('button', { name: 'Restaurar', exact: true })).toBeEnabled();

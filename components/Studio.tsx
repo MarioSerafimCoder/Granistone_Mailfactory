@@ -6,13 +6,11 @@ import {
   Upload,
   Settings2,
   Download,
-  Plus,
   ArrowUpRight,
   CircleHelp,
   Images,
   Trash2,
   LogIn,
-  CircleCheckBig,
   Users,
 } from 'lucide-react';
 import { useStudio } from '@/lib/use-studio';
@@ -46,6 +44,7 @@ export default function Studio() {
   const [membersOpen, setMembersOpen] = useState(false);
   const [resourceLocation, setResourceLocation] = useState<{ type: ResourceType; id: string }>();
   const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [newTemplate, setNewTemplate] = useState<TemplateId>();
   const [name, setName] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -233,9 +232,6 @@ export default function Studio() {
             <i />
           </span>
         </button>
-        <div className="workspace-label">
-          WORKSPACE <span>{onlineMember ? 'GRANISTONE' : 'LOCAL'}</span>
-        </div>
         <nav aria-label="Navegação principal">
           <button
             className={view === 'campaigns' ? 'active' : ''}
@@ -258,95 +254,34 @@ export default function Studio() {
             <Images size={18} />
             Biblioteca
           </button>
+        </nav>
+        <div className="sidebar-operations">
+          <span className="workspace-label">OPERAÇÕES</span>
           <button disabled={!canEdit} onClick={() => void navigate('campaigns').then(ok => { if (ok) setImportOpen(true); })}>
             <Upload size={18} />
             Importar planejamento
           </button>
-          <button onClick={() => setTrashOpen(true)}><Trash2 size={18} />Lixeira ({workspace?.meta.trash.length ?? 0})</button>
-        </nav>
-        <button className="sidebar-create" disabled={!canEdit} onClick={() => void navigate('campaigns').then(ok => { if (ok) start(); })}>
-          <Plus size={16} />
-          Nova campanha
-        </button>
-        {onlineMember ? (
-          <div className="sidebar-auth authenticated" role="status">
-            <CircleCheckBig size={17} />
-            <span>
-              ChatGPT conectado
-              <small>Workspace compartilhado</small>
-            </span>
-          </div>
-        ) : (
-          <a
-            className="sidebar-auth"
-            href="/signin-with-chatgpt?return_to=/"
-            target="_top"
-          >
-            <LogIn size={17} />
-            <span>
-              Entrar com ChatGPT
-              <small>Acessar campanhas e tradução</small>
-            </span>
-          </a>
-        )}
+        </div>
         <div className="sidebar-bottom">
-          <span className="workspace-label">CONFIGURAÇÕES</span>
-          <ThemeToggle />
-          <button disabled={onlineMember && !session?.permissions.editBrand} onClick={showBrand}>
-            <Settings2 size={17} />
-            Marca e rodapé
+          <button onClick={() => setSettingsOpen(true)}><Settings2 size={17} />Configurações</button>
+          <button onClick={() => setHelpOpen(true)}><CircleHelp size={17} />Ajuda</button>
+          {!onlineMember && <a className="sidebar-signin" href="/signin-with-chatgpt?return_to=/" target="_top"><LogIn size={16} />Entrar com ChatGPT</a>}
+          <button className={`sidebar-sync sync-${workspace?.state ?? saveState}`} title="Sincronizar agora" onClick={() => void workspace?.refresh().then(() => workspace.sync()).catch(caught => setFeedback(caught instanceof Error ? caught.message : 'Não foi possível sincronizar.'))}>
+            <span className="sync-dot" /><span>{saveLabels[workspace?.state ?? saveState]}</span>
           </button>
-          {session?.permissions.manageMembers && <button onClick={() => setMembersOpen(true)}><Users size={17} />Membros do workspace</button>}
-          <button
-            onClick={() => {
-              downloadFile(
-                JSON.stringify(data, null, 2),
-                'granistone-backup.json',
-                'application/json',
-              );
-              setFeedback('Backup completo baixado.');
-            }}
-          >
-            <Download size={17} />
-            Baixar backup
-          </button>
-          <label className="restore-label">
-            <Upload size={17} />
-            Restaurar JSON
-            <input
-              type="file"
-              disabled={!canEdit}
-              accept=".json"
-              onChange={(e) => {
-                void restore(e.target.files?.[0]);
-                e.target.value = '';
-              }}
-            />
-          </label>
-          <button onClick={() => setHelpOpen(true)}>
-            <CircleHelp size={17} />
-            Como funciona
-          </button>
-          <div className="local-note">
-            <span className="local-dot" />
-            {saveLabels[saveState]}<small>Cache local para recuperação</small>
-          </div>
         </div>
       </aside>
       <main>
         <header className="topbar">
-          <div>
-            Granistone <span>/</span> Mail Studio <span>/</span>
-            <strong>{active ? 'Editor' : view === 'templates' ? 'Templates' : view === 'library' ? 'Biblioteca' : 'Campanhas'}</strong>
-          </div>
-          {onlineMember ? <div className="topbar-team"><PresenceAvatars entries={collaboration.presence} />{collaboration.unavailable && <small>Presença indisponível</small>}</div> : <span className="topbar-note">Gere o link do e-mail para o RD Station.</span>}
+          <strong>Mail Studio</strong>
+          {onlineMember && <div className="topbar-team"><PresenceAvatars entries={collaboration.presence} />{collaboration.unavailable && <small>Presença indisponível</small>}</div>}
         </header>
         {error && (
           <div className="persistent-error" role="alert">
             {error}
           </div>
         )}
-        {workspace && <WorkspacePanel workspace={workspace} activeId={activeId} compact={!!active} trashOpen={trashOpen} onTrashClose={() => setTrashOpen(false)} historyOpen={historyOpen} onHistoryClose={() => setHistoryOpen(false)} />}
+        {workspace && <WorkspacePanel workspace={workspace} activeId={activeId} compact trashOpen={trashOpen} onTrashClose={() => setTrashOpen(false)} historyOpen={historyOpen} onHistoryClose={() => setHistoryOpen(false)} />}
         {feedback && (
           <div className="feedback global-feedback" role="status">
             {feedback}
@@ -402,6 +337,16 @@ export default function Studio() {
           />
         )}
       </main>
+      {settingsOpen && <Modal title="Configurações" onClose={() => setSettingsOpen(false)}>
+        <div className="studio-settings-list">
+          <button disabled={onlineMember && !session?.permissions.editBrand} onClick={() => { setSettingsOpen(false); showBrand(); }}><Settings2 size={18} /><span><strong>Marca e rodapé</strong><small>Identidade dos e-mails</small></span></button>
+          {session?.permissions.manageMembers && <button onClick={() => { setSettingsOpen(false); setMembersOpen(true); }}><Users size={18} /><span><strong>Membros do workspace</strong><small>Acesso e permissões</small></span></button>}
+          <ThemeToggle />
+          <button onClick={() => { setSettingsOpen(false); setTrashOpen(true); }}><Trash2 size={18} /><span><strong>Lixeira</strong><small>{workspace?.meta.trash.length ?? 0} campanhas</small></span></button>
+          <button onClick={() => { downloadFile(JSON.stringify(data, null, 2), 'granistone-backup.json', 'application/json'); setFeedback('Backup completo baixado.'); }}><Download size={18} /><span><strong>Baixar backup</strong><small>Exportar dados em JSON</small></span></button>
+          <label className="restore-label"><Upload size={18} /><span><strong>Restaurar JSON</strong><small>Adicionar campanhas de um backup</small></span><input type="file" disabled={!canEdit} accept=".json" onChange={event => { void restore(event.target.files?.[0]); event.target.value = ''; }} /></label>
+        </div>
+      </Modal>}
       {membersOpen && <WorkspaceMembers onClose={() => setMembersOpen(false)} />}
       {pendingNavigation && <Modal title="Alterações pendentes" onClose={() => setPendingNavigation(undefined)}>
         <p role="alert">{pendingNavigation.message}</p>

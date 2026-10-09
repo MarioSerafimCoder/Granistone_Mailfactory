@@ -28,7 +28,7 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
     });
   await expect(page.getByText('2 campanhas identificadas')).toBeVisible();
   await page.getByRole('button', { name: 'Importar 2 campanhas' }).click();
-  await expect(page.getByRole('status')).toContainText('2 campanhas importadas');
+  await expect(page.locator('.global-feedback')).toContainText('2 campanhas importadas');
   await page.getByRole('button', { name: 'Crystal Palace', exact: true }).first().click();
   await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.locator('.edit-panel').getByLabel('Assunto', { exact: true }).fill('Crystal Palace · arquitetura');
@@ -67,7 +67,8 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   const draft = await draftPromise;
   expect(draft.suggestedFilename()).toContain('-pt-local.html');
   await page.getByRole('button', { name: 'Fechar', exact: true }).click();
-  await page.getByRole('button', { name: 'Marca e rodapé', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: /Marca e rodapé/ }).click();
   await page
     .getByLabel('Endereço público dos arquivos', { exact: true })
     .fill('https://assets.example.com');
@@ -170,7 +171,8 @@ test('campaign list deletes an email only after confirmation and persists the ch
   await expect(rows.first()).toBeVisible();
   const initialCount = await rows.count();
   expect(initialCount).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Excluir Crystal Palace · Arquitetura' }).click();
+  await page.getByLabel('Ações de Crystal Palace · Arquitetura').click();
+  await page.locator('.campaign-menu[open]').getByRole('button', { name: 'Excluir' }).click();
   const dialog = page.getByRole('dialog', { name: 'Excluir e-mail' });
   await expect(dialog.getByText('Crystal Palace · Arquitetura')).toBeVisible();
   await dialog.getByRole('button', { name: 'Excluir e-mail', exact: true }).click();

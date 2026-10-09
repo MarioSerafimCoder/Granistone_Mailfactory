@@ -54,7 +54,9 @@ test('all stone folders appear as materials and remain usable in campaigns', asy
   await page.getByRole('button', { name: 'Materiais', exact: true }).click();
   await page.getByLabel('Buscar material').fill(`Pedra QA ${stamp}`);
   await expect(page.locator('.material-card')).toHaveCount(21);
-  await page.getByRole('button', { name: 'Ativar modo escuro' }).click();
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Ativar modo escuro' }).click();
+  await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Fechar' }).click();
   await page.setViewportSize({ width: 1024, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/stone-folders-dark.png', fullPage: true });
@@ -64,7 +66,8 @@ test('all stone folders appear as materials and remain usable in campaigns', asy
   await folder.getByRole('button', { name: 'Abrir pasta em Imagens' }).click();
   await expect(page.getByRole('button', { name: folderNames[0], exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.asset-card')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
+  await page.getByRole('button', { name: /Campanhas/ }).first().click();
+  await page.getByRole('button', { name: 'Nova campanha', exact: true }).click();
   await page.getByLabel('Template inicial', { exact: true }).selectOption('product-architect');
   await page.getByLabel('Nome da campanha', { exact: true }).fill(`Campanha pedra ${stamp}`);
   await page.getByRole('button', { name: 'Criar campanha' }).click();

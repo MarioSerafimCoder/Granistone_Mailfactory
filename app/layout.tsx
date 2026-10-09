@@ -4,6 +4,7 @@ import './globals.css';
 import './collaboration.css';
 import './theme.css';
 import './canvas.css';
+import './workspace.css';
 export const metadata: Metadata = {
   title: 'Granistone Mail Studio',
   description: 'Do planejamento de CRM a e-mails consistentes com a marca Granistone.',

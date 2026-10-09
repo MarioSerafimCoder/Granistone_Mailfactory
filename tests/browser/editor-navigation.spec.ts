@@ -58,7 +58,7 @@ test('direct campaign switch and sidebar exit preserve a pending local draft', a
   await expect(page.getByRole('heading', { name: 'Campanhas', exact: true })).toBeVisible();
   await page.getByRole('button', { name: first, exact: true }).click();
   await expect(title).toHaveText('Rascunho guardado após falha');
-  await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('button', { name: 'Importar planejamento' }).click();
+  await page.getByRole('button', { name: 'Importar planejamento' }).click();
   await expect(page.getByRole('dialog', { name: /Importar/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Campanhas', exact: true })).toBeVisible();
 });

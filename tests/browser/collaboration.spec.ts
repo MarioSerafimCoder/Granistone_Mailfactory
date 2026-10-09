@@ -7,8 +7,9 @@ test('members UI grants access; two browsers coordinate editing and show presenc
   const editorEmail = `editor-${Date.now()}@granistone.test`, title = `Colaboração ${Date.now()}`;
   await authenticate(page, 'owner'); await authenticate(second, 'collaboration-editor', editorEmail);
   try {
-    await page.goto('/'); await expect(page.getByText('ChatGPT conectado')).toBeVisible();
-    await page.getByRole('button', { name: 'Membros do workspace', exact: true }).click();
+    await page.goto('/'); await expect(page.locator('.topbar-team')).toBeVisible();
+    await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: /Membros do workspace/ }).click();
     const members = page.getByRole('dialog', { name: 'Membros do workspace', exact: true });
     await members.getByRole('button', { name: 'Adicionar membro' }).click();
     const adding = page.getByRole('dialog', { name: 'Adicionar ao workspace' });
@@ -23,8 +24,10 @@ test('members UI grants access; two browsers coordinate editing and show presenc
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
     await expect(page.getByLabel('Status da campanha', { exact: true })).toBeEnabled();
-    await second.goto('/'); await expect(second.getByText('ChatGPT conectado')).toBeVisible();
-    await expect(second.getByRole('button', { name: 'Membros do workspace', exact: true })).toHaveCount(0);
+    await second.goto('/'); await expect(second.locator('.topbar-team')).toBeVisible();
+    await second.getByRole('button', { name: 'Configurações', exact: true }).click();
+    await expect(second.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: /Membros do workspace/ })).toHaveCount(0);
+    await second.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Fechar' }).click();
     await second.getByRole('button', { name: title, exact: true }).click();
     await expect(second.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
     await expect(second.locator('.edit-lease-bar')).toContainText('está editando');
@@ -54,7 +57,7 @@ test('unauthorized account gets a dedicated access screen', async ({ page }) => 
 test('material editor preserves a local draft through closing and reloading', async ({ page }) => {
   await authenticate(page, 'library-owner');
   const name = `Material ${Date.now()}`;
-  await page.goto('/'); await expect(page.getByText('ChatGPT conectado')).toBeVisible();
+  await page.goto('/'); await expect(page.locator('.topbar-team')).toBeVisible();
   await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
   await page.getByRole('button', { name: 'Materiais', exact: true }).click();
   await page.getByRole('button', { name: 'Novo material', exact: true }).click();
@@ -67,7 +70,7 @@ test('material editor preserves a local draft through closing and reloading', as
   await dialog.getByRole('button', { name: 'Editar', exact: true }).click();
   await dialog.getByLabel('Descrição', { exact: true }).fill('Descrição preservada no rascunho');
   await dialog.getByRole('button', { name: 'Fechar', exact: true }).last().click();
-  await page.reload(); await expect(page.getByText('ChatGPT conectado')).toBeVisible();
+  await page.reload(); await expect(page.locator('.topbar-team')).toBeVisible();
   await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
   await page.getByRole('button', { name: 'Materiais', exact: true }).click();
   await page.getByRole('button', { name: `Abrir material ${name}`, exact: true }).click();

@@ -9,23 +9,29 @@ async function authenticate(page: Page) {
 test('app theme follows system, persists choice and leaves the email HTML untouched', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' }); await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.getByRole('button', { name: 'Ativar modo claro' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Ativar modo claro' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Fechar' }).click();
   await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Nova campanha' });
   const darkSurface = await dialog.evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(darkSurface).toBe('rgb(36, 39, 42)');
+  expect(darkSurface).toBe('rgb(40, 44, 48)');
   await dialog.getByLabel('Nome da campanha', { exact: true }).fill('Tema independente');
   await dialog.getByRole('button', { name: 'Criar campanha' }).click();
   await page.getByRole('button', { name: 'Visualizar final', exact: true }).click();
   await expect(page.frameLocator('.preview-stage iframe').locator('html')).toHaveAttribute('lang', 'pt-BR');
   await page.screenshot({ path: 'test-results/theme-editor-dark.png', fullPage: true });
   const before = await page.locator('.preview-stage iframe').getAttribute('srcdoc');
-  await page.getByRole('button', { name: 'Ativar modo claro' }).click();
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Ativar modo claro' }).click();
+  await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Fechar' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.locator('.preview-stage iframe').getAttribute('srcdoc')).toBe(before);
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('button', { name: 'Ativar modo escuro' }).click();
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Ativar modo escuro' }).click();
+  await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: 'Fechar' }).click();
   for (const width of [1440, 1366]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

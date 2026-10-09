@@ -60,8 +60,8 @@ export default function WorkspacePanel({ workspace, activeId, trashOpen, onTrash
     {!compact && <div className="actions">
       <span aria-live="polite" className="workspace-save-label">{saveLabels[workspace.state]}</span>
       <button className="button" disabled={busy} onClick={() => void run(async () => { await workspace.refresh(); await workspace.sync(); })}>Sincronizar agora</button>
-      {deferred && !!local.length && workspace.editor && <button className="button" onClick={() => setDeferred(false)}>Enviar campanhas locais ({local.length})</button>}
     </div>}
+    {deferred && !!local.length && workspace.editor && <button className="button" onClick={() => setDeferred(false)}>Enviar campanhas locais ({local.length})</button>}
     {workspace.editor && !deferred && (!!local.length || (!meta.brandRevision && meta.localBrand)) && <div className="workspace-notice">
       <strong>Encontramos {local.length} campanhas salvas neste navegador.</strong>
       <p>Enviar para o workspace Granistone? As imagens serão hospedadas automaticamente. {meta.localBrand && !meta.brandRevision ? 'Suas configurações locais de marca também serão importadas.' : ''}</p>
