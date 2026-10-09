@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCampaign, editCampaign, plainText, richText } from '../campaigns/model';
 import { createSection, sectionsValid } from '../blocks/registry';
-import { duplicateSection, moveSectionTo } from '../blocks/model';
+import { duplicateSection, moveSection, moveSectionTo } from '../blocks/model';
 import { fieldDocument, historyOf, mergeCampaignPatch, rebaseHostedImages, recordHistory, stepHistory, updateLegacyText, updateSectionText } from '../lib/canvas-model';
 import { decodeBackup, isCampaign } from '../lib/storage';
 import { defaultBrand } from '../data/brand';
@@ -92,4 +92,26 @@ test('image completion and ALT typing in one render batch never overwrite each o
   const moved = { ...image, sections: [...image.sections!].reverse() };
   const lateAlt = mergeCampaignPatch(base, moved, { sections: alt.sections });
   assert.equal(lateAlt.sections![0].id, moved.sections[0].id); assert.equal(lateAlt.sections![1].content.pt.alt, 'Nova foto');
+});
+
+test('batched block insertions, removals and reorders preserve unrelated edits', () => {
+  const a = createSection('centeredText'), b = createSection('cta'), c = createSection('divider'), d = createSection('spacer');
+  const base = createCampaign({ sections: [a, b] });
+  const inserted = { ...base, sections: [a, b, c] };
+  const merged = mergeCampaignPatch(base, inserted, { sections: [a, b, d] }).sections!;
+  assert.deepEqual(new Set(merged.map(s => s.id)), new Set([a.id, b.id, c.id, d.id]));
+  const removed = mergeCampaignPatch(base, inserted, { sections: [b] }).sections!;
+  assert.deepEqual(removed.map(s => s.id), [b.id, c.id]);
+  const reordered = mergeCampaignPatch(base, { ...base, sections: [b] }, { sections: [b, a] }).sections!;
+  assert.deepEqual(reordered.map(s => s.id), [b.id]);
+  assert.ok(sectionsValid(merged));
+});
+
+test('invalid move indexes leave the block list intact', () => {
+  const sections = [createSection('cta'), createSection('divider')];
+  for (const index of [-1, 2, NaN, 0.5]) {
+    assert.strictEqual(moveSection(sections, index, 1), sections);
+    assert.strictEqual(moveSectionTo(sections, index, 0), sections);
+    assert.strictEqual(moveSectionTo(sections, 0, index), sections);
+  }
 });

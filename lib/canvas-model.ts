@@ -46,7 +46,13 @@ export function mergeCampaignPatch(base: Campaign, current: Campaign, patch: Par
       const byId = (items: Record<string, unknown>[]) => new Map(items.map(item => [item.id, item]));
       const old = byId(before), now = byId(latest), next = byId(incoming);
       const reordered = JSON.stringify(before.map(item => item.id)) !== JSON.stringify(incoming.map(item => item.id));
-      return (reordered ? incoming : latest).map(item => next.has(item.id) ? merge(old.get(item.id), now.get(item.id), next.get(item.id)) : item);
+      // A structural change must retain items added by another control in the
+      // same batch, without resurrecting items that control already removed.
+      const order = reordered
+        ? [...incoming, ...latest.filter(item => !old.has(item.id) && !next.has(item.id))]
+        : latest;
+      return order.filter(item => !old.has(item.id) || (now.has(item.id) && next.has(item.id)))
+        .map(item => next.has(item.id) ? merge(old.get(item.id), now.get(item.id), next.get(item.id)) : item);
     }
     if (record(incoming) && (before === undefined || record(before)) && (latest === undefined || record(latest))) {
       const result = { ...(latest ?? {}) };

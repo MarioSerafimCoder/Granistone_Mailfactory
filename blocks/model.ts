@@ -14,14 +14,14 @@ export function duplicateCampaign(source: Campaign): Campaign {
 }
 export const duplicateSection = (s: Section): Section => ({ ...structuredClone(s), id: crypto.randomUUID() });
 export function moveSection(sections: Section[], index: number, direction: number): Section[] {
-  if (index + direction < 0 || index + direction >= sections.length) return sections;
+  if (!Number.isInteger(index) || !Number.isInteger(direction) || index < 0 || index >= sections.length || index + direction < 0 || index + direction >= sections.length) return sections;
   const next = [...sections]; [next[index], next[index + direction]] = [next[index + direction], next[index]]; return next;
 }
 export function moveSectionTo(sections: Section[], from: number, to: number): Section[] {
-  if (from < 0 || from >= sections.length || to < 0 || to >= sections.length || from === to) return sections;
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || from >= sections.length || to < 0 || to >= sections.length || from === to) return sections;
   const next = [...sections]; const [section] = next.splice(from, 1); next.splice(to, 0, section); return next;
 }
-// Opt-in conversion: untouched campaigns keep their existing renderer and payload.
+// Convert on a block operation: untouched campaigns keep their existing renderer and payload.
 // The original content remains in Campaign.content and in the revision history.
 export function convertSections(campaign: Campaign): Section[] {
   if (campaign.sections) return structuredClone(campaign.sections);
@@ -36,6 +36,8 @@ export function convertSections(campaign: Campaign): Section[] {
   }
   function add(type: SectionType, values: (lang: Language) => Record<string, string>, enabled = true) {
     const section = createSection(type); section.enabled = enabled;
+    section.settings.alignment = campaign.alignment;
+    if (campaign.design?.textColor) section.settings.textColor = campaign.design.textColor;
     for (const lang of ['pt', 'en', 'es'] as const) section.content[lang] = { ...Object.fromEntries(blockRegistry[type].fields.map(f => [f.key, ''])), ...values(lang) };
     sections.push(section);
   }

@@ -17,7 +17,7 @@ export async function renderEmail(campaign: Campaign, language: Language, brand:
   const en = language === 'en';
   const es = language === 'es';
   const has = (id: string) => campaign.blocks.some((block) => block.id === id && block.enabled);
-  const body = await renderRichBody(c.body, campaign.design?.textColor);
+  const body = !campaign.sections && has('body') ? await renderRichBody(c.body, campaign.design?.textColor) : '';
   const row = (html: string, full = false) => html ? `<tr><td align="${campaign.alignment}" class="${full ? '' : 'email-pad'}" style="padding:0 ${full ? 0 : t.sectionPaddingDesktop}px 32px;text-align:${campaign.alignment};font-family:${t.typography.body}">${html}</td></tr>` : '';
   const columns = (left: string, right: string, width = 50) => {
     if (!left) return right;

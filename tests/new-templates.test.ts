@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCampaign } from '../campaigns/model';
-import { moveSectionTo } from '../blocks/model';
+import { changeTemplate, createCampaign, richText } from '../campaigns/model';
+import { convertSections, moveSectionTo } from '../blocks/model';
+import { createSection, sectionsValid } from '../blocks/registry';
 import { defaultBrand } from '../data/brand';
 import { designChecks } from '../export/design-checks';
 import { renderEmail } from '../export/render';
@@ -77,4 +78,38 @@ test('the five original templates still use their legacy layouts', async () => {
     assert.ok(isCampaign(campaign));
     assert.doesNotMatch(await renderEmail(campaign, 'pt', defaultBrand), /data-section-id/);
   }
+});
+
+test('every template supports editable blocks while preserving localized content and undo source', async () => {
+  for (const template of templates) {
+    const campaign = createCampaign({ template: template.id, alignment: 'right', content: templateContent(template.id, template.name) });
+    campaign.content.en.headline = 'English heading';
+    campaign.content.es.body = richText('Contenido español');
+    const original = structuredClone(campaign);
+    const sections = convertSections(campaign);
+    const added = createSection('centeredText'); added.content.pt.title = 'Novo bloco editado';
+    const edited = { ...campaign, sections: [...sections, added] };
+    assert.ok(sectionsValid(edited.sections));
+    assert.deepEqual(campaign, original);
+    assert.match(await renderEmail(edited, 'pt', defaultBrand), /Novo bloco editado/);
+    if (!campaign.sections) {
+      assert.equal(sections[0].content.en.title, 'English heading');
+      assert.ok(sections.every(s => s.settings.alignment === 'right'));
+      assert.ok(sections.some(s => s.richBody?.es && s.content.es.text === 'Contenido español'));
+    }
+  }
+});
+
+test('template switching replaces the active layout and selecting the current template retains edits', () => {
+  const campaign = createCampaign({ template: 'promo-impact' });
+  campaign.sections![0].content.pt.title = 'Edited';
+  assert.strictEqual(changeTemplate(campaign, campaign.template), campaign);
+  const legacy = changeTemplate(campaign, 'notice');
+  assert.equal(legacy.sections, undefined);
+  assert.equal(legacy.design, undefined);
+  assert.deepEqual(legacy.blocks.map(b => b.id), ['hero', 'body']);
+  const modern = changeTemplate(legacy, 'catalog-color');
+  assert.equal(modern.sections!.length, 8);
+  assert.ok(isCampaign(modern));
+  assert.equal(campaign.sections![0].content.pt.title, 'Edited');
 });

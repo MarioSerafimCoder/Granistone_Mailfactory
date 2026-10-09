@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -17,7 +17,7 @@ import { changeTemplate, languageStates } from '@/campaigns/model';
 import { saveLabels } from '@/lib/workspace-sync';
 import { editorName, activityTime } from '@/lib/workspace-display';
 import type { SyncMetadata } from '@/types/workspace';
-import { templates, getTemplate, blockLabels, suggestTemplate } from '@/templates/registry';
+import { templates, getTemplate, blockLabels } from '@/templates/registry';
 import { Field, Select, TextArea, Modal } from './ui';
 import ContentFields from './ContentFields';
 import { ExportDialog } from './ExportDialog';
@@ -81,6 +81,7 @@ export default function CampaignEditor({
   const [saveTemplate, setSaveTemplate] = useState(false), [converting, setConverting] = useState(false);
   const [notice, setNotice] = useState('');
   const design = campaign.design ?? defaultDesign();
+  const editableSections = useMemo(() => campaign.sections ?? convertSections(campaign), [campaign]);
   const [translateTarget, setTranslateTarget] = useState<'en' | 'es'>();
   const [tab, setTab] = useState('content');
   const [mobile, setMobile] = useState(false);
@@ -119,6 +120,7 @@ export default function CampaignEditor({
     campaign.importIssues?.filter((issue) => issue.field !== field);
   function reorder(index: number, direction: number) {
     const blocks = [...campaign.blocks];
+    if (index + direction < 0 || index + direction >= blocks.length) return;
     [blocks[index], blocks[index + direction]] = [blocks[index + direction], blocks[index]];
     update({ blocks });
   }
@@ -252,10 +254,6 @@ export default function CampaignEditor({
                     onChange={(e) => {
                       const campaignType = e.target.value as Campaign['campaignType'];
                       update({
-                        ...changeTemplate(
-                          campaign,
-                          suggestTemplate(campaignType, campaign.audience),
-                        ),
                         campaignType,
                         importIssues: resolvedIssues('campaignType'),
                         status: undefined,
@@ -272,10 +270,6 @@ export default function CampaignEditor({
                     onChange={(e) => {
                       const audience = e.target.value;
                       update({
-                        ...changeTemplate(
-                          campaign,
-                          suggestTemplate(campaign.campaignType, audience),
-                        ),
                         audience,
                         importIssues: audience
                           ? resolvedIssues('audience')
@@ -315,83 +309,33 @@ export default function CampaignEditor({
                 </section>
               </>
             )}
-            {tab === 'blocks' && (
-              <>
-                {campaign.sections ? <SectionsEditor sections={campaign.sections} language={language} onChange={sections => update({ sections })} /> : <><p className="muted">Este e-mail usa a estrutura original do template.</p><button className="button primary" type="button" onClick={() => setConverting(true)}>Usar blocos livres</button>
-                <section className="form-section">
-                  <h3>Template Granistone</h3>
-                  <Select
-                    label="Template"
-                    value={campaign.template}
-                    onChange={(e) =>
-                      update({
-                        ...changeTemplate(campaign, e.target.value as TemplateId),
-                        status: undefined,
-                      })
-                    }
-                  >
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <p className="muted">{getTemplate(campaign.template).description}</p>
+            {tab === 'blocks' && <>
+              <section className="form-section">
+                <h3>Template Granistone</h3>
+                <Select label="Template" value={campaign.template} onChange={e => update({ ...changeTemplate(campaign, e.target.value as TemplateId), status: undefined })}>
+                  {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </Select>
+                <p className="muted">{getTemplate(campaign.template).description}</p>
+                {!campaign.sections && <>
                   <AlignmentControl value={campaign.alignment} onChange={alignment => update({ alignment })} />
-                </section>
-                <section className="form-section">
-                  <h3>Blocos do e-mail</h3>
-                  <div className="fixed-block">
-                    Cabeçalho Granistone <span>Fixo</span>
-                  </div>
-                  {campaign.blocks.map((b, i) => (
-                    <div className="block-control" key={b.id}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={b.enabled}
-                          onChange={(e) =>
-                            update({
-                              blocks: campaign.blocks.map((block) =>
-                                block.id === b.id ? { ...block, enabled: e.target.checked } : block,
-                              ),
-                            })
-                          }
-                        />
-                        {blockLabels[b.id]}
-                      </label>
-                      {getTemplate(campaign.template).reorder && (
-                        <div>
-                          <button
-                            className="icon-button"
-                            disabled={i === 0}
-                            aria-label={`Subir ${blockLabels[b.id]}`}
-                            onClick={() => reorder(i, -1)}
-                          >
-                            <ArrowUp size={14} />
-                          </button>
-                          <button
-                            className="icon-button"
-                            disabled={i === campaign.blocks.length - 1}
-                            aria-label={`Descer ${blockLabels[b.id]}`}
-                            onClick={() => reorder(i, 1)}
-                          >
-                            <ArrowDown size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <div className="fixed-block">
-                    Rodapé Granistone <span>Fixo</span>
-                  </div>
-                  <button className="text-button" onClick={onSettings}>
-                    Configurar marca e rodapé →
-                  </button>
-                </section>
+                  <p className="muted">Ao adicionar ou alterar um bloco, a composição será organizada em blocos editáveis. Você pode desfazer essa alteração.</p>
+                  <button className="button" type="button" onClick={() => setConverting(true)}>Usar blocos livres</button>
                 </>}
-              </>
-            )}
+              </section>
+              <SectionsEditor sections={editableSections} language={language} onChange={sections => update({ sections })} />
+              {!campaign.sections && <details className="legacy-block-controls">
+                <summary>Controles da composição original</summary>
+                <p className="muted">Oculte ou reorganize os elementos mantendo o layout original.</p>
+                {campaign.blocks.map((block, index) => <div className="block-control" key={block.id}>
+                  <label><input type="checkbox" checked={block.enabled} onChange={event => update({ blocks: campaign.blocks.map(item => item.id === block.id ? { ...item, enabled: event.target.checked } : item) })} />{blockLabels[block.id]}</label>
+                  {getTemplate(campaign.template).reorder && <div>
+                    <button className="icon-button" disabled={index === 0} aria-label={`Subir ${blockLabels[block.id]}`} onClick={() => reorder(index, -1)}><ArrowUp size={14} /></button>
+                    <button className="icon-button" disabled={index === campaign.blocks.length - 1} aria-label={`Descer ${blockLabels[block.id]}`} onClick={() => reorder(index, 1)}><ArrowDown size={14} /></button>
+                  </div>}
+                </div>)}
+              </details>}
+              <button className="text-button" onClick={onSettings}>Configurar marca e rodapé →</button>
+            </>}
           </div>
         </div>
         }

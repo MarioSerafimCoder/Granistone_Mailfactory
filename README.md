@@ -1,6 +1,6 @@
 # Granistone Mail Studio
 
-Workspace de campanhas de e-mail da Granistone: planejamento XLSX, cinco templates, editor Maily, imagens e materiais online, tradução PT/EN/ES, pré-flight e publicação de HTML imutável para RD Station.
+Workspace de campanhas de e-mail da Granistone: planejamento XLSX, nove templates com blocos editáveis, editor Maily, imagens e materiais online, tradução PT/EN/ES, pré-flight e publicação de HTML imutável para RD Station.
 
 Aplicação: https://granistone-mail-studio.mario-92.chatgpt.site/
 

@@ -1,19 +1,20 @@
 'use client';
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { ArrowDown, ArrowUp, Copy, Eye, GripVertical, Images, LayoutGrid, MoreHorizontal, PanelLeftOpen, PanelRightOpen, Plus, Search, Settings2, Trash2, X } from 'lucide-react';
 import type { BrandSettings, Campaign, Language } from '@/types/campaign';
 import type { Section, SectionType } from '@/types/design';
 import { blockRegistry, createSection } from '@/blocks/registry';
-import { duplicateSection, moveSection, moveSectionTo } from '@/blocks/model';
+import { convertSections, duplicateSection, moveSection, moveSectionTo } from '@/blocks/model';
 import { defaultDesign } from '@/lib/tokens/backgrounds';
 import { contentChecks } from '@/export/preflight';
-import { languages } from '@/campaigns/model';
+import { changeTemplate, languages } from '@/campaigns/model';
 import { GranistoneHeader, GranistoneFooter } from '@/components/email/brand';
 import type { SaveState } from '@/lib/use-studio';
 import { SectionContent, LegacyContent, backgroundStyle, type CanvasSelection } from './CanvasContent';
 import ImagePicker from '../ImagePicker';
 import BackgroundEditor, { ColorField } from '../BackgroundEditor';
 import AlignmentControl from '../AlignmentControl';
+import SectionFields from '../SectionFields';
 import SavedDesignDialog from '../SavedDesignDialog';
 import SavedDesignLibrary from '../SavedDesignLibrary';
 import AssetLibrary from '../AssetLibrary';
@@ -46,15 +47,16 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
   const stage = useRef<HTMLDivElement>(null);
   const pointer = useRef<{ pointerId: number; id: string; x: number; y: number; lastX: number; lastY: number; target?: { id: string; after: boolean } } | undefined>(undefined);
   const sections = campaign.sections;
+  const editableSections = useMemo(() => sections ?? convertSections(campaign), [campaign, sections]);
   const section = sections?.find(s => s.id === selected?.id);
   const design = campaign.design ?? defaultDesign();
   const select = (next: CanvasSelection) => { setSelected(next); if (next.kind === 'image') { setInspectorTab('content'); setInspector(true); } };
   const changeSection = (next: Section, group?: string) => onChange({ sections: sections?.map(s => s.id === next.id ? next : s) }, group);
   const settings = (patch: Partial<Section['settings']>) => { if (section) changeSection({ ...section, settings: { ...section.settings, ...patch } }); };
   const insert = (source: Section) => {
-    if (readOnly || !sections || sections.length >= 40) return;
-    const next = duplicateSection(source), at = Math.min(insertion ?? sections.length, sections.length);
-    onChange({ sections: [...sections.slice(0, at), next, ...sections.slice(at)] });
+    if (readOnly || editableSections.length >= 40) return;
+    const next = duplicateSection(source), at = Math.min(insertion ?? editableSections.length, editableSections.length);
+    onChange({ sections: [...editableSections.slice(0, at), next, ...editableSections.slice(at)] });
     setSelected({ id: next.id, kind: 'block' }); setInsertion(undefined); setLibrary(false); setSaved(false);
     requestAnimationFrame(() => document.querySelector(`[data-canvas-block="${next.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
   };
@@ -139,10 +141,10 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
     <div className="visual-columns">
       {library ? <aside className="canvas-library" aria-label="Biblioteca de blocos"><header><strong>Biblioteca</strong><button aria-label="Recolher biblioteca" title="Recolher biblioteca" onClick={() => setLibrary(false)}><X size={17} /></button></header>
         <div className="canvas-panel-tabs" role="tablist" aria-label="Categorias da biblioteca">{([['blocks', 'Blocos'], ['templates', 'Templates'], ['images', 'Imagens'], ['saved', 'Salvos']] as const).map(([key, label]) => <button key={key} role="tab" aria-selected={libraryTab === key} className={libraryTab === key ? 'active' : ''} onClick={() => setLibraryTab(key)}>{label}</button>)}</div>
-        {libraryTab === 'blocks' && (sections ? <><p className="canvas-panel-context">{insertion === undefined ? 'Adicionar ao final' : `Inserir na posição ${insertion + 1}`} · {sections.length}/40 blocos</p><label className="canvas-search"><Search size={16} /><input aria-label="Buscar blocos" placeholder="Buscar bloco" value={blockQuery} onChange={event => setBlockQuery(event.target.value)} /></label>{blockGroups.map(group => { const types = group.types.filter(type => normalize(blockRegistry[type].name).includes(normalize(blockQuery))); return types.length ? <section className="canvas-library-group" key={group.title}><h3>{group.title}</h3><div className="quick-blocks">{types.map(type => <button className="canvas-block-card" key={type} disabled={readOnly || sections.length >= 40} onClick={() => insert(createSection(type))}><span className={`canvas-block-mini mini-${type}`} aria-hidden="true"><i /><i /><i /></span><span>{blockRegistry[type].name}</span><Plus size={14} /></button>)}</div></section> : null; })}{!blockGroups.some(group => group.types.some(type => normalize(blockRegistry[type].name).includes(normalize(blockQuery)))) && <p className="muted">Nenhum bloco encontrado.</p>}</> : <><p>Esta campanha preserva a composição original do template.</p><p className="muted">Para adicionar blocos livres, use a conversão reversível em Estrutura.</p><button className="button" onClick={() => onAdvanced('blocks')}>Abrir estrutura e templates</button></>)}
-        {libraryTab === 'templates' && <><p className="canvas-panel-context">Escolha a estrutura nas configurações da campanha.</p><div className="quick-blocks">{templates.map(template => <button className="canvas-block-card" key={template.id} onClick={() => onAdvanced('blocks')}><span className="canvas-block-mini mini-template" aria-hidden="true"><i /><i /><i /></span><span>{template.name}</span></button>)}</div></>}
+        {libraryTab === 'blocks' && <><p className="canvas-panel-context">{insertion === undefined ? 'Adicionar ao final' : `Inserir na posição ${insertion + 1}`} · {editableSections.length}/40 blocos</p>{!sections && <p className="canvas-panel-context">Ao inserir, a composição será organizada em blocos editáveis. Você pode desfazer essa alteração.</p>}<label className="canvas-search"><Search size={16} /><input aria-label="Buscar blocos" placeholder="Buscar bloco" value={blockQuery} onChange={event => setBlockQuery(event.target.value)} /></label>{blockGroups.map(group => { const types = group.types.filter(type => normalize(blockRegistry[type].name).includes(normalize(blockQuery))); return types.length ? <section className="canvas-library-group" key={group.title}><h3>{group.title}</h3><div className="quick-blocks">{types.map(type => <button className="canvas-block-card" key={type} disabled={readOnly || editableSections.length >= 40} onClick={() => insert(createSection(type))}><span className={`canvas-block-mini mini-${type}`} aria-hidden="true"><i /><i /><i /></span><span>{blockRegistry[type].name}</span><Plus size={14} /></button>)}</div></section> : null; })}{!blockGroups.some(group => group.types.some(type => normalize(blockRegistry[type].name).includes(normalize(blockQuery)))) && <p className="muted">Nenhum bloco encontrado.</p>}</>}
+        {libraryTab === 'templates' && <><p className="canvas-panel-context">Escolha o template da campanha. Você pode desfazer a troca.</p><div className="quick-blocks">{templates.map(template => <button className="canvas-block-card" key={template.id} disabled={readOnly} aria-pressed={campaign.template === template.id} onClick={() => { if (campaign.template !== template.id) onChange(changeTemplate(campaign, template.id)); setSelected(undefined); setInspector(false); setLibrary(false); }}><span className="canvas-block-mini mini-template" aria-hidden="true"><i /><i /><i /></span><span>{template.name}</span></button>)}</div></>}
         {libraryTab === 'images' && <><p className="canvas-panel-context">Selecione uma imagem no e-mail para substituí-la por um arquivo da biblioteca ou de um material.</p>{libraryHint && <p role="status" className="canvas-panel-context">{libraryHint}</p>}<AssetLibrary embedded lazy materialId={campaign.materialId} onSelect={asset => { if (selected?.kind === 'image') { imageChange(asset.url, asset.alt); setLibraryHint('Imagem aplicada.'); } else setLibraryHint('Selecione primeiro uma imagem na composição.'); }} /></>}
-        {libraryTab === 'saved' && (sections ? <SavedDesignLibrary kind="block" onUse={design => { if (design.kind === 'block') insert(design.payload); }} /> : <p className="canvas-panel-context">Os blocos salvos ficam disponíveis após ativar blocos livres em Estrutura.</p>)}
+        {libraryTab === 'saved' && <SavedDesignLibrary kind="block" onUse={design => { if (design.kind === 'block') insert(design.payload); }} />}
       </aside> : <div className="canvas-panel-rail"><button aria-label="Abrir biblioteca" title="Abrir biblioteca" onClick={() => setLibrary(true)}><PanelLeftOpen size={19} /></button><button aria-label="Abrir imagens e materiais" title="Imagens e materiais" onClick={() => { setLibraryTab('images'); setLibrary(true); }}><Images size={18} /></button><button aria-label="Abrir templates" title="Templates" onClick={() => { setLibraryTab('templates'); setLibrary(true); }}><LayoutGrid size={18} /></button></div>}
       <div className="visual-stage" ref={stage} onClick={event => { if (!(event.target as HTMLElement).closest('[data-canvas-block],.canvas-text,.canvas-picture')) { setSelected(undefined); setInspector(false); } }}>
         <div className="canvas-envelope"><Field label="Assunto" disabled={readOnly} value={campaign.content[language].subject} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], subject: event.target.value } } }, 'subject:' + language)} /><Field label="Preheader" disabled={readOnly} value={campaign.content[language].preheader} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], preheader: event.target.value } } }, 'preheader:' + language)} /></div>
@@ -153,6 +155,7 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
               {!readOnly && <div className="canvas-block-actions" aria-label="Ações do bloco" onClick={event => event.stopPropagation()}>
                 <button className="canvas-grip" aria-label="Arrastar bloco" title="Arraste para mover; use Subir e Descer pelo teclado" onPointerDown={event => start(event, s.id)} onPointerMove={move} onPointerUp={event => stop(event)} onPointerCancel={event => stop(event, true)} onLostPointerCapture={event => stop(event, true)}><GripVertical size={16} /></button>
                 <span>{blockRegistry[s.type].name}</span>
+                <button aria-label="Editar bloco" onClick={() => { select({ id: s.id, kind: 'block' }); setInspectorTab('content'); setInspector(true); }}><Settings2 size={14} /></button>
                 <button aria-label="Duplicar bloco" disabled={sections.length >= 40} onClick={() => { const copy = duplicateSection(s); onChange({ sections: [...sections.slice(0, index + 1), copy, ...sections.slice(index + 1)] }); select({ id: copy.id, kind: 'block' }); }}><Copy size={14} /></button>
                 <button aria-label={s.enabled ? 'Ocultar bloco' : 'Exibir bloco'} onClick={() => changeSection({ ...s, enabled: !s.enabled })}><Eye size={14} /></button>
                 <button aria-label="Remover bloco" onClick={() => remove(s.id)}><Trash2 size={14} /></button>
@@ -165,7 +168,7 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
               </div>}
               {!s.enabled ? <button className="canvas-hidden-label" onClick={() => { select({ id: s.id, kind: 'block' }); setInspector(true); }}>Bloco oculto · {blockRegistry[s.type].name}</button> : <SectionContent section={s} language={language} readOnly={readOnly} onChange={changeSection} onSelect={select} onUndo={onUndo} onRedo={onRedo} />}
             </article>{addAt(index + 1)}
-          </div>)}</> : <LegacyContent campaign={campaign} language={language} readOnly={readOnly} onChange={onChange} onSelect={select} onUndo={onUndo} onRedo={onRedo} />}
+          </div>)}</> : <><LegacyContent campaign={campaign} language={language} readOnly={readOnly} onChange={onChange} onSelect={select} onUndo={onUndo} onRedo={onRedo} />{addAt(editableSections.length)}</>}
           <table className="canvas-brand" role="presentation" aria-label="Rodapé fixo" onClick={event => event.preventDefault()}><tbody dangerouslySetInnerHTML={{ __html: GranistoneFooter(brand, language) }} /></table>
         </div><p className="canvas-footnote">600 px · {language.toUpperCase()} · Cabeçalho e rodapé configurados em Marca</p>
       </div>
@@ -174,7 +177,8 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
         {inspectorTab === 'content' && <>
         {selected?.kind === 'text' && <p className="canvas-panel-context">Edite o texto diretamente na composição. Selecione um trecho para formatar.</p>}
         {imageKey && <ImagePicker key={`${selected?.id}:${imageKey}:${language}`} label={imageKey === 'image2' ? 'Imagem do bloco 2' : section ? 'Imagem do bloco' : imageKey === 'heroImage' ? 'Imagem principal' : 'Imagem de aplicação'} value={imageContent[imageKey] || ''} alt={imageContent[imageAlt] || ''} recommended={imageSize} materialId={campaign.materialId} saveState={saveState} onChange={imageChange} onAlt={imageAltChange} />}
-        {section && blockRegistry[section.type].fields.filter(f => f.kind === 'url').map(f => <Field key={f.key} label={f.label} value={section.content[language][f.key]} onChange={event => changeSection({ ...section, content: { ...section.content, [language]: { ...section.content[language], [f.key]: event.target.value } } })} />)}
+        {section && selected?.kind === 'block' && <SectionFields section={section} language={language} onChange={changeSection} />}
+        {section && selected?.kind !== 'block' && blockRegistry[section.type].fields.filter(f => f.kind === 'url').map(f => <Field key={f.key} label={f.label} value={section.content[language][f.key]} onChange={event => changeSection({ ...section, content: { ...section.content, [language]: { ...section.content[language], [f.key]: event.target.value } } })} />)}
         {!section && !sections && selected && <><Field label="Link do botão" value={campaign.content[language].ctaUrl} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], ctaUrl: event.target.value } } })} />{selected?.field?.startsWith('article') && <Field label="Link do artigo" value={campaign.content[language].articleUrl} onChange={event => onChange({ content: { ...campaign.content, [language]: { ...campaign.content[language], articleUrl: event.target.value } } })} />}</>}
         {!selected && <p className="canvas-panel-context">Selecione um texto, imagem ou bloco para ver seu conteúdo.</p>}
         </>}

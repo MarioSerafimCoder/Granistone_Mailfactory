@@ -65,12 +65,14 @@ export function createCampaign(partial: CampaignDraft = {}): Campaign {
   };
 }
 export function changeTemplate(c: Campaign, template: TemplateId): Campaign {
+  if (c.template === template) return c;
   const definition = getTemplate(template);
   return {
     ...c,
     template,
     campaignType: definition.campaignType,
-    ...(definition.createSections ? { sections: definition.createSections(), design: definition.defaultDesign?.() } : {}),
+    sections: definition.createSections?.(),
+    design: definition.defaultDesign?.(),
     blocks: definition.blocks.map((id) => ({
       id,
       enabled: c.blocks.find((b) => b.id === id)?.enabled ?? true,

@@ -4,7 +4,9 @@
 
 A aplicação existente é um frontend Next.js exportado estaticamente, com Worker, D1 e R2. Campanhas usam IndexedDB e a fila de sincronização existente; membros, edição exclusiva temporária (lease), revisão otimista, histórico, pré-flight e publicações imutáveis permanecem no mesmo fluxo.
 
-Não houve reescrita nem novas dependências. Campanhas antigas continuam usando `blocks` e seu renderer original; `sections` e `design` são campos opcionais no mesmo documento. A conversão é explícita em **Estrutura → Usar blocos livres**. Ela preserva conteúdo original, textos formatados e histórico, mas reorganiza a composição: revisar o preview antes de publicar.
+Não houve reescrita nem novas dependências. Campanhas antigas continuam usando `blocks` e seu renderer original até uma operação de bloco; `sections` e `design` são campos opcionais no mesmo documento. Todos os nove templates permitem inserir blocos pela biblioteca do canvas e adicionar ou editar blocos em **Estrutura**, sem uma etapa prévia de conversão. Na primeira operação, a composição original é convertida em seções, preservando textos formatados, imagens, idiomas, alinhamento e histórico. A conversão reorganiza a composição e pode ser desfeita; revise o preview antes de publicar. **Estrutura → Controles da composição original** mantém as opções de ocultar e ordenar elementos sem converter. A conversão explícita continua disponível em **Usar blocos livres**.
+
+O botão **Editar bloco** no canvas abre os campos do bloco no painel lateral. A biblioteca de templates aplica a escolha diretamente; o seletor em **Estrutura** também está disponível para campanhas com seções. Trocar de template substitui a estrutura e o design pelo modelo escolhido e pode ser desfeito. Selecionar o template atual preserva as edições. Alterar público ou tipo de conteúdo no planejamento não troca o template da campanha.
 
 ## Modelo e responsabilidades
 

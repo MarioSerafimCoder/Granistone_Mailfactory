@@ -55,6 +55,7 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   await page.screenshot({ path: 'test-results/editor-mobile-preview.png', fullPage: true });
   await page.getByRole('button', { name: 'Estrutura', exact: true }).click();
   await expect(page.getByLabel('Template', { exact: true })).toHaveValue('product-architect');
+  await page.locator('.legacy-block-controls summary').click();
   await page.getByLabel('Imagem de aplicação', { exact: true }).uncheck();
   await page.getByLabel('Imagem principal', { exact: true }).uncheck();
   await page.getByRole('button', { name: 'Conteúdo', exact: true }).click();
@@ -117,10 +118,11 @@ test('template library, creation, newsletter reorder and narrow screen', async (
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
   await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByRole('button', { name: 'Estrutura', exact: true }).click();
+  await page.locator('.legacy-block-controls summary').click();
   await page.getByRole('button', { name: 'Subir Evento', exact: true }).click();
   await expect(page.getByLabel('Template', { exact: true })).toHaveValue('newsletter');
   await page.getByLabel('Template', { exact: true }).selectOption('notice');
-  await expect(page.getByRole('checkbox')).toHaveCount(2);
+  await expect(page.locator('.legacy-block-controls').getByRole('checkbox')).toHaveCount(2);
   await page.getByRole('button', { name: 'Voltar às campanhas', exact: true }).click();
   await page.getByLabel('Buscar campanhas', { exact: true }).fill('Newsletter de teste');
   await expect(page.locator('.campaign-table tbody tr')).toHaveCount(1);

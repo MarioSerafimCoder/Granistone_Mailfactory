@@ -50,10 +50,10 @@ export default function SectionsEditor({ sections, language, onChange, reusable 
       current.target = { id, after }; setDrop(current.target);
     } else { current.target = undefined; setDrop(undefined); }
   }
-  function stopDrag(event: PointerEvent<HTMLButtonElement>) {
+  function stopDrag(event: PointerEvent<HTMLButtonElement>, cancel = false) {
     const current = pointer.current;
     if (!current || current.id !== event.pointerId) return;
-    if (current.target) {
+    if (!cancel && current.target) {
       const from = sections.findIndex(section => section.id === current.sectionId);
       const target = sections.findIndex(section => section.id === current.target?.id);
       const insertion = target + (current.target.after ? 1 : 0);
@@ -72,7 +72,7 @@ export default function SectionsEditor({ sections, language, onChange, reusable 
     {!sections.length && <div className="asset-empty"><strong>Seu e-mail está pronto para receber blocos</strong><span>Escolha um bloco novo ou insira um modelo salvo pela equipe.</span></div>}
     {sections.map((section, index) => <article className={`section-card${dragging === section.id ? ' dragging' : ''}${drop?.id === section.id ? drop.after ? ' drop-after' : ' drop-before' : ''}`} key={section.id} data-section-id={section.id}>
       <div className="section-heading"><div className="section-heading-main"><button type="button" className="section-drag-handle" title="Arrastar para reorganizar" aria-label={`Arrastar bloco ${index + 1}: ${blockRegistry[section.type].name}`} aria-describedby="section-drag-instructions" aria-grabbed={dragging === section.id}
-        onPointerDown={event => startDrag(event, section.id)} onPointerMove={dragMove} onPointerUp={stopDrag} onPointerCancel={stopDrag} onLostPointerCapture={stopDrag}><GripVertical size={19} /></button><button type="button" className="text-button" onClick={() => setEditing(editing === section.id ? undefined : section.id)}>{String(index + 1).padStart(2, '0')} · {blockRegistry[section.type].name}</button></div><label><input aria-label={'Ativar ' + blockRegistry[section.type].name} type="checkbox" checked={section.enabled} onChange={e => patch({ ...section, enabled: e.target.checked })} /> Ativo</label></div>
+        onPointerDown={event => startDrag(event, section.id)} onPointerMove={dragMove} onPointerUp={event => stopDrag(event)} onPointerCancel={event => stopDrag(event, true)} onLostPointerCapture={event => stopDrag(event, true)}><GripVertical size={19} /></button><button type="button" className="text-button" onClick={() => setEditing(editing === section.id ? undefined : section.id)}>{String(index + 1).padStart(2, '0')} · {blockRegistry[section.type].name}</button></div><label><input aria-label={'Ativar ' + blockRegistry[section.type].name} type="checkbox" checked={section.enabled} onChange={e => patch({ ...section, enabled: e.target.checked })} /> Ativo</label></div>
       <div className="actions"><button type="button" className="icon-button" aria-label="Subir bloco" disabled={index === 0} onClick={() => onChange(moveSection(sections, index, -1))}><ArrowUp size={16} /></button><button type="button" className="icon-button" aria-label="Descer bloco" disabled={index === sections.length - 1} onClick={() => onChange(moveSection(sections, index, 1))}><ArrowDown size={16} /></button><button type="button" className="icon-button" aria-label="Duplicar bloco" disabled={sections.length >= 40} onClick={() => { const next = duplicateSection(section); onChange([...sections.slice(0, index + 1), next, ...sections.slice(index + 1)]); }}><Copy size={16} /></button><button type="button" className="icon-button" aria-label="Remover bloco" onClick={() => setRemoving(section.id)}><Trash2 size={16} /></button>{reusable && <button type="button" className="text-button" onClick={() => setSaving(section)}>Salvar bloco reutilizável</button>}</div>
       {editing === section.id && <SectionFields section={section} language={language} onChange={patch} />}
     </article>)}

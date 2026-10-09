@@ -36,7 +36,11 @@ export function useCampaignHistory(campaign: Campaign, language: Language, readO
     const next = stepHistory(history.current, redo);
     if (next === history.current) return;
     // Restoring content never restores stale approval or publication status.
-    const restored = editCampaign(current.current, { ...next.present, status: undefined, languageState: current.current.languageState });
+    // A snapshot can omit optional fields introduced by the edit being undone
+    // (sections after conversion, richFields after formatting, design, etc.).
+    // Clear those fields explicitly: spreading a snapshot alone keeps them.
+    const removed = Object.fromEntries(Object.keys(current.current).filter(key => !Object.hasOwn(next.present, key)).map(key => [key, undefined]));
+    const restored = editCampaign(current.current, { ...removed, ...next.present, status: undefined, languageState: current.current.languageState });
     history.current = { ...next, present: restored }; current.current = restored;
     onChange(restored); setAvailable({ undo: !!next.past.length, redo: !!next.future.length, signature: fingerprint(restored) });
   };
