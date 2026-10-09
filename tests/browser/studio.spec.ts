@@ -59,7 +59,8 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   await page.getByLabel('Imagem de aplicação', { exact: true }).uncheck();
   await page.getByLabel('Imagem principal', { exact: true }).uncheck();
   await page.getByRole('button', { name: 'Conteúdo', exact: true }).click();
-  await page.getByRole('button', { name: 'Exportar', exact: true }).click();
+  await page.getByRole('button', { name: 'Revisar e publicar', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Revisar e publicar' }).getByRole('button', { name: 'Exportar HTML' }).click();
   await expect(page.getByRole('button', { name: 'Baixar HTML', exact: true })).toBeDisabled();
   const draftPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar HTML com fotos locais', exact: true }).click();
@@ -74,7 +75,8 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   await page.getByLabel('Facebook', { exact: true }).fill('https://facebook.com/example');
   await page.getByLabel('Instagram', { exact: true }).fill('https://instagram.com/example');
   await page.getByRole('button', { name: 'Salvar configurações' }).click();
-  await page.getByRole('button', { name: 'Exportar', exact: true }).click();
+  await page.getByRole('button', { name: 'Revisar e publicar', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Revisar e publicar' }).getByRole('button', { name: 'Exportar HTML' }).click();
   await expect(page.getByRole('button', { name: 'Baixar HTML', exact: true })).toBeEnabled();
   const jsonPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar JSON', exact: true }).click();

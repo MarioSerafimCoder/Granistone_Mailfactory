@@ -60,12 +60,17 @@ test('library search and contextual inspector expose only relevant groups', asyn
   await expect(inspector.getByRole('tab', { name: 'Conteúdo' })).toHaveAttribute('aria-selected', 'true');
   await expect(inspector.locator('.image-picker')).toBeVisible();
   await inspector.getByRole('tab', { name: 'Estilo' }).click();
+  await expect(inspector.getByText('Substituição, corte e texto alternativo estão em Conteúdo.')).toBeVisible();
+  await expect(inspector.getByLabel('Alinhamento do bloco')).toHaveCount(0);
+  await page.locator('[data-canvas-block]').first().locator('.canvas-block-more summary').click();
+  await page.locator('[data-canvas-block]').first().getByRole('button', { name: 'Propriedades do bloco' }).click();
+  await inspector.getByRole('tab', { name: 'Estilo' }).click();
   await expect(inspector.getByLabel('Alinhamento do bloco')).toBeVisible();
   await inspector.getByRole('tab', { name: 'Avançado' }).click();
   await expect(inspector.getByRole('button', { name: 'Configurações avançadas da campanha' })).toBeVisible();
 });
 
-test('header renames inline and empty inspector keeps general style behind an explicit action', async ({ page }) => {
+test('header renames inline and empty inspector exposes composition style', async ({ page }) => {
   const campaign = createCampaign({ title: 'Nome original', sections: [createSection('heroEditorial')] });
   await page.addInitScript(data => localStorage.setItem('granistone-mail-studio:v2', JSON.stringify(data)), { version: 2, campaigns: [campaign], brand: defaultBrand });
   await page.goto('/');
@@ -77,10 +82,9 @@ test('header renames inline and empty inspector keeps general style behind an ex
   await page.getByRole('button', { name: 'Abrir propriedades' }).click();
   const inspector = page.getByRole('complementary', { name: 'Propriedades do elemento' });
   await inspector.getByRole('tab', { name: 'Estilo' }).click();
-  await expect(inspector.getByText('Selecione um bloco ou elemento para ajustar seu estilo.')).toBeVisible();
-  await expect(inspector.getByLabel('Fundo do e-mail')).toHaveCount(0);
-  await inspector.getByRole('button', { name: 'Configurações gerais do e-mail' }).click();
-  await expect(page.getByRole('button', { name: 'Fundos', exact: true })).toHaveClass(/active/);
+  await expect(inspector.getByText('Ajustes gerais da composição.')).toBeVisible();
+  await inspector.locator('.background-editor').first().locator('summary').click();
+  await expect(inspector.getByLabel('Fundo do e-mail · tipo', { exact: true })).toBeVisible();
 });
 
 test('shared edit lease remains compact and permission-aware at notebook width', async ({ page, request }) => {
@@ -95,9 +99,8 @@ test('shared edit lease remains compact and permission-aware at notebook width',
   if (await migration.isVisible()) await migration.click();
   await page.getByRole('button', { name: campaign.title, exact: true }).click();
   const lease = page.locator('.editor-heading .edit-lease-bar');
-  await expect(lease).toContainText('Somente leitura');
+  await expect(lease).toContainText('Em edição');
   await expect(page.locator('.studio.editing .topbar')).toBeHidden();
-  await lease.getByRole('button', { name: 'Iniciar edição' }).click();
   await expect(lease).toContainText('Em edição');
   await expect(page.locator('.visual-email').getByRole('textbox', { name: 'Título do bloco', exact: true }).first()).toHaveAttribute('contenteditable', 'true');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();

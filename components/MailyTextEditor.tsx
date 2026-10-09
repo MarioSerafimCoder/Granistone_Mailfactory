@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { Editor } from '@maily-to/core';
 import { Extension, Node, type Editor as TiptapEditor } from '@tiptap/core';
@@ -52,6 +52,13 @@ export default function MailyTextEditor({
   const [editor, setEditor] = useState<TiptapEditor>();
   const [linkOpen, setLinkOpen] = useState(false);
   const [link, setLink] = useState('');
+  useEffect(() => {
+    if (!editor || editor.isFocused) return;
+    const clean = sanitizeRichText(value);
+    if (JSON.stringify(sanitizeRichText(editor.getJSON() as RichNode)) !== JSON.stringify(clean)) {
+      editor.commands.setContent(clean, false);
+    }
+  }, [editor, value]);
   return (
     <div className="rich-editor">
       <div className="rich-toolbar" aria-label="Formatação de texto">

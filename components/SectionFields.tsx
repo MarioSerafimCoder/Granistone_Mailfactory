@@ -9,7 +9,7 @@ import type { Language } from '@/types/campaign';
 import ImagePicker from './ImagePicker';
 import BackgroundEditor, { ColorField } from './BackgroundEditor';
 import AlignmentControl from './AlignmentControl';
-export default function SectionFields({ section, language, onChange }: { section: Section; language: Language; onChange: (s: Section) => void }) {
+export default function SectionFields({ section, language, onChange, showDesign = true }: { section: Section; language: Language; onChange: (s: Section) => void; showDesign?: boolean }) {
   const fields = blockRegistry[section.type].fields, c = section.content[language];
   const recommended = ['heroEditorial', 'heroProduct', 'banner'].includes(section.type) ? '1200 × 800 px'
     : ['product', 'twoProducts'].includes(section.type) ? '800 × 800 px'
@@ -24,10 +24,10 @@ export default function SectionFields({ section, language, onChange }: { section
       if (alt) content[language][field.key === 'image2' ? 'alt2' : 'alt'] = alt;
       onChange({ ...section, content });
     }} /> : field.kind === 'textarea' ? <TextArea key={field.key} label={field.label} value={c[field.key]} onChange={e => edit(field.key, e.target.value)} /> : <Field key={field.key} label={field.label} value={c[field.key]} onChange={e => edit(field.key, e.target.value)} />)}
-    <BackgroundEditor label="Fundo do bloco" value={section.settings.background} onChange={(background, textColor) => settings({ background, ...(textColor ? { textColor } : {}) })} />
+    {showDesign && <><BackgroundEditor label="Fundo do bloco" value={section.settings.background} onChange={(background, textColor) => settings({ background, ...(textColor ? { textColor } : {}) })} />
     <ColorField label="Cor do texto do bloco" value={section.settings.textColor} onChange={textColor => settings({ textColor })} />
     <AlignmentControl label="Alinhamento do bloco" value={section.settings.alignment} onChange={alignment => settings({ alignment })} />
     <label>Espaçamento interno · {section.settings.padding} px<input aria-label="Espaçamento interno" type="range" min="0" max="80" step="4" value={section.settings.padding} onChange={e => settings({ padding: Number(e.target.value) })} /></label>
-    {section.type === 'spacer' && <label>Altura do espaçador · {section.settings.height} px<input aria-label="Altura do espaçador" type="range" min="8" max="200" step="4" value={section.settings.height} onChange={e => settings({ height: Number(e.target.value) })} /></label>}
+    {section.type === 'spacer' && <label>Altura do espaçador · {section.settings.height} px<input aria-label="Altura do espaçador" type="range" min="8" max="200" step="4" value={section.settings.height} onChange={e => settings({ height: Number(e.target.value) })} /></label>}</>}
   </div>;
 }

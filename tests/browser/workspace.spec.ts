@@ -17,14 +17,15 @@ test('shared campaign coordinates two browsers, preserves edits, trash and resto
     await page.getByLabel('Nome da campanha', { exact: true }).fill(title);
     await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+    await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
     await second.goto('/');
     await second.getByRole('button', { name: title, exact: true }).click();
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await expect(second.locator('.edit-lease-bar')).toContainText('Em edição');
     await expect(second.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true })).toHaveAttribute('contenteditable', 'true');
     await second.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true }).fill('Conteúdo de outro funcionário');
     await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await page.getByRole('button', { name: title, exact: true }).click();
     await expect(page.locator('.edit-lease-bar')).toContainText('está editando');
     await expect(page.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
@@ -52,7 +53,7 @@ test('legacy migration requires an explicit choice and status stays independent 
     await page.locator('.editor-secondary summary').click();
     await page.getByLabel('Status da campanha', { exact: true }).selectOption('Aprovado');
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
     await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(page.getByLabel('Status da campanha', { exact: true })).toHaveValue('Pendente');
   await expect(page.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true })).toHaveAttribute('contenteditable', 'true');

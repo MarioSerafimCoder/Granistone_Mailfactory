@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Search, ArrowUpRight, Plus, Upload, ArrowRight, Mail, Trash2, Copy } from 'lucide-react';
+import { Search, ArrowUpRight, Plus, ArrowRight, Mail, Trash2, Copy } from 'lucide-react';
 import { campaignTypes, statuses, type Campaign } from '@/types/campaign';
 import { languages, languageStates } from '@/campaigns/model';
 import type { SyncMetadata } from '@/types/workspace';
@@ -20,9 +20,9 @@ export default function CampaignList({
   onDelete,
   onDuplicate,
   onCreate,
-  onImport,
   activity,
   reviewIds,
+  pendingIds,
   canEdit = true,
   canDelete = true,
 }: {
@@ -31,9 +31,9 @@ export default function CampaignList({
   onDelete: (id: string) => void;
   onDuplicate?: (id: string) => void;
   onCreate: () => void;
-  onImport: () => void;
   activity?: SyncMetadata['activity'];
   reviewIds?: string[];
+  pendingIds?: string[];
   canEdit?: boolean;
   canDelete?: boolean;
 }) {
@@ -64,10 +64,11 @@ export default function CampaignList({
       : sort === 'updated' ? (activity?.[b.id]?.updatedAt || b.updatedAt).localeCompare(activity?.[a.id]?.updatedAt || a.updatedAt)
       : sort === 'status' ? a.status.localeCompare(b.status, 'pt-BR')
       : (a.date || '9999').localeCompare(b.date || '9999'));
-  const inProgress = campaigns.filter(
-    (c) => languages(c).some(lang => ['Em produção', 'Revisão'].includes(languageStates(c)[lang].status)),
-  ).length;
+  const inProgress = campaigns.filter(c => languages(c).some(lang => languageStates(c)[lang].status === 'Em produção')).length;
+  const awaitingReview = campaigns.filter(c => languages(c).some(lang => languageStates(c)[lang].status === 'Revisão')).length;
   const ready = campaigns.filter(c => languages(c).every(lang => ['Aprovado', 'Exportado'].includes(languageStates(c)[lang].status))).length;
+  const recent = [...campaigns].sort((a, b) => (activity?.[b.id]?.updatedAt || b.updatedAt).localeCompare(activity?.[a.id]?.updatedAt || a.updatedAt))[0];
+  const pendingSet = new Set(pendingIds);
   const emptyTitle = month
     ? `Nenhuma campanha em ${new Date(`${month}-15T12:00:00`).toLocaleDateString('pt-BR', {
         month: 'long',
@@ -85,44 +86,17 @@ export default function CampaignList({
           <p>Do planejamento à próxima conversa.</p>
         </div>
         <div className="actions">
-          <button className="button" disabled={!canEdit} onClick={onImport}>
-            <Upload size={16} />
-            Importar planejamento
-          </button>
           <button className="button primary" disabled={!canEdit} onClick={onCreate}>
             <Plus size={17} />
             Nova campanha
           </button>
         </div>
       </div>
-      <div className="overview">
-        <div>
-          <span>NO PLANEJAMENTO</span>
-          <strong>{String(campaigns.length).padStart(2, '0')}</strong>
-          <small>campanhas no studio</small>
-        </div>
-        <div>
-          <span>EM MOVIMENTO</span>
-          <strong>{String(inProgress).padStart(2, '0')}</strong>
-          <small>em produção ou revisão</small>
-        </div>
-        <div>
-          <span>PRONTAS PARA SEGUIR</span>
-          <strong>
-            {String(
-              ready,
-            ).padStart(2, '0')}
-          </strong>
-          <small>aprovadas ou exportadas</small>
-        </div>
-        <button disabled={!canEdit} onClick={onImport} className="planning-callout">
-          <FileMark />
-          <span>
-            <strong>Seu mês começa na planilha.</strong>
-            <small>Importe o planejamento e comece a criar.</small>
-          </span>
-          <ArrowUpRight size={20} />
-        </button>
+      {recent && <section className="campaign-continue" aria-label="Continuar trabalho"><div><span className="eyebrow">ÚLTIMA CAMPANHA ALTERADA</span><strong>{recent.title}</strong><small>Atualizada {relativeTime(activity?.[recent.id]?.updatedAt || recent.updatedAt)}{pendingSet.has(recent.id) ? ' · alterações locais pendentes' : ''}</small></div><button className="button primary" onClick={() => onOpen(recent.id)}>Continuar edição <ArrowRight size={16} /></button></section>}
+      <div className="production-overview" aria-label="Etapas de produção">
+        <button aria-pressed={quick === 'Em produção'} onClick={() => setQuick(quick === 'Em produção' ? '' : 'Em produção')}><span>EM PRODUÇÃO</span><strong>{inProgress}</strong><small>Continuar composição</small></button>
+        <button aria-pressed={quick === 'Revisão'} onClick={() => setQuick(quick === 'Revisão' ? '' : 'Revisão')}><span>AGUARDANDO REVISÃO</span><strong>{awaitingReview}</strong><small>Conferir conteúdo</small></button>
+        <button aria-pressed={quick === 'Aprovado'} onClick={() => setQuick(quick === 'Aprovado' ? '' : 'Aprovado')}><span>PRONTAS PARA PUBLICAR</span><strong>{ready}</strong><small>Aprovadas ou exportadas</small></button>
       </div>
       {campaigns.some((c) => c.demo) && (
         <div className="demo-note">
@@ -146,7 +120,7 @@ export default function CampaignList({
           />
         </label>
       </div>
-      <div className="filters">
+      <div className="filters-primary">
         <select aria-label="Ordenar campanhas" value={sort} onChange={e => setSort(e.target.value as typeof sort)}>
           <option value="date">Data de disparo</option><option value="updated">Última alteração</option><option value="name">Nome</option><option value="status">Status</option>
         </select>
@@ -163,6 +137,8 @@ export default function CampaignList({
               </option>
             ))}
         </select>
+      </div>
+      <details className="advanced-filters"><summary>Filtros avançados</summary><div className="filters">
         <select aria-label="Filtrar tipo" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">Todos os tipos</option>
           {campaignTypes.map((t) => (
@@ -189,33 +165,14 @@ export default function CampaignList({
           <option>EN</option>
           <option>ES</option>
         </select>
-        <select
-          aria-label="Filtrar status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
+        <select aria-label="Filtrar status" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Todos os status</option>
           {statuses.map((t) => (
             <option key={t}>{t}</option>
           ))}
         </select>
-        {(month || type || audience || language || status || search || quick || onlyReview) && (
-          <button
-            className="text-button"
-            onClick={() => {
-              setMonth('');
-              setType('');
-              setAudience('');
-              setLanguage('');
-              setStatus('');
-              setSearch('');
-              setQuick(''); setOnlyReview(false);
-            }}
-          >
-            Limpar
-          </button>
-        )}
-      </div>
+      </div></details>
+      {(month || type || audience || language || status || search || quick || onlyReview) && <button className="text-button clear-filters" onClick={() => { setMonth(''); setType(''); setAudience(''); setLanguage(''); setStatus(''); setSearch(''); setQuick(''); setOnlyReview(false); }}>Limpar filtros</button>}
       <div className="quick-filters" aria-label="Filtros rápidos">
         {([['Em produção', 'Em produção'], ['Revisão', 'Revisão'], ['Aprovadas', 'Aprovado'], ['Este mês', 'month']] as const).map(([label, value]) => <button key={value} className={quick === value ? 'active' : ''} aria-pressed={quick === value} onClick={() => setQuick(quick === value ? '' : value)}>{label}</button>)}
         {reviewIds?.length ? <button className={onlyReview ? 'active' : ''} aria-pressed={onlyReview} onClick={() => setOnlyReview(!onlyReview)}>Com pendências ({reviewIds.length})</button> : null}
@@ -263,6 +220,7 @@ export default function CampaignList({
                     </div>
                   )}
                   {activity?.[c.id]?.updatedAt && <div className="campaign-activity" title={activityTime(activity[c.id].updatedAt)}>Atualizado {relativeTime(activity[c.id].updatedAt)} · {editorName(activity[c.id].updatedBy)}</div>}
+                  {pendingSet.has(c.id) && <span className="campaign-pending">Alterações locais pendentes</span>}
                 </td>
                 <td>{c.campaignType}</td>
                 <td>{c.audience || 'Público a definir'}</td>
@@ -304,12 +262,9 @@ export default function CampaignList({
           <h3>{emptyTitle}</h3>
           <p>{campaigns.length ? 'Ajuste a busca ou limpe os filtros para ver outras campanhas.' : 'Crie uma campanha ou importe seu planejamento mensal.'}</p>
           <div className="empty-actions">
-            {campaigns.length ? <button className="button primary" onClick={() => { setMonth(''); setType(''); setAudience(''); setLanguage(''); setStatus(''); setSearch(''); setQuick(''); setOnlyReview(false); }}>Limpar filtros</button> : <><button className="button" disabled={!canEdit} onClick={onImport}>
-              <Upload size={15} /> Importar planilha
-            </button>
-            <button className="button primary" disabled={!canEdit} onClick={onCreate}>
+            {campaigns.length ? <button className="button primary" onClick={() => { setMonth(''); setType(''); setAudience(''); setLanguage(''); setStatus(''); setSearch(''); setQuick(''); setOnlyReview(false); }}>Limpar filtros</button> : <button className="button primary" disabled={!canEdit} onClick={onCreate}>
               Nova campanha <ArrowRight size={15} />
-            </button></>}
+            </button>}
           </div>
         </div>
       )}
@@ -319,15 +274,6 @@ export default function CampaignList({
         </span>
         <span>Campanhas online compartilhadas · rascunhos locais identificados no editor.</span>
       </div>
-    </div>
-  );
-}
-function FileMark() {
-  return (
-    <div className="file-mark">
-      <span />
-      <span />
-      <span />
     </div>
   );
 }

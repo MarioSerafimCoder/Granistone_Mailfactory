@@ -7,7 +7,7 @@ async function authenticate(page: Page) {
 }
 async function editing(page: Page) {
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+  await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
 }
 test('free blocks, saved library, campaign copy and shared custom templates work across two browsers', async ({ page, browser, request }) => {
   test.setTimeout(120000);
@@ -81,6 +81,7 @@ test('free blocks, saved library, campaign copy and shared custom templates work
     expect(await second.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await second.screenshot({ path: 'test-results/design-notebook.png', fullPage: true });
     await page.getByRole('button', { name: 'Voltar às campanhas' }).click();
+    await expect(page.getByRole('heading', { name: 'Campanhas', exact: true })).toBeVisible();
     await page.getByRole('button', { name: /Templates 9/ }).click();
     await expect(page.locator('.saved-design-card').filter({ hasText: templateName })).toContainText('Compartilhado entre navegadores');
     await page.locator('.saved-design-card').filter({ hasText: templateName }).getByRole('button', { name: 'Duplicar', exact: true }).click();

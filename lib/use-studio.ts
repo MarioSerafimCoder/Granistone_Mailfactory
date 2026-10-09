@@ -10,6 +10,8 @@ export function useStudio() {
   const [, render] = useState(0);
   const engine = useRef<WorkspaceSync | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pendingSave = useRef<Promise<void>>(Promise.resolve());
+  const saveSequence = useRef(0);
   useEffect(() => {
     let alive = true;
     let persistence = Promise.resolve();
@@ -52,10 +54,16 @@ export function useStudio() {
   function save(next: StudioData, immediate = false) {
     const workspace = engine.current; if (!workspace) return false;
     clearTimeout(timer.current);
-    void workspace.save(next).then(() => {
-      timer.current = setTimeout(() => void workspace.sync(), immediate ? 0 : 800);
+    const sequence = ++saveSequence.current;
+    pendingSave.current = pendingSave.current.catch(() => {}).then(() => workspace.save(next));
+    void pendingSave.current.then(() => {
+      if (sequence === saveSequence.current) timer.current = setTimeout(() => void workspace.sync(), immediate ? 0 : 800);
     }).catch(() => setError('Não foi possível salvar o cache local. Baixe um backup antes de fechar.'));
     return true;
   }
-  return { data, save, saveState: workspaceState?.state ?? 'loading', error, workspace: workspaceState };
+  async function flushLocal() {
+    clearTimeout(timer.current);
+    await pendingSave.current;
+  }
+  return { data, save, flushLocal, saveState: workspaceState?.state ?? 'loading', error, workspace: workspaceState };
 }

@@ -17,7 +17,7 @@ test('history requires confirmation, list shows author, and language status foll
   const title = `UX ${Date.now()}`;
   await create(page, title);
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
-  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+  await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
   await page.locator('.editor-secondary summary').click();
   await expect(page.getByText(/Última alteração por Local/)).toBeVisible();
@@ -25,7 +25,7 @@ test('history requires confirmation, list shows author, and language status foll
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem', { timeout: 30000 });
   await page.getByRole('button', { name: 'ENGLISH', exact: true }).click();
   await expect(page.getByLabel('Status da campanha')).toHaveValue('Pendente');
-  await page.getByRole('button', { name: 'Histórico de versões', exact: true }).click();
+  await page.getByRole('button', { name: 'Histórico', exact: true }).click();
   const history = page.getByRole('dialog', { name: 'Histórico da campanha' });
   await expect(history.getByText(/Mudou o status PT para Aprovado/)).toBeVisible();
   await history.getByRole('button', { name: 'Restaurar esta versão' }).first().click();
@@ -45,7 +45,7 @@ test('HTTPS image entry and guided publication remain clear at desktop and narro
   await page.goto('/');
   await create(page, `Preparação ${Date.now()}`);
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-  await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+  await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
   await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
   await page.getByRole('button', { name: 'Editar Imagem principal', exact: true }).click();
   const image = page.getByRole('complementary', { name: 'Propriedades do elemento' });
@@ -54,7 +54,8 @@ test('HTTPS image entry and guided publication remain clear at desktop and narro
   await image.getByRole('button', { name: 'Usar imagem da web' }).click();
   await expect(image.getByText('Use uma URL pública HTTPS.')).toBeVisible();
   await page.getByRole('button', { name: 'Recolher propriedades' }).click();
-  await page.getByRole('button', { name: 'Publicar online' }).click();
+  await page.getByRole('button', { name: 'Revisar e publicar' }).click();
+  await page.getByRole('dialog', { name: 'Revisar e publicar' }).getByRole('button', { name: 'Preparar publicação' }).click();
   const publish = page.getByRole('dialog', { name: 'Publicar e-mail · PT' });
   await expect(publish.getByRole('heading', { name: 'STATUS' })).toBeVisible();
   await expect(publish.getByRole('heading', { name: 'PRÉ-FLIGHT' })).toBeVisible();

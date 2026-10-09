@@ -130,7 +130,7 @@ test('section order and alignment synchronize between collaborators', async ({ p
     await second.getByRole('button', { name: title, exact: true }).click();
   await second.locator('.editor-secondary summary').click(); await second.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
     await expect(second.locator('.sections-editor .section-card')).toHaveCount(8);
-    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
     await firstCards.nth(2).getByRole('button', { name: 'Subir bloco' }).click();
     await firstCards.nth(1).getByRole('button', { name: 'Subir bloco' }).click();
     await expect(firstCards.first()).toHaveAttribute('data-section-id', movedId!);
@@ -138,7 +138,7 @@ test('section order and alignment synchronize between collaborators', async ({ p
     await firstCards.first().getByRole('button', { name: 'Alinhar à direita' }).click();
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await page.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
-    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Tentar novamente', exact: true }).click();
     const secondCards = second.locator('.sections-editor .section-card');
     await expect(secondCards.first()).toHaveAttribute('data-section-id', movedId!);
     await secondCards.first().locator('.section-heading-main .text-button').click();

@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { PresenceEntry, ResourceType, WorkspaceSession } from '@/types/collaboration';
 import { online } from './online';
 import { acquireLease, activeLease, browserIdentity, releaseLease, renewLease } from './edit-leases';
@@ -34,13 +34,16 @@ export function useWorkspacePresence(session: WorkspaceSession | undefined, loca
   }, [session?.member, location, resourceType, resourceId]);
   return { presence, unavailable };
 }
-export function useEditLease(type: ResourceType, id: string | undefined, shared = true, explicitAllowed?: boolean) {
+export function useEditLease(type: ResourceType, id: string | undefined, shared = true, explicitAllowed?: boolean, autoAcquire = false, onAcquired?: () => Promise<void>) {
   const { session, setResource } = useContext(CollaborationContext);
   useEffect(() => { if (!id || !setResource) return; setResource({ type, id }); return () => setResource(undefined); }, [id, type, setResource]);
   const allowed = explicitAllowed ?? (type === 'brand' ? session?.permissions.editBrand === true : !session?.member || session.permissions.editCampaigns);
   const [, render] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const latestOnAcquired = useRef(onAcquired);
+  const desired = useRef(id);
+  useEffect(() => { latestOnAcquired.current = onAcquired; desired.current = id; });
   useEffect(() => {
     if (!id || !shared) return;
     let alive = true, renewing = false;
@@ -57,7 +60,19 @@ export function useEditLease(type: ResourceType, id: string | undefined, shared 
     window.addEventListener('workspace-lease-change', change); window.addEventListener('focus', focus); window.addEventListener('online', focus);
     return () => { alive = false; clearInterval(interval); window.removeEventListener('workspace-lease-change', change); window.removeEventListener('focus', focus); window.removeEventListener('online', focus); void releaseLease(type, id); };
   }, [type, id, shared]);
-  const editing = Boolean(id && allowed && (!shared || activeLease(type, id)));
+  useEffect(() => {
+    if (!autoAcquire || !id || !shared || !allowed || activeLease(type, id)) return;
+    let alive = true;
+    queueMicrotask(() => { if (alive) { setBusy(true); setError(''); } });
+    void acquireLease(type, id).then(async () => {
+      if (desired.current !== id) { await releaseLease(type, id); return; }
+      await latestOnAcquired.current?.();
+    }).catch(caught => {
+      if (alive) setError(caught instanceof Error ? caught.message : 'Não foi possível abrir a edição. Tente novamente.');
+    }).finally(() => { if (alive) setBusy(false); });
+    return () => { alive = false; };
+  }, [type, id, shared, allowed, autoAcquire]);
+  const editing = Boolean(id && allowed && !busy && (!shared || activeLease(type, id)));
   const begin = async () => {
     if (!id || !allowed) return false;
     setBusy(true); setError('');

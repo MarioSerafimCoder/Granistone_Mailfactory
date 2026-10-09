@@ -56,7 +56,8 @@ test('real layouts, clickable slots, large local photo, web image and portable e
   await page.getByRole('button', { name: 'Preview mobile', exact: true }).click();
   const overflow = await frame.locator('body').evaluate((body) => body.scrollWidth > 375);
   expect(overflow).toBe(false);
-  await page.getByRole('button', { name: 'Exportar', exact: true }).click();
+  await page.getByRole('button', { name: 'Revisar e publicar', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Revisar e publicar' }).getByRole('button', { name: 'Exportar HTML' }).click();
   const downloaded = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar HTML com fotos locais', exact: true }).click();
   const download = await downloaded;

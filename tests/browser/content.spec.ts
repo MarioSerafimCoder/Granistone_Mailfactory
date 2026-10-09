@@ -9,7 +9,7 @@ test('material autofill, image preview and restricted rich formatting remain edi
   await page.goto('/');
   await page.getByRole('button', { name: 'Crystal Palace · Arquitetura', exact: true }).click();
   await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
-  await page.getByRole('option', { name: /Speranza/ }).click();
+  await page.locator('.edit-panel').getByRole('option', { name: /Speranza/ }).click();
   await expect(page.getByText('Como aplicar Speranza?')).toBeVisible();
   await page.getByRole('button', { name: 'Substituir conteúdo', exact: true }).click();
   await expect(page.locator('.edit-panel .tiptap')).toContainText('Speranza');
@@ -33,7 +33,8 @@ test('material autofill, image preview and restricted rich formatting remain edi
   await page.locator('.edit-panel .tiptap').press('End');
   await page.locator('.edit-panel .tiptap').pressSequentially(' Preservado');
   await expect(page.frameLocator('iframe').getByText(/Texto editável.*Preservado/)).toBeVisible();
-  await page.getByRole('button', { name: 'Exportar', exact: true }).click();
+  await page.getByRole('button', { name: 'Revisar e publicar', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Revisar e publicar' }).getByRole('button', { name: 'Exportar HTML' }).click();
   await expect(
     page.getByText(/A imagem principal precisa de uma URL HTTPS pública/),
   ).toBeVisible();

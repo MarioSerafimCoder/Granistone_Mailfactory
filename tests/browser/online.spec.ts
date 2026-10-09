@@ -11,7 +11,8 @@ test('publication dialog explains sign-in and blocks anonymous writes', async ({
   await page.getByRole('button', { name: 'Nova campanha', exact: true }).first().click();
   await page.getByLabel('Nome da campanha', { exact: true }).fill('Publicação sem sessão');
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
-  await page.getByRole('button', { name: 'Publicar online', exact: true }).click();
+  await page.getByRole('button', { name: 'Revisar e publicar', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Revisar e publicar' }).getByRole('button', { name: 'Preparar publicação' }).click();
   const dialog = page.getByRole('dialog', { name: 'Publicar e-mail · PT' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Entrar com ChatGPT para publicar' })).toHaveAttribute('href', '/signin-with-chatgpt?return_to=/');

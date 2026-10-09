@@ -21,13 +21,13 @@ test('members UI grants access; two browsers coordinate editing and show presenc
     await page.getByLabel('Nome da campanha', { exact: true }).fill(title);
     await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
     await expect(page.getByLabel('Status da campanha', { exact: true })).toBeEnabled();
     await second.goto('/'); await expect(second.getByText('ChatGPT conectado')).toBeVisible();
     await expect(second.getByRole('button', { name: 'Membros do workspace', exact: true })).toHaveCount(0);
     await second.getByRole('button', { name: title, exact: true }).click();
     await expect(second.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
-    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await expect(second.locator('.edit-lease-bar')).toContainText('está editando');
     await expect(second.locator('.edit-lease-bar')).toContainText('está editando');
     await expect(second.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
     await expect(page.locator('.edit-lease-bar .presence-avatars summary .member-avatar[title="Flavia"]').first()).toBeVisible({ timeout: 20000 });
@@ -35,7 +35,7 @@ test('members UI grants access; two browsers coordinate editing and show presenc
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await page.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
     await expect(page.getByLabel('Status da campanha', { exact: true })).toBeDisabled();
-    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Tentar novamente', exact: true }).click();
     await expect(second.getByLabel('Status da campanha', { exact: true })).toBeEnabled();
     await expect(second.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true })).toHaveText('Texto da equipe');
     await second.locator('.visual-email').getByRole('textbox', { name: 'Título', exact: true }).fill('Texto atualizado por Flavia');

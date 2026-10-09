@@ -6,7 +6,6 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
-  Download,
   Monitor,
   Smartphone,
   Languages,
@@ -48,6 +47,8 @@ export default function CampaignEditor({
   onDuplicate,
   leaseControls,
   onSync,
+  campaignChoices,
+  onSwitchCampaign,
 }: {
   campaign: Campaign;
   brand: BrandSettings;
@@ -62,6 +63,8 @@ export default function CampaignEditor({
   onDuplicate?: () => void;
   leaseControls?: ReactNode;
   onSync?: () => void;
+  campaignChoices?: Pick<Campaign, 'id' | 'title'>[];
+  onSwitchCampaign?: (id: string) => void;
 }) {
   const [language, setLanguage] = useState<Language>(campaign.language === 'EN' ? 'en' : campaign.language === 'ES' ? 'es' : 'pt');
   const history = useCampaignHistory(campaign, language, readOnly, onChange);
@@ -147,18 +150,17 @@ export default function CampaignEditor({
         </div>
         <div className="editor-heading-actions">
           <div className="editor-view-switch" role="group" aria-label="Modo de visualização"><button aria-label="Editar no canvas" className={editImages && !advanced ? 'active' : ''} aria-pressed={editImages && !advanced} onClick={() => { setEditImages(true); setAdvanced(false); }}><span className="mode-full">Editar no canvas</span><span className="mode-short">Editar</span></button><button aria-label="Visualizar final" className={!editImages && !advanced ? 'active' : ''} aria-pressed={!editImages && !advanced} onClick={() => { setEditImages(false); setAdvanced(false); }}><span className="mode-full">Visualizar final</span><span className="mode-short">Prévia</span></button></div>
-          <button className="button editor-review" onClick={() => { setReview(true); setEditImages(true); setAdvanced(false); }}>Revisar</button>
-          <button className="button editor-export" disabled={!ready} onClick={() => setExportOpen(true)}><Download size={16} />Exportar</button>
-          <button className="button primary editor-publish" disabled={readOnly || ['saving', 'conflict', 'offline', 'error'].includes(saveState)} onClick={() => setPublishOpen(true)}>Publicar online</button>
+          {campaignRevision && <button className="button editor-history" onClick={onHistory}>Histórico</button>}
+          <button className="button primary editor-review-publish" onClick={() => { setReview(true); setEditImages(true); setAdvanced(false); }}>Revisar e publicar</button>
           <details className="editor-secondary"><summary className="icon-button" aria-label="Mais ações" title="Mais ações">•••</summary><div>
-            <button className="button editor-overflow-review" onClick={() => { setReview(true); setEditImages(true); setAdvanced(false); }}>Revisar</button>
-            <button className="button editor-overflow-export" disabled={!ready} onClick={() => setExportOpen(true)}>Exportar</button>
-            {campaignRevision && <button className="button" onClick={onHistory}>Histórico de versões</button>}
+            <button className="button" disabled={!ready} onClick={() => setExportOpen(true)}>Exportar HTML</button>
+            <button className="button" onClick={() => { setEditImages(false); setAdvanced(false); }}>Visualizar HTML final</button>
             {onDuplicate && <button className="button" title="Criar uma cópia completa desta campanha" onClick={onDuplicate}>Duplicar campanha</button>}
             <button className="button" title="Criar um modelo reutilizável com textos para preencher" disabled={readOnly} onClick={() => setSaveTemplate(true)}>Salvar como template</button>
             <button className="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setAdvanced(true); setTab('content'); }}>Configurações avançadas</button>
             {advanced && <button className="button" onClick={() => { setAdvanced(false); setEditImages(true); }}>Fechar configurações</button>}
             {onSync && <button className="button" onClick={onSync}>Sincronizar agora</button>}
+            {!!campaignChoices?.length && onSwitchCampaign && <label className="editor-overflow-status">Trocar campanha<select aria-label="Trocar campanha" value="" onChange={event => { if (event.target.value) onSwitchCampaign(event.target.value); }}><option value="">Escolher campanha…</option>{campaignChoices.filter(item => item.id !== campaign.id).map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
             <label className="editor-overflow-status">Status {language.toUpperCase()}<select aria-label="Status da campanha" disabled={readOnly} value={languageStates(campaign)[language].status} onChange={(e) => update({ status: e.target.value as Campaign['status'] })}>{statuses.map(s => <option key={s}>{s}</option>)}</select></label>
             {activity?.updatedAt && <small className="editor-activity" title={activityTime(activity.updatedAt)}>Última alteração por {editorName(activity.updatedBy)} · {activityTime(activity.updatedAt)}</small>}
           </div></details>
@@ -175,7 +177,7 @@ export default function CampaignEditor({
         </div>
       )}
       <div hidden={!editImages || advanced}>
-        <VisualWorkspace campaign={campaign} brand={brand} language={language} onLanguage={setLanguage} readOnly={readOnly} onChange={update} onUndo={history.undo} onRedo={history.redo} saveState={saveState} onAdvanced={(tab = 'content') => { setAdvanced(true); setTab(tab); }} review={review} onReviewClose={() => setReview(false)} />
+        <VisualWorkspace campaign={campaign} brand={brand} language={language} onLanguage={setLanguage} readOnly={readOnly} onChange={update} onUndo={history.undo} onRedo={history.redo} saveState={saveState} onAdvanced={(tab = 'content') => { setAdvanced(true); setTab(tab); }} review={review} onReviewClose={() => setReview(false)} onFinalPreview={() => setEditImages(false)} onExport={() => setExportOpen(true)} onPublish={() => setPublishOpen(true)} canExport={ready} canPublish={!readOnly && !['saving', 'conflict', 'offline', 'error', 'paused'].includes(saveState)} />
       </div>
       <div className={`editor-workspace${!advanced ? ' final-workspace' : ''}`} hidden={editImages && !advanced}>
         {advanced && <div className="edit-panel">

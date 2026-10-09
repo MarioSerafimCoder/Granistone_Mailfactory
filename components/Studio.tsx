@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   LayoutGrid,
   Mail,
@@ -38,7 +38,7 @@ import WorkspaceMembers from './WorkspaceMembers';
 import type { ResourceType } from '@/types/collaboration';
 import ThemeToggle from './ThemeToggle';
 export default function Studio() {
-  const { data, save, saveState, error, workspace } = useStudio();
+  const { data, save, flushLocal, saveState, error, workspace } = useStudio();
   const [view, setView] = useState<'campaigns' | 'templates' | 'library'>('campaigns');
   const [activeId, setActiveId] = useState<string>();
   const [importOpen, setImportOpen] = useState(false);
@@ -53,30 +53,57 @@ export default function Studio() {
   const [trashOpen, setTrashOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reviewIds, setReviewIds] = useState<string[]>([]);
+  const [leaving, setLeaving] = useState(false);
+  const leavingRef = useRef(false);
+  const queuedNavigation = useRef<{ view: 'campaigns' | 'templates' | 'library'; campaignId?: string } | undefined>(undefined);
+  const [pendingNavigation, setPendingNavigation] = useState<{ view: 'campaigns' | 'templates' | 'library'; campaignId?: string; message: string; localSaved: boolean }>();
   const onlineEditor = workspace?.editor ?? false;
   const session = workspace?.session;
   const onlineMember = session?.member ?? onlineEditor;
   const canEdit = !session?.authenticated || onlineEditor;
   const active = data?.campaigns.find((c) => c.id === activeId);
   const deleteCampaign = data?.campaigns.find((c) => c.id === deleteCampaignId);
-  const campaignLease = useEditLease('campaign', active?.id, Boolean(active && workspace?.meta.revisions[active.id]), canEdit);
+  const campaignLease = useEditLease('campaign', active?.id, Boolean(active && workspace?.meta.revisions[active.id]), canEdit, true, async () => { await workspace?.refresh(); });
   const collaboration = useWorkspacePresence(session, membersOpen ? 'members' : resourceLocation?.type || (brandOpen ? 'brand' : active ? 'campaign' : view), resourceLocation?.type || (brandOpen ? 'brand' : active ? 'campaign' : ''), resourceLocation?.id || (brandOpen ? 'brand' : active?.id || ''));
-  async function leaveEditor() {
+  async function navigate(nextView: 'campaigns' | 'templates' | 'library', campaignId?: string) {
+    if (leavingRef.current) { queuedNavigation.current = { view: nextView, campaignId }; return false; }
+    if (!active || active.id === campaignId) { setView(nextView); setActiveId(campaignId); return true; }
+    leavingRef.current = true; setLeaving(true); setPendingNavigation(undefined);
+    let localSaved = false;
+    let completed = false;
     try {
+      await flushLocal(); localSaved = true;
       await workspace?.flush();
-      if (active && workspace?.meta.pending[active.id]) throw new Error(error || 'As alterações ainda não foram compartilhadas. Retome a edição para salvar ou recupere uma cópia.');
-      await campaignLease.finish(); setActiveId(undefined);
-    } catch (caught) { setFeedback(caught instanceof Error ? caught.message : 'O salvamento ainda não terminou.'); }
+      if (workspace?.meta.pending[active.id] || workspace?.meta.conflicts[active.id]) throw new Error(workspace.error || 'Há alterações locais pendentes nesta campanha. Elas continuam salvas neste navegador.');
+      await campaignLease.finish();
+      setActiveId(campaignId); setView(nextView);
+      completed = true;
+      return true;
+    } catch (caught) {
+      setPendingNavigation({ view: nextView, campaignId, message: caught instanceof Error ? caught.message : 'Não foi possível sincronizar as alterações.', localSaved });
+      return false;
+    } finally {
+      leavingRef.current = false; setLeaving(false);
+      const queued = queuedNavigation.current; queuedNavigation.current = undefined;
+      if (queued) {
+        if (completed) { setActiveId(queued.campaignId); setView(queued.view); }
+        else setPendingNavigation(current => current && { ...current, view: queued.view, campaignId: queued.campaignId });
+      }
+    }
   }
-  function copyActive() {
+  async function copyActive() {
     if (!active || !data || !canEdit) return;
-    const copy = duplicateCampaign(active);
-    save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id); setFeedback('Campanha duplicada. A nova cópia está em produção e será sincronizada.');
+    const source = active;
+    if (!await navigate('campaigns')) return;
+    const copy = duplicateCampaign(source), current = workspace?.data ?? data;
+    save({ ...current, campaigns: [copy, ...current.campaigns] }, true); setActiveId(copy.id); setFeedback('Campanha duplicada. A nova cópia está em produção e será sincronizada.');
   }
   function showBrand() {
     workspace?.setBrandEditing(true);
     setBrandOpen(true);
   }
+  const navigateRef = useRef(navigate);
+  useEffect(() => { navigateRef.current = navigate; });
 
 
   useEffect(() => {
@@ -102,7 +129,7 @@ export default function Studio() {
             additionalProperties: false,
           },
           annotations: { readOnlyHint: false, untrustedContentHint: false },
-          execute(input: unknown) {
+          async execute(input: unknown) {
             if (!canEdit) throw new Error('Sua função permite apenas visualizar campanhas.');
             if (!input || typeof input !== 'object') throw new Error('Dados da campanha inválidos.');
             const value = input as { title?: unknown; template?: unknown };
@@ -110,7 +137,8 @@ export default function Studio() {
             if (!title || title.length > 120 || !allowedTemplates.includes(value.template as TemplateId)) {
               throw new Error('Informe um título e um template válido.');
             }
-            const current = data;
+            if (!await navigateRef.current('campaigns')) throw new Error('Conclua a sincronização da campanha aberta antes de criar outra.');
+            const current = workspace?.data ?? data;
             const template = value.template as TemplateId;
             const campaignType = getTemplate(template).campaignType;
             const campaign = createCampaign({
@@ -130,7 +158,7 @@ export default function Studio() {
       ),
     ).catch(() => {});
     return () => lifecycle.abort();
-  }, [data, save, canEdit]);
+  }, [data, save, canEdit, workspace]);
   function start(template: TemplateId = 'institutional') {
     if (!canEdit) { setFeedback('Sua função permite apenas visualizar campanhas.'); return; }
     setName('');
@@ -196,10 +224,7 @@ export default function Studio() {
       <aside className="sidebar">
         <button
           className="brand-lockup"
-          onClick={() => {
-            setActiveId(undefined);
-            setView('campaigns');
-          }}
+          onClick={() => void navigate('campaigns')}
           aria-label="Granistone Mail Studio · início"
         >
           <img src="/brand/granistone-logo.png" alt="Granistone A Rocha" />
@@ -214,38 +239,32 @@ export default function Studio() {
         <nav aria-label="Navegação principal">
           <button
             className={view === 'campaigns' ? 'active' : ''}
-            onClick={() => {
-              setActiveId(undefined);
-              setView('campaigns');
-            }}
+            onClick={() => void navigate('campaigns')}
           >
             <Mail size={18} />
             Campanhas<span className="nav-count">{data.campaigns.length}</span>
           </button>
           <button
             className={view === 'templates' ? 'active' : ''}
-            onClick={() => {
-              setActiveId(undefined);
-              setView('templates');
-            }}
+            onClick={() => void navigate('templates')}
           >
             <LayoutGrid size={18} />
             Templates<span className="nav-count">{templates.length}</span>
           </button>
           <button
             className={view === 'library' ? 'active' : ''}
-            onClick={() => { setActiveId(undefined); setView('library'); }}
+            onClick={() => void navigate('library')}
           >
             <Images size={18} />
             Biblioteca
           </button>
-          <button disabled={!canEdit} onClick={() => setImportOpen(true)}>
+          <button disabled={!canEdit} onClick={() => void navigate('campaigns').then(ok => { if (ok) setImportOpen(true); })}>
             <Upload size={18} />
             Importar planejamento
           </button>
           <button onClick={() => setTrashOpen(true)}><Trash2 size={18} />Lixeira ({workspace?.meta.trash.length ?? 0})</button>
         </nav>
-        <button className="sidebar-create" disabled={!canEdit} onClick={() => start()}>
+        <button className="sidebar-create" disabled={!canEdit} onClick={() => void navigate('campaigns').then(ok => { if (ok) start(); })}>
           <Plus size={16} />
           Nova campanha
         </button>
@@ -345,15 +364,17 @@ export default function Studio() {
             activity={workspace?.meta.activity?.[active.id]}
             brand={data.brand}
             saveState={workspace?.campaignState(active.id) ?? saveState}
-            readOnly={!campaignLease.editing}
-            leaseControls={workspace?.meta.revisions[active.id] ? <EditLeaseBar compact lease={campaignLease} type="campaign" id={active.id} onBegin={() => workspace.refresh()} onFinish={async () => { await workspace.flush(); if (workspace.meta.pending[active.id]) { setFeedback('As alterações estão pendentes. Retome a conexão ou recupere uma cópia.'); throw new Error('Salvamento pendente.'); } }} onCopy={copyActive} /> : undefined}
-            onSync={workspace ? () => { void workspace.refresh().then(() => workspace.sync()).catch(caught => setFeedback(caught instanceof Error ? caught.message : 'Não foi possível sincronizar.')); } : undefined}
-            onBack={() => void leaveEditor()}
+            readOnly={!campaignLease.editing || leaving}
+            leaseControls={workspace?.meta.revisions[active.id] ? <EditLeaseBar compact lease={campaignLease} type="campaign" id={active.id} onBegin={() => workspace.refresh()} onFinish={async () => { await flushLocal(); await workspace.flush(); if (workspace.meta.pending[active.id] || workspace.meta.conflicts[active.id]) { setFeedback('As alterações estão pendentes. Retome a conexão ou recupere uma cópia.'); throw new Error('Salvamento pendente.'); } }} onCopy={copyActive} /> : undefined}
+            onSync={workspace ? () => { void flushLocal().then(() => workspace.refresh()).then(() => workspace.sync()).catch(caught => setFeedback(caught instanceof Error ? caught.message : 'Não foi possível sincronizar.')); } : undefined}
+            onBack={() => void navigate('campaigns')}
             onSettings={showBrand}
             onHistory={() => setHistoryOpen(true)}
-            onDuplicate={canEdit ? copyActive : undefined}
+            onDuplicate={canEdit ? () => void copyActive() : undefined}
+            campaignChoices={data.campaigns}
+            onSwitchCampaign={id => void navigate('campaigns', id)}
             onChange={(campaign) => {
-              if (!campaignLease.editing) return;
+              if (!campaignLease.editing || leaving) return;
               save({
                 ...data,
                 campaigns: data.campaigns.map((c) => (c.id === campaign.id ? campaign : c)),
@@ -373,15 +394,24 @@ export default function Studio() {
             canDelete={!onlineMember || session?.role === 'admin'}
             activity={workspace?.meta.activity}
             reviewIds={reviewIds}
+            pendingIds={Object.keys(workspace?.meta.pending ?? {})}
             onOpen={setActiveId}
             onDelete={setDeleteCampaignId}
             onDuplicate={id => { const source = data.campaigns.find(c => c.id === id); if (!source || !canEdit) return; const copy = duplicateCampaign(source); save({ ...data, campaigns: [copy, ...data.campaigns] }, true); setActiveId(copy.id); setFeedback('Campanha duplicada. A nova cópia está em produção e será sincronizada.'); }}
             onCreate={() => start()}
-            onImport={() => setImportOpen(true)}
           />
         )}
       </main>
       {membersOpen && <WorkspaceMembers onClose={() => setMembersOpen(false)} />}
+      {pendingNavigation && <Modal title="Alterações pendentes" onClose={() => setPendingNavigation(undefined)}>
+        <p role="alert">{pendingNavigation.message}</p>
+        <p>{pendingNavigation.localSaved ? 'Seu rascunho está salvo neste navegador. Você pode tentar sincronizar agora ou sair mantendo as alterações locais para recuperar depois.' : 'O salvamento local não pôde ser confirmado. Mantenha esta página aberta e tente novamente.'}</p>
+        <div className="modal-actions">
+          <button className="button" onClick={() => setPendingNavigation(undefined)}>Continuar editando</button>
+          <button className="button" onClick={() => void navigate(pendingNavigation.view, pendingNavigation.campaignId)}>Tentar sincronizar</button>
+          {pendingNavigation.localSaved && <button className="button primary" onClick={() => void (async () => { await campaignLease.finish(); setActiveId(pendingNavigation.campaignId); setView(pendingNavigation.view); setPendingNavigation(undefined); })()}>Sair com rascunho local</button>}
+        </div>
+      </Modal>}
       {importOpen && (
         <ImportDialog
           existing={data.campaigns}

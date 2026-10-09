@@ -110,7 +110,7 @@ test('template creation, live synchronization and lease permissions cover the in
     await page.getByLabel('Template inicial', { exact: true }).selectOption('promo-impact');
     await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
-    await page.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
     const title = page.locator('.visual-email').getByRole('textbox', { name: 'Título do bloco', exact: true }).first();
     await expect(title).toHaveAttribute('contenteditable', 'true');
     await second.goto('/'); await second.getByRole('button', { name, exact: true }).click();
@@ -121,14 +121,14 @@ test('template creation, live synchronization and lease permissions cover the in
     await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await page.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
     await expect(title).toHaveAttribute('contenteditable', 'false');
-    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Iniciar edição', exact: true }).click();
+    await second.locator('.edit-lease-bar').getByRole('button', { name: 'Tentar novamente', exact: true }).click();
     await expect(other.locator('strong')).toHaveText('Título compartilhado');
     await expect(other).toHaveAttribute('contenteditable', 'true');
     await other.fill('Revisado por colaborador'); await expect(second.locator('.save-indicator')).toHaveText('Salvo na nuvem');
     await second.getByRole('button', { name: 'Salvar e encerrar edição' }).click();
     await page.reload(); await page.getByRole('button', { name, exact: true }).click();
-    await expect(title).toHaveText('Revisado por colaborador'); await expect(title).toHaveAttribute('contenteditable', 'false');
-  } finally { await secondContext.close(); }
+    await expect(title).toHaveText('Revisado por colaborador'); await expect(title).toHaveAttribute('contenteditable', 'true');
+  } finally { await page.unrouteAll({ behavior: 'ignoreErrors' }); await second.unrouteAll({ behavior: 'ignoreErrors' }); await secondContext.close(); }
 });
 
 test('paste sanitization, link editing, list formatting and review navigation work on canvas', async ({ page }) => {
@@ -146,8 +146,8 @@ test('paste sanitization, link editing, list formatting and review navigation wo
   await body.press('Control+a'); await bubble.getByRole('button', { name: 'Lista', exact: true }).click(); await expect(body.locator('ul li')).toHaveCount(1);
   await page.getByRole('button', { name: 'Visualizar final', exact: true }).click();
   await expect(page.frameLocator('.preview-stage iframe').locator('a[href="https://granistone.com.br"]')).toHaveText('Conteúdo colado');
-  await page.getByRole('button', { name: 'Revisar', exact: true }).click();
-  const review = page.getByRole('dialog', { name: 'Revisão da campanha' });
+  await page.getByRole('button', { name: 'Revisar e publicar', exact: true }).click();
+  const review = page.getByRole('dialog', { name: 'Revisar e publicar' });
   await review.getByRole('button', { name: 'Localizar no e-mail', exact: true }).first().click();
   await expect(review).toHaveCount(0); await expect(page.locator('.canvas-inspector')).toBeVisible();
 });

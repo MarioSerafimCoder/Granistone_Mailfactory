@@ -62,6 +62,7 @@
 .editor-overflow-status { display: grid; gap: 5px; padding: 7px 9px; font-size: 12px; color: var(--ui-secondary); }
 .editor-overflow-status select { padding: 7px; font-size: 12px; }
 .editor-secondary .editor-activity { padding: 7px 9px; color: var(--ui-secondary); line-height: 1.4; }
+.editor-secondary select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .final-workspace { grid-template-columns: minmax(0, 1fr) !important; }
 .final-workspace > .edit-panel { display: none; }
 .visual-workspace { height: 100%; min-height: 0; display: flex; flex-direction: column; }
@@ -220,4 +221,48 @@
   .editor-view-switch button { padding-inline: 7px; }
   .editor-heading-actions .editor-export { display: none; }
   .editor-secondary .editor-overflow-export { display: inline-flex; }
+}
+
+/* Production workspace: concise global actions and contextual controls. */
+.studio.editing { grid-template-columns: 60px minmax(0, 1fr); }
+.studio.editing .sidebar { padding-inline: 6px; }
+.studio.editing .sidebar nav button,
+.studio.editing .sidebar-bottom > button,
+.studio.editing .sidebar-bottom > label { width: 46px; }
+.studio.editing .editor-heading { border-bottom: 1px solid var(--ui-border); }
+.editor-name { flex: 1 1 350px; }
+.editor-title-group { max-width: 315px; }
+.editor-global-tools { gap: 9px; }
+.editor-heading-actions { flex: 0 0 auto; }
+.editor-heading-actions .editor-review-publish { min-height: 36px; padding-inline: 15px; font-size: 13px; }
+.editor-heading-actions .editor-history { border-color: transparent; }
+.editor-heading-actions .editor-history:hover { background: var(--ui-hover); }
+.canvas-library { width: 272px; }
+.canvas-panel-tabs button { min-height: 34px; font-size: 12px; }
+.canvas-library > .canvas-panel-tabs { gap: 4px; }
+.canvas-structure { display: grid; align-content: start; gap: 8px; }
+.canvas-structure > .button { white-space: normal; text-align: center; }
+.canvas-structure-row { display: flex; align-items: center; justify-content: space-between; min-height: 40px; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-elevated); }
+.canvas-structure-row > button { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 9px; text-align: left; font-size: 12px; }
+.canvas-structure-row > button.active { color: var(--ui-danger); font-weight: 600; }
+.canvas-structure-row > button span { color: var(--ui-muted); font-variant-numeric: tabular-nums; }
+.canvas-structure-row > div { display: flex; border-left: 1px solid var(--ui-border); }
+.canvas-structure-row > div button { display: grid; place-items: center; width: 28px; height: 35px; color: var(--ui-secondary); }
+.canvas-structure-row button:hover:not(:disabled) { background: var(--ui-hover); }
+.canvas-block-actions { background: var(--ui-elevated); color: var(--ui-text); border-color: var(--ui-border); box-shadow: 0 4px 12px var(--ui-shadow); }
+.canvas-block-actions button:hover { background: var(--ui-hover); }
+.canvas-block:hover { outline-color: var(--ui-focus); }
+.canvas-block.selected { outline-color: var(--ui-focus); }
+.canvas-block.drop-before:before, .canvas-block.drop-after:after { background: var(--ui-focus); }
+.canvas-inspector { width: 312px; }
+.canvas-inspector-body .section-fields { padding: 0; }
+.review-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--ui-border); padding-top: 16px; margin-top: 18px; }
+.edit-lease-bar.compact { position: relative; }
+.edit-lease-bar.compact .lease-error { position: absolute; z-index: 40; top: calc(100% + 13px); left: 0; width: max-content; max-width: 360px; white-space: normal; padding: 10px 12px; border: 1px solid var(--ui-warning); border-radius: 5px; background: var(--ui-warning-bg); color: var(--ui-warning); box-shadow: 0 5px 18px var(--ui-shadow); }
+.edit-lease-bar.compact > div:last-child { gap: 5px; }
+@media (max-width: 1250px) {
+  .editor-title-group { max-width: 180px; }
+  .canvas-library { width: 250px; }
+  .canvas-inspector { width: 285px; }
+  .editor-heading-actions .editor-review-publish { display: inline-flex; }
 }

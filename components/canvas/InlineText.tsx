@@ -26,6 +26,9 @@ export default function InlineText({ value, label, kind = 'text', links = kind !
   const [, redraw] = useState(0);
   const [linkOpen, setLinkOpen] = useState(false), [url, setUrl] = useState(''), [error, setError] = useState('');
   const bubbleHost = useRef<HTMLDivElement>(null);
+  const applyHistory = useRef(false);
+  const undo = () => { applyHistory.current = true; live.current.onUndo(); };
+  const redo = () => { applyHistory.current = true; live.current.onRedo(); };
   useLayoutEffect(() => { live.current = { onChange, onSelect, onUndo, onRedo, readOnly }; });
   useEffect(() => {
     const instance = new Editor({
@@ -36,7 +39,8 @@ export default function InlineText({ value, label, kind = 'text', links = kind !
         handleKeyDown: (_view, event) => {
           if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) {
             event.preventDefault(); event.stopPropagation();
-            if (event.shiftKey || event.key.toLowerCase() === 'y') live.current.onRedo(); else live.current.onUndo();
+            if (event.shiftKey || event.key.toLowerCase() === 'y') { applyHistory.current = true; live.current.onRedo(); }
+            else { applyHistory.current = true; live.current.onUndo(); }
             return true;
           }
           return false;
@@ -73,6 +77,10 @@ export default function InlineText({ value, label, kind = 'text', links = kind !
     const instance = editor.current;
     if (!instance) return;
     if (instance.isEditable === readOnly) instance.setEditable(!readOnly, false);
+    // Local typing may render an older parent snapshot before the latest keystroke is saved.
+    // Replacing a focused ProseMirror document with that snapshot moves its caret.
+    if (instance.isFocused && !readOnly && !applyHistory.current) return;
+    applyHistory.current = false;
     const clean = fieldValue(value, links);
     if (JSON.stringify(sanitizeRichText(instance.getJSON() as RichNode)) !== JSON.stringify(clean)) {
       const { from, to } = instance.state.selection;
@@ -91,7 +99,7 @@ export default function InlineText({ value, label, kind = 'text', links = kind !
       {links && <button aria-pressed={e?.isActive('link') ?? false} onClick={() => { setUrl(String(e?.getAttributes('link').href ?? '')); setLinkOpen(!linkOpen); }}>Link</button>}
       {kind === 'body' && <button aria-pressed={e?.isActive('bulletList') ?? false} onClick={() => run(e => e.chain().focus().toggleBulletList().run())}>Lista</button>}
       {(['left', 'center', 'right'] as const).map((align, i) => <button key={align} aria-label={['Alinhar texto à esquerda', 'Centralizar texto', 'Alinhar texto à direita'][i]} aria-pressed={e?.isActive({ textAlign: align }) ?? false} onClick={() => run(e => e.chain().focus().setTextAlign(align).run())}>{['←', '↔', '→'][i]}</button>)}
-      <button aria-label="Desfazer texto" onClick={onUndo}>↶</button><button aria-label="Refazer texto" onClick={onRedo}>↷</button>
+      <button aria-label="Desfazer texto" onClick={undo}>↶</button><button aria-label="Refazer texto" onClick={redo}>↷</button>
       {linkOpen && <form onSubmit={event => { event.preventDefault(); if (url && !safeUrl(url)) { setError('Use um link HTTP, HTTPS, mailto ou tel válido.'); return; } run(e => url ? e.chain().focus().extendMarkRange('link').setLink({ href: safeUrl(url) }).run() : e.chain().focus().unsetLink().run()); setLinkOpen(false); setError(''); }}><input aria-label="Endereço do link" value={url} onChange={event => setUrl(event.target.value)} placeholder="https://" /><button type="submit">Aplicar</button>{error && <small role="alert">{error}</small>}</form>}
     </div>, document.body)}
   </div>;
