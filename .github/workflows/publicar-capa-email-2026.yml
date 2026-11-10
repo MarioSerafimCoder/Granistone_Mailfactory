@@ -15,7 +15,9 @@ jobs:
         run: |
           mkdir -p public/emails
           curl --fail --location --retry 3 'https://videocdn.pollo.ai/web-cdn/pollo/production/cmtu2jlff00jg973uir1g1dd0/image/1794317309787-12ba9fd4-ccc0-4199-81a1-662b75cb06e7.png' --output /tmp/capa-granistone.png
-          ffmpeg -y -loglevel error -i /tmp/capa-granistone.png -vf scale=1200:-1 -frames:v 1 -q:v 3 public/emails/dia-trabalhador-construcao-civil-2026.jpg
+          python3 -m venv /tmp/img-venv
+          /tmp/img-venv/bin/pip -q install Pillow
+          /tmp/img-venv/bin/python -c 'from PIL import Image; im=Image.open("/tmp/capa-granistone.png").convert("RGB"); im.thumbnail((1200,1200)); im.save("public/emails/dia-trabalhador-construcao-civil-2026.jpg", "JPEG", quality=80, optimize=True, progressive=True)'
       - name: Publicar arquivo no repositorio
         run: |
           git config user.name 'github-actions[bot]'
