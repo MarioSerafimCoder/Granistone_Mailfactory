@@ -1,0 +1,28 @@
+name: Publicar arte completa email Granistone
+on:
+  push:
+    paths:
+      - '.github/workflows/publicar-arte-completa-email.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Baixar arte PNG original
+        run: |
+          mkdir -p public/emails
+          curl --fail --location --retry 3 'https://videocdn.pollo.ai/web-cdn/pollo/production/cmtu2jlff00jg973uir1g1dd0/image/1794318110119-e33ec9b6-d0c1-4952-b7df-bd6838e1854a.png' --output public/emails/granistone-arte-completa-2026.png
+          file public/emails/granistone-arte-completa-2026.png
+          test $(wc -c < public/emails/granistone-arte-completa-2026.png) -gt 100000
+      - name: Publicar arte no repositorio
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/emails/granistone-arte-completa-2026.png
+          if ! git diff --cached --quiet; then
+            git commit -m "assets: publicar arte completa de email Granistone"
+            git push
+          fi
