@@ -1,0 +1,27 @@
+name: Publicar capa do email Granistone
+on:
+  push:
+    paths:
+      - '.github/workflows/publicar-capa-email-2026.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Baixar e otimizar imagem para email marketing
+        run: |
+          mkdir -p public/emails
+          curl --fail --location --retry 3 'https://videocdn.pollo.ai/web-cdn/pollo/production/cmtu2jlff00jg973uir1g1dd0/image/1794317309787-12ba9fd4-ccc0-4199-81a1-662b75cb06e7.png' --output /tmp/capa-granistone.png
+          ffmpeg -y -loglevel error -i /tmp/capa-granistone.png -vf scale=1200:-1 -frames:v 1 -q:v 3 public/emails/dia-trabalhador-construcao-civil-2026.jpg
+      - name: Publicar arquivo no repositorio
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/emails/dia-trabalhador-construcao-civil-2026.jpg
+          if ! git diff --cached --quiet; then
+            git commit -m "assets: publicar imagem da campanha dia da construcao civil"
+            git push
+          fi
