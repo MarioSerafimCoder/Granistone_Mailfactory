@@ -1,6 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { exampleWorkbook } from '../../import/xlsx';
 
+test('Crystal Palace demo opens with complete Spanish content', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Crystal Palace · Arquitetura', exact: true }).click();
+  await page.getByRole('button', { name: 'ESPAÑOL', exact: true }).click();
+  const canvas = page.locator('.visual-stage');
+  await expect(canvas.getByText('La naturaleza diseña.')).toBeVisible();
+  await expect(canvas.getByText(/Expresión visual distintiva/)).toBeVisible();
+  await expect(canvas.getByText('[Título do bloco]', { exact: true })).toHaveCount(0);
+});
+
 test('material autofill, image preview and restricted rich formatting remain editable', async ({
   page,
 }) => {

@@ -14,8 +14,18 @@ const picture = [image, alt], copy = [title, text], button = [label, link];
 const second = (fields: BlockField[]) => fields.map(f => ({ ...f, key: f.key + '2', label: f.label + ' 2' }));
 export interface BlockDefinition { name: string; icon: 'image' | 'text' | 'layout'; fields: BlockField[]; editor: 'fields'; render: typeof sectionRenderers[SectionType]; compatibleTemplates: 'all' | TemplateId[]; defaults: () => Section['content']; validate: (value: unknown) => boolean }
 function define(type: SectionType, name: string, fields: BlockField[], icon: BlockDefinition['icon'] = 'layout'): BlockDefinition {
+  const placeholders: Record<Language, Record<string, string>> = {
+    pt: { title: 'Título do bloco', text: 'Texto do bloco', label: 'Texto do botão' },
+    en: { title: 'Block title', text: 'Block text', label: 'Button text' },
+    es: { title: 'Título del bloque', text: 'Texto del bloque', label: 'Texto del botón' },
+  };
   return { name, icon, fields, editor: 'fields', render: sectionRenderers[type], compatibleTemplates: 'all',
-    defaults: () => Object.fromEntries((['pt', 'en', 'es'] as Language[]).map(lang => [lang, Object.fromEntries(fields.map(f => [f.key, f.kind === 'text' || f.kind === 'textarea' ? `[${f.label}]` : '']))])) as Section['content'],
+    defaults: () => Object.fromEntries((['pt', 'en', 'es'] as Language[]).map(lang => [lang, Object.fromEntries(fields.map(f => {
+      if (f.kind !== 'text' && f.kind !== 'textarea') return [f.key, ''];
+      const baseKey = f.key.replace(/2$/, '');
+      const suffix = f.key.endsWith('2') ? ' 2' : '';
+      return [f.key, `[${placeholders[lang][baseKey] ?? f.label}${suffix}]`];
+    }))])) as Section['content'],
     validate: value => !!value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every(key => fields.some(f => f.key === key)) && fields.every(f => typeof (value as Record<string, unknown>)[f.key] === 'string' && String((value as Record<string, unknown>)[f.key]).length <= (f.kind === 'image' ? 2000000 : 20000)),
   };
 }

@@ -3,7 +3,7 @@ import { defaultBrand } from '@/data/brand';
 import { sectionsValid } from '@/blocks/registry';
 import { designValid } from '@/lib/tokens/backgrounds';
 import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
-import { demoCampaigns } from '@/data/demo';
+import { demoCampaigns, upgradeDemoCampaign } from '@/data/demo';
 import { emptyContent, languageStates } from '@/campaigns/model';
 import type { SyncMetadata } from '@/types/workspace';
 import { templates, getTemplate } from '@/templates/registry';
@@ -139,7 +139,8 @@ export function decodeBackup(text: string): StudioData {
     throw new Error('O backup contém identificadores duplicados.');
   return {
     version: 2,
-    campaigns: value.campaigns.map((campaign) => {
+    campaigns: value.campaigns.map((storedCampaign) => {
+      const campaign = upgradeDemoCampaign(storedCampaign);
       const missing = getTemplate(campaign.template).blocks.filter(
         (id) => !campaign.blocks.some((block) => block.id === id),
       );

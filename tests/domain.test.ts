@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { utils, write } from 'xlsx';
 import { normalizeRow, parseDate } from '../import/normalize';
 import { parseWorkbook, exampleWorkbook } from '../import/xlsx';
-import { changeTemplate, createCampaign, editCampaign, richText } from '../campaigns/model';
+import { changeTemplate, createCampaign, editCampaign, emptyContent, plainText, richText } from '../campaigns/model';
 import { suggestTemplate, templates } from '../templates/registry';
 import { renderEmail } from '../export/render';
 import { defaultBrand } from '../data/brand';
@@ -14,6 +14,9 @@ import { campaignFileName } from '../export/download';
 import { campaignFingerprint } from '../campaigns/identity';
 import { applyTranslation, translationItems } from '../lib/translation';
 import { GRANISTONE_UNSUBSCRIBE_URL } from '../data/granistone.config';
+import { demoCampaigns, upgradeDemoCampaign } from '../data/demo';
+import { convertSections } from '../blocks/model';
+import { createSection } from '../blocks/registry';
 
 test('normalizes Portuguese headings, dates, audience and bilingual planning', () => {
   const { campaign, warnings } = normalizeRow({
@@ -86,6 +89,27 @@ test('Spanish translation preserves Portuguese, rich formatting, links and share
   assert.equal(spanish.heroImage, campaign.content.pt.heroImage);
   assert.deepEqual(spanish.body.content?.[0].content?.[0].marks, [{ type: 'bold' }]);
   assert.equal(spanish.body.content?.[0].content?.[0].text, 'Una historia');
+});
+test('Crystal Palace demo includes Spanish and upgrades an already saved empty version', () => {
+  const current = demoCampaigns()[0];
+  assert.equal(current.language, 'PT / EN / ES');
+  assert.equal(current.content.es.headline, 'La naturaleza diseña.\nLa arquitectura revela.');
+  assert.match(plainText(current.content.es.body), /piedra natural/);
+
+  const legacy = structuredClone(current);
+  legacy.language = 'PT / EN';
+  legacy.content.es = emptyContent();
+  legacy.sections = convertSections(legacy);
+  const upgraded = upgradeDemoCampaign(legacy);
+  assert.equal(upgraded.content.es.features, 'Expresión visual distintiva\nAcabados por confirmar con el equipo técnico');
+  assert.ok(upgraded.sections?.some(section => section.content.es.text?.includes('Expresión visual distintiva')));
+  assert.ok(upgraded.sections?.some(section => section.richBody?.es && plainText(section.richBody.es).includes('Vetas, movimiento')));
+});
+test('new block placeholders are localized for English and Spanish', () => {
+  const section = createSection('centeredText');
+  assert.equal(section.content.pt.title, '[Título do bloco]');
+  assert.equal(section.content.en.title, '[Block title]');
+  assert.equal(section.content.es.title, '[Título del bloque]');
 });
 test('import identity and export filenames stay stable across repeated runs', () => {
   const first = normalizeRow({

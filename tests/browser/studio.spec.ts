@@ -15,6 +15,12 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
       contentType: 'image/png',
     }),
   );
+  await page.route('https://studio.example.com/brand/**', (route) =>
+    route.fulfill({
+      path: `public${new URL(route.request().url()).pathname}`,
+      contentType: 'image/png',
+    }),
+  );
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Campanhas', exact: true })).toBeVisible();
   await page.screenshot({ path: 'test-results/campaigns-desktop.png', fullPage: true });
@@ -61,11 +67,7 @@ test('complete production flow: XLSX, template, Maily, PT/EN, preview, persisten
   await page.getByRole('button', { name: 'Conteúdo', exact: true }).click();
   await page.getByRole('button', { name: 'Revisar e publicar', exact: true }).click();
   await page.getByRole('dialog', { name: 'Revisar e publicar' }).getByRole('button', { name: 'Exportar HTML' }).click();
-  await expect(page.getByRole('button', { name: 'Baixar HTML', exact: true })).toBeDisabled();
-  const draftPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Baixar HTML com fotos locais', exact: true }).click();
-  const draft = await draftPromise;
-  expect(draft.suggestedFilename()).toContain('-pt-local.html');
+  await expect(page.getByRole('button', { name: 'Baixar HTML', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Fechar', exact: true }).click();
   await page.getByRole('button', { name: 'Configurações', exact: true }).click();
   await page.getByRole('dialog', { name: 'Configurações' }).getByRole('button', { name: /Marca e rodapé/ }).click();

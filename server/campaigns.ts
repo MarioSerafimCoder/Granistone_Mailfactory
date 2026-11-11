@@ -1,4 +1,5 @@
 import { defaultBrand } from '@/data/brand';
+import { upgradeDemoCampaign } from '@/data/demo';
 import { emptyContent, languageStates, reconcileLanguageState } from '@/campaigns/model';
 import { isCampaign, migrateBrand } from '@/lib/storage';
 import type { Campaign } from '@/types/campaign';
@@ -7,7 +8,7 @@ import { hashBytes } from './assets';
 import { HttpError, identifier, type Env } from './platform';
 type Actor = { id: string; email: string };
 interface Row { id: string; data: string; revision: number; created_at: string; created_by: string; updated_at: string; updated_by: string; deleted_at: string | null; deleted_by: string | null }
-const model = (row: Row): SharedCampaign => ({ campaign: JSON.parse(row.data), revision: row.revision, createdAt: row.created_at, createdBy: row.created_by, updatedAt: row.updated_at, updatedBy: row.updated_by, deletedAt: row.deleted_at, deletedBy: row.deleted_by });
+const model = (row: Row): SharedCampaign => ({ campaign: upgradeDemoCampaign(JSON.parse(row.data)), revision: row.revision, createdAt: row.created_at, createdBy: row.created_by, updatedAt: row.updated_at, updatedBy: row.updated_by, deletedAt: row.deleted_at, deletedBy: row.deleted_by });
 export function expectedRevision(value: unknown) {
   if (!Number.isSafeInteger(value) || Number(value) < 0) throw new HttpError(400, 'Informe a revisão que você abriu.');
   return Number(value);

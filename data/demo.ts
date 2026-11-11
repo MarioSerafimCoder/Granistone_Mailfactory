@@ -1,4 +1,5 @@
-import { createCampaign, emptyContent, richText } from '@/campaigns/model';
+import { convertSections } from '@/blocks/model';
+import { createCampaign, emptyContent, plainText, richText } from '@/campaigns/model';
 import type { Campaign, CampaignContent } from '@/types/campaign';
 
 const content = (values: Partial<CampaignContent>): CampaignContent => ({
@@ -6,9 +7,8 @@ const content = (values: Partial<CampaignContent>): CampaignContent => ({
   ...values,
 });
 
-export function demoCampaigns(): Campaign[] {
-  return [
-    createCampaign({
+function crystalPalaceCampaign(): Campaign {
+  return createCampaign({
       title: 'Crystal Palace · Arquitetura',
       date: '2026-10-01',
       campaignType: 'Produto',
@@ -16,7 +16,7 @@ export function demoCampaigns(): Campaign[] {
       objective: 'Apresentar o material com linguagem editorial e foco em especificação.',
       template: 'product-architect',
       status: 'Em produção',
-      language: 'PT / EN',
+      language: 'PT / EN / ES',
       materialId: 'crystal-palace',
       demo: true,
       content: {
@@ -46,8 +46,71 @@ export function demoCampaigns(): Campaign[] {
           cta: 'Discover the material',
           ctaUrl: 'https://www.granistone.com.br/',
         }),
+        es: content({
+          subject: 'Crystal Palace: materia, luz y arquitectura',
+          preheader: 'Una mirada editorial para proyectos definidos por la piedra natural.',
+          kicker: 'PIEDRA NATURAL · ARQUITECTURA',
+          headline: 'La naturaleza diseña.\nLa arquitectura revela.',
+          subheadline: 'Crystal Palace transforma las superficies en presencia.',
+          body: richText('Vetas, movimiento y profundidad crean una composición que cambia con la luz. Crystal Palace muestra cómo la piedra natural puede guiar el concepto de un ambiente.\nUtiliza esta campaña como punto de partida y sustituye el contenido de demostración por la información técnica aprobada.'),
+          materialName: 'Crystal Palace',
+          features: 'Expresión visual distintiva\nAcabados por confirmar con el equipo técnico',
+          applications: 'Interiores, paneles y superficies — valida la aplicación en cada proyecto',
+          cta: 'Descubre el material',
+          ctaUrl: 'https://www.granistone.com.br/',
+        }),
       },
-    }),
+    });
+}
+
+const placeholder = (value: string) => /^\[(Título do bloco|Texto do bloco|Texto do botão)( 2)?\]$/.test(value);
+
+/** Completes the original Crystal Palace demo without overwriting content edited by a user. */
+export function upgradeDemoCampaign(campaign: Campaign): Campaign {
+  if (!campaign.demo || campaign.title !== 'Crystal Palace · Arquitetura') return campaign;
+  const reference = crystalPalaceCampaign();
+  const spanish = { ...campaign.content.es };
+  for (const [key, value] of Object.entries(reference.content.es)) {
+    const field = key as keyof CampaignContent;
+    if (field === 'body') {
+      if (!plainText(spanish.body).trim()) spanish.body = structuredClone(reference.content.es.body);
+    } else if (typeof value === 'string' && !String(spanish[field] ?? '').trim()) {
+      (spanish[field] as string) = value;
+    }
+  }
+
+  const translations = new Map<string, string>();
+  const richBodies = new Map<string, CampaignContent['body']>();
+  for (const section of convertSections(reference)) {
+    for (const [field, value] of Object.entries(section.content.pt)) {
+      if (value.trim()) translations.set(`${section.type}\u0000${field}\u0000${value}`, section.content.es[field] ?? '');
+    }
+    if (section.richBody?.pt && section.richBody.es) richBodies.set(`${section.type}\u0000${plainText(section.richBody.pt)}`, section.richBody.es);
+  }
+  const sections = campaign.sections?.map(section => {
+    const next = structuredClone(section);
+    for (const [field, value] of Object.entries(section.content.pt)) {
+      const translated = translations.get(`${section.type}\u0000${field}\u0000${value}`);
+      if (translated && (!next.content.es[field]?.trim() || placeholder(next.content.es[field]))) next.content.es[field] = translated;
+    }
+    if (section.richBody?.pt && (!section.richBody.es || !plainText(section.richBody.es).trim())) {
+      const translated = richBodies.get(`${section.type}\u0000${plainText(section.richBody.pt)}`);
+      if (translated) next.richBody = { ...next.richBody, es: structuredClone(translated) };
+    }
+    if (next.richBody?.es) next.content.es.text = plainText(next.richBody.es);
+    return next;
+  });
+  return {
+    ...campaign,
+    language: 'PT / EN / ES',
+    content: { ...campaign.content, es: spanish },
+    ...(sections ? { sections } : {}),
+  };
+}
+
+export function demoCampaigns(): Campaign[] {
+  return [
+    crystalPalaceCampaign(),
     createCampaign({
       title: 'Dia da Arquitetura',
       date: '2026-10-05',

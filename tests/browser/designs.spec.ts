@@ -19,7 +19,7 @@ test('free blocks, saved library, campaign copy and shared custom templates work
   await page.locator('.editor-secondary summary').click(); await page.getByRole('button', { name: 'Configurações avançadas', exact: true }).click();
   await page.getByRole('button', { name: 'Adicionar bloco', exact: true }).click();
   const catalog = page.getByRole('dialog', { name: 'Adicionar bloco' });
-  await expect(catalog.locator('.block-catalog button')).toHaveCount(16);
+  await expect(catalog.locator('.block-catalog button')).toHaveCount(17);
   await catalog.getByRole('button', { name: 'Texto centralizado', exact: true }).click();
   const cards = page.locator('.section-card');
   await cards.first().getByLabel('Título do bloco', { exact: true }).fill('Pedra natural');
