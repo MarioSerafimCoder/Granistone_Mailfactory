@@ -32,6 +32,7 @@ export const blockRegistry: Record<SectionType, BlockDefinition> = {
   applications: define('applications', 'Lista de aplicações', copy, 'text'),
   quote: define('quote', 'Quote / destaque', copy, 'text'),
   cta: define('cta', 'CTA', [...copy, { ...label, required: true }, { ...link, required: true }]),
+  button: define('button', 'Botão', [{ ...label, required: true }, { ...link, required: true }]),
   divider: define('divider', 'Divisor', []),
   spacer: define('spacer', 'Espaçador', []),
   banner: define('banner', 'Banner', [...picture, ...button], 'image'),

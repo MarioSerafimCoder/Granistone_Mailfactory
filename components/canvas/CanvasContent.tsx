@@ -40,7 +40,7 @@ export function SectionContent({ section, language, readOnly, onChange, onSelect
   };
   const image = (suffix = '') => <Picture src={c['image' + suffix] || ''} alt={c['alt' + suffix] || ''} label={suffix ? 'Imagem do bloco 2' : 'Imagem do bloco'} readOnly={readOnly} onClick={() => onSelect({ id: section.id, field: 'image' + suffix, kind: 'image' })} />;
   const copy = (suffix = '') => <>{text('title' + suffix, 'title')}{text('text' + suffix)}</>;
-  const button = (suffix = '') => <div className="canvas-cta" style={{ textAlign: section.settings.alignment }}>{text('label' + suffix, 'button')}</div>;
+  const button = (suffix = '') => <div className={`canvas-cta${section.type === 'button' ? ' filled' : ''}`} style={{ textAlign: section.settings.alignment }}>{text('label' + suffix, 'button')}</div>;
   const columns = (a: ReactNode, b: ReactNode) => <div className="canvas-columns"><div>{a}</div><div>{b}</div></div>;
   let content: ReactNode;
   switch (section.type) {
@@ -52,6 +52,7 @@ export function SectionContent({ section, language, readOnly, onChange, onSelect
     case 'gallery': content = <>{columns(image(), image('2'))}{text('text')}</>; break;
     case 'banner': content = <>{image()}{button()}</>; break;
     case 'cta': content = <>{copy()}{button()}</>; break;
+    case 'button': content = button(); break;
     case 'divider': content = <hr />; break;
     case 'spacer': content = <div className="canvas-spacer" style={{ height: section.settings.height }}><span>Espaçador · {section.settings.height} px</span></div>; break;
     case 'quote': content = <blockquote>{text('text')}{text('title')}</blockquote>; break;

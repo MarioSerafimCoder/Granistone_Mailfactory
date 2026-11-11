@@ -22,7 +22,7 @@ import { templates } from '@/templates/registry';
 import { Field, Modal } from '../ui';
 
 const blockGroups: { title: string; types: SectionType[] }[] = [
-  { title: 'Básicos', types: ['centeredText', 'cta'] },
+  { title: 'Básicos', types: ['centeredText', 'cta', 'button'] },
   { title: 'Imagens', types: ['heroEditorial', 'imageText', 'textImage', 'gallery', 'banner'] },
   { title: 'Produtos', types: ['heroProduct', 'product', 'twoProducts', 'specifications', 'applications'] },
   { title: 'Editorial', types: ['quote'] },

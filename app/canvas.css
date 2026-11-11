@@ -99,6 +99,9 @@
 .mini-imageText i:first-child, .mini-textImage i:nth-child(2), .mini-twoProducts i:first-child, .mini-twoProducts i:nth-child(2), .mini-product i:first-child { width: 45%; height: auto; background: #b8b3aa; }
 .mini-divider i:first-child { height: 1px; }
 .mini-spacer { opacity: .65; }
+.mini-button { align-items: center; }
+.mini-button i:first-child { width: 70%; height: 8px; background: #4b4946; border-radius: 2px; }
+.mini-button i:nth-child(n+2) { display: none; }
 .mini-cta i:nth-child(2), .mini-template i:nth-child(2) { width: 45%; height: 6px; background: #8c8983; }
 .canvas-inspector-body { min-width: 0; }
 .canvas-inspector-body > .field, .canvas-inspector-body > .alignment-control, .canvas-inspector-body > .design-color, .canvas-inspector-body > .background-editor { margin-bottom: 16px; }
@@ -167,6 +170,7 @@
 .canvas-picture:hover .canvas-picture-hint, .canvas-picture:focus .canvas-picture-hint { opacity: 1; }
 .canvas-cta .canvas-button { display: inline-block; border: 1px solid currentColor; padding: 16px 24px; min-width: 120px; font: 16px/1.4 Arial,sans-serif; text-decoration: underline; }
 .canvas-cta.filled .canvas-button { color: #fff; background: #111; }
+.canvas-type-button .canvas-button { border-color: #111; text-decoration: none; }
 .canvas-section-content hr, .visual-email hr { border: 0; border-top: 1px solid #ddd9d3; }
 .canvas-section-content blockquote { border-left: 3px solid currentColor; padding: 16px; margin: 0; }
 .canvas-spacer span { opacity: 0; font: 10px Arial,sans-serif; color: #888; }

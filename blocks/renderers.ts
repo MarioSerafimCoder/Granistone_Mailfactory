@@ -19,6 +19,12 @@ const image = (src = '', alt = '', align: ContentAlignment = 'left', editor = fa
 };
 const link = (label = '', url = '', color = t.colors.text, align: ContentAlignment = 'left') => safeUrl(url) && label
   ? `<table role="presentation" align="${align}" cellpadding="0" cellspacing="0" border="0"><tr><td align="${align}" style="padding:16px 24px;border:1px solid ${color}"><a href="${e(safeUrl(url))}" style="font:16px Arial;color:${color};text-decoration:underline">${e(label)}</a></td></tr></table>` : '';
+const buttonLink = (label = '', url = '', align: ContentAlignment = 'left') => {
+  const href = safeUrl(url);
+  return href && label
+    ? `<table role="presentation" align="${align}" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="${t.colors.black}" style="background-color:${t.colors.black};text-align:center"><a href="${e(href)}" target="_blank" style="display:inline-block;padding:16px 28px;border:1px solid ${t.colors.black};font-family:${t.typography.body};font-size:14px;line-height:1.3;font-weight:600;color:${t.colors.white};text-decoration:none">${e(label)}</a></td></tr></table>`
+    : '';
+};
 const columns = (a: string, b: string, align: ContentAlignment) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="stack-col" width="48%" align="${align}" valign="top">${a}</td><td class="stack-gap" width="24">&nbsp;</td><td class="stack-col" width="48%" align="${align}" valign="top">${b}</td></tr></table>`;
 const copy: Renderer = (c, _s, richBody) => title(c.title) + (richBody ?? text(c.text));
 const product: Renderer = (c, s, richBody, editor) => image(c.image, c.alt, s.settings.alignment, editor) + copy(c, s, richBody) + link(c.label, c.link, s.settings.textColor, s.settings.alignment);
@@ -34,6 +40,7 @@ export const sectionRenderers: Record<SectionType, Renderer> = {
   applications: (c, s) => title(c.title) + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${(c.text || '').split('\n').filter(Boolean).map(line => `<tr><td align="${s.settings.alignment}" style="padding:5px 0;color:inherit;text-align:${s.settings.alignment}">• ${e(line)}</td></tr>`).join('')}</table>`,
   quote: (c, s) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="${s.settings.alignment}" style="padding:16px;border-left:3px solid ${s.settings.textColor};text-align:${s.settings.alignment}">${text(c.text)}${text(c.title)}</td></tr></table>`,
   cta: (c, s, richBody) => copy(c, s, richBody) + link(c.label, c.link, s.settings.textColor, s.settings.alignment),
+  button: (c, s) => buttonLink(c.label, c.link, s.settings.alignment),
   divider: () => `<table role="presentation" width="100%"><tr><td height="1" style="border-top:1px solid ${t.border};font-size:1px;line-height:1px">&nbsp;</td></tr></table>`,
   spacer: (_c, s) => `<table role="presentation" width="100%"><tr><td height="${s.settings.height}" style="height:${s.settings.height}px;font-size:1px;line-height:1px">&nbsp;</td></tr></table>`,
   banner: (c, s, _richBody, editor) => image(c.image, c.alt, s.settings.alignment, editor) + link(c.label, c.link, s.settings.textColor, s.settings.alignment),

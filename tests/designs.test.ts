@@ -19,9 +19,9 @@ import { PublicationRepository } from '../server/publications';
 import type { SectionType } from '../types/design';
 import { applySectionTranslation, sectionTranslationItems } from '../lib/translation';
 
-test('registry covers all 16 blocks; add, duplicate, remove and reorder preserve independent localized content', async () => {
+test('registry covers all 17 blocks; add, duplicate, remove and reorder preserve independent localized content', async () => {
   const sections = (Object.keys(blockRegistry) as SectionType[]).map(createSection);
-  assert.equal(sections.length, 16); sections.forEach(s => assert.equal(isSection(s), true));
+  assert.equal(sections.length, 17); sections.forEach(s => assert.equal(isSection(s), true));
   const duplicate = duplicateSection(sections[0]); duplicate.content.pt.title = 'Cópia editada';
   assert.notEqual(duplicate.id, sections[0].id); assert.notEqual(duplicate.content.pt.title, sections[0].content.pt.title);
   const moved = moveSection([sections[0], duplicate], 1, -1); assert.equal(moved[0].id, duplicate.id);
