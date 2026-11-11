@@ -23,7 +23,8 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
   const input = useRef<HTMLInputElement>(null);
   const revision = useRef(0);
   const apply = useRef(onChange);
-  useLayoutEffect(() => { apply.current = onChange; }, [onChange]);
+  const description = useRef(alt);
+  useLayoutEffect(() => { apply.current = onChange; description.current = alt; }, [onChange, alt]);
   useEffect(() => () => { revision.current++; }, []);
   async function upload(file?: File) {
     if (!file || busy) return;
@@ -32,7 +33,7 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
     try {
       const prepared = await prepareImage(file);
       if (request !== revision.current) return;
-      apply.current(prepared); setBroken(false);
+      apply.current(prepared, description.current.trim() ? undefined : file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ')); setBroken(false);
       setFeedback(`${file.name} · imagem pronta`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível carregar a imagem.');
@@ -81,11 +82,12 @@ export default function ImagePicker({ label, value, alt, recommended, materialId
       onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ''; }} />
     <small className="image-hint">{recommended} · Compartilhada entre PT, EN e ES. Fotos grandes são otimizadas automaticamente.</small>
     {value.startsWith('data:') && <p className={`image-sync image-sync-${saveState || 'local'}`} role="status">{saveState === 'saving' ? 'Enviando imagem…' : saveState === 'error' || saveState === 'offline' ? 'Não foi possível sincronizar esta imagem. Tente novamente quando houver conexão.' : 'Imagem local · aguardando envio para a equipe.'}</p>}
-    {value.includes('/assets/') && saveState === 'saved' && <p className="image-sync image-sync-saved" role="status">✓ Imagem disponível para a equipe</p>}
+    {value.startsWith('https://') && <p className="image-sync image-sync-saved"><a href={value} target="_blank" rel="noreferrer">Abrir imagem online</a> · <button type="button" className="text-button" onClick={() => void navigator.clipboard.writeText(value).then(() => setFeedback('Link da imagem copiado.')).catch(() => setError('Não foi possível copiar. Abra a imagem para copiar o endereço.'))}>Copiar link</button></p>}
     <div className="actions">
       {value.startsWith('data:') && <button type="button" className="text-button" disabled={busy} onClick={async () => {
+        const request = ++revision.current;
         setBusy(true); setError('');
-        try { const asset = await uploadLocalImage(value, alt); onChange(asset.url); setFeedback('Imagem hospedada com URL pública.'); }
+        try { const asset = await uploadLocalImage(value, alt); if (request !== revision.current) return; apply.current(asset.url); setFeedback('Imagem hospedada com URL pública.'); }
         catch (e) { setError(e instanceof Error ? e.message : 'Upload indisponível.'); }
         finally { setBusy(false); }
       }}>Hospedar esta imagem</button>}

@@ -1,10 +1,12 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { BrandSettings, Campaign, Language } from '@/types/campaign';
 import type { EmailPublication, PreflightResult } from '@/types/online';
 import type { SaveState } from '@/lib/workspace-sync';
 import { online } from '@/lib/online';
-import { hostLocalImages } from '@/lib/workspace-images';
+import { hasLocalImages as containsLocalImages, hostLocalImages } from '@/lib/workspace-images';
+import { prepareBrand, prepareCampaignImages } from '@/lib/prepare-email';
+import { mergeCampaignPatch } from '@/lib/canvas-model';
 import { Modal } from './ui';
 import { downloadFile } from '@/export/download';
 import { publicationSignature } from '@/lib/publication-signature';
@@ -12,10 +14,10 @@ import { languageStates } from '@/campaigns/model';
 
 const categories = ['images', 'content', 'links', 'compatibility'] as const;
 const categoryLabel = { images: 'Imagens', content: 'Conteúdo', links: 'Links', compatibility: 'Compatibilidade' };
-type Step = 'idle' | 'images' | 'waiting' | 'validating' | 'ready' | 'review' | 'published';
+type Step = 'idle' | 'images' | 'waiting' | 'ready' | 'review' | 'published';
 export default function PublishDialog({ campaign, brand, language, campaignRevision, saveState, onChange, onClose }: {
   campaign: Campaign; brand: BrandSettings; language: Language; campaignRevision?: number; saveState: SaveState;
-  onChange: (campaign: Campaign) => void; onClose: () => void;
+  onChange: (campaign: Partial<Campaign>) => void; onClose: () => void;
 }) {
   const [report, setReport] = useState<PreflightResult & { html?: string }>();
   const [versions, setVersions] = useState<EmailPublication[]>([]);
@@ -25,16 +27,29 @@ export default function PublishDialog({ campaign, brand, language, campaignRevis
   const [origin, setOrigin] = useState('');
   const [checked, setChecked] = useState('');
   const key = useRef('');
-  const input = useMemo(() => ({ campaign, language, campaignRevision, brand: { ...brand, assetBaseUrl: brand.assetBaseUrl || origin } }), [campaign, language, campaignRevision, brand, origin]);
+  const latestInput = useRef({ campaign, onChange });
+  useLayoutEffect(() => { latestInput.current = { campaign, onChange }; }, [campaign, onChange]);
+  const request = useRef(0);
+  useEffect(() => () => { request.current++; }, []);
+  const input = useMemo(() => ({ campaign, language, campaignRevision, brand: prepareBrand(brand, origin) }), [campaign, language, campaignRevision, brand, origin]);
   const signature = JSON.stringify(input);
-  const hasLocalImages = (['pt', 'en', 'es'] as const).some(lang => (['heroImage', 'applicationImage'] as const).some(field => campaign.content[lang][field].startsWith('data:')));
+  const hasLocalImages = containsLocalImages(campaign) || containsLocalImages(input.brand);
   useEffect(() => {
     let active = true;
-    Promise.all([online.session(), online.versions(campaign.id)]).then(([session, items]) => {
-      if (active) { setOrigin(session.origin); setVersions(items); }
+    online.session().then(session => {
+      if (active && session.editor) setOrigin(session.origin);
     }).catch(error => { if (active) setMessage(error.message); });
+    online.versions(campaign.id).then(items => { if (active) setVersions(items); })
+      .catch(error => { if (active) setMessage(error.message); });
     return () => { active = false; };
   }, [campaign.id]);
+  useEffect(() => {
+    if (!origin) return;
+    const timer = setTimeout(() => void prepare(), 0);
+    return () => clearTimeout(timer);
+    // Automatically prepare once the authenticated publication origin is known.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origin]);
   useEffect(() => {
     if (step !== 'waiting' || saveState !== 'saved' || hasLocalImages) return;
     let active = true;
@@ -48,24 +63,25 @@ export default function PublishDialog({ campaign, brand, language, campaignRevis
   }, [step, saveState, hasLocalImages, signature, input]);
   async function prepare() {
     if (!origin) return;
+    const sequence = ++request.current;
+    const source = latestInput.current.campaign;
     setBusy(true); setMessage(''); setReport(undefined); setChecked('');
     try {
-      if (hasLocalImages) {
-        setStep('images');
-        onChange(await hostLocalImages(campaign));
-        setStep('waiting');
-      } else {
-        setStep('validating');
-        const next = await online.preflight(input);
-        setReport(next); setChecked(signature); key.current = crypto.randomUUID();
-        setStep(next.hasErrors ? 'review' : 'ready');
+      setStep('images');
+      const prepared = await hostLocalImages(prepareCampaignImages(source, origin));
+      if (sequence !== request.current) return;
+      if (JSON.stringify(prepared) !== JSON.stringify(source)) {
+        latestInput.current.onChange(mergeCampaignPatch(source, latestInput.current.campaign, prepared));
       }
+      setStep('waiting');
     } catch (error) {
+      if (sequence !== request.current) return;
       setMessage(error instanceof Error ? error.message : 'Não foi possível preparar o e-mail.');
       setStep('review');
-    } finally { setBusy(false); }
+    } finally { if (sequence === request.current) setBusy(false); }
   }
   async function publish() {
+    if (!canPublish) return;
     setBusy(true); setMessage('');
     try {
       const result = await online.publish(input, key.current || (key.current = crypto.randomUUID()));
@@ -89,9 +105,11 @@ export default function PublishDialog({ campaign, brand, language, campaignRevis
     {!origin && <a href="/signin-with-chatgpt?return_to=/" target="_top">Entrar com ChatGPT para publicar</a>}
     <section className="publish-section" aria-label="Pré-flight">
       <h3 className="eyebrow">PRÉ-FLIGHT</h3>
-      <p>Prepare o e-mail para hospedar imagens locais e verificar conteúdo, links e compatibilidade.</p>
-      <div className="actions"><button className="button primary" disabled={busy || !origin} onClick={() => void prepare()}>Preparar para RD Station</button><button className="button" disabled={!canPublish} onClick={() => void publish()}>Publicar versão</button></div>
-      {(busy || step === 'waiting') && <p role="status">{step === 'images' ? 'Preparando imagens…' : step === 'waiting' ? 'Aguardando as imagens ficarem disponíveis para a equipe…' : 'Validando conteúdo, links e compatibilidade…'}</p>}
+      <p>As imagens locais são hospedadas e as descrições ausentes são preenchidas automaticamente. Confira o resultado antes de publicar.</p>
+      <div className="actions"><button className="button" disabled={busy || !origin} onClick={() => void prepare()}>{step === 'idle' ? 'Preparar para RD Station' : 'Verificar novamente'}</button><button className="button primary" disabled={!canPublish} onClick={() => void publish()}>Publicar versão</button></div>
+      {(busy || step === 'waiting') && <p role="status">{step === 'images' ? 'Preparando imagens e descrições…' : saveState === 'saved' && !hasLocalImages ? 'Validando conteúdo, links e compatibilidade…' : 'Aguardando o salvamento da campanha e das imagens na nuvem…'}</p>}
+      {step === 'waiting' && ['error', 'offline', 'paused', 'conflict', 'local'].includes(saveState) && <p role="alert">A campanha precisa estar salva na nuvem. Volte ao editor para sincronizar ou resolver as alterações pendentes.</p>}
+      {step === 'waiting' && containsLocalImages(input.brand) && <p role="alert">O logo ainda está local. Salve a configuração em Marca e rodapé para hospedá-lo.</p>}
       {report && checked === signature && <><div className="preflight-steps">{categories.map(category => {
         const checks = report.checks.filter(check => check.category === category);
         const state = checks.some(check => check.severity === 'error') ? 'error' : checks.some(check => check.severity === 'warning') ? 'warning' : 'pass';

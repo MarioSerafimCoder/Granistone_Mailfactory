@@ -13,6 +13,41 @@ async function seed(page: Page, legacy = false) {
   await page.goto('/'); await page.getByRole('button', { name: campaign.title, exact: true }).click();
   return campaign;
 }
+
+test('slow local storage never replays older text or resurrects removed blocks', async ({ page }) => {
+  await page.addInitScript(() => {
+    const descriptor = Object.getOwnPropertyDescriptor(IDBTransaction.prototype, 'oncomplete')!;
+    Object.defineProperty(IDBTransaction.prototype, 'oncomplete', {
+      ...descriptor,
+      set(callback) { descriptor.set!.call(this, callback ? function (this: IDBTransaction, event: Event) { setTimeout(() => callback.call(this, event), 180); } : callback); },
+    });
+  });
+  await seed(page);
+  const cards = page.locator('[data-canvas-block]');
+  const id = await cards.first().getAttribute('data-canvas-block');
+  const title = cards.first().getByRole('textbox', { name: 'Título do bloco', exact: true });
+  const body = cards.first().getByRole('textbox', { name: 'Texto do bloco', exact: true });
+  await title.fill('Edição rápida');
+  await title.press('End');
+  await title.pressSequentially(' preservada', { delay: 5 });
+  await body.fill('Segundo campo preservado');
+  await cards.nth(1).focus();
+  await cards.nth(1).getByRole('button', { name: 'Remover bloco', exact: true }).click();
+  await expect(cards).toHaveCount(2);
+  await expect(title).toHaveText('Edição rápida preservada');
+  await expect(body).toHaveText('Segundo campo preservado');
+  await expect(cards.first()).toHaveAttribute('data-canvas-block', id!);
+  await page.getByRole('button', { name: '↶ Desfazer', exact: true }).click();
+  await expect(cards).toHaveCount(3);
+  await page.getByRole('button', { name: '↷ Refazer', exact: true }).click();
+  await expect(cards).toHaveCount(2);
+  await page.getByRole('button', { name: 'Voltar às campanhas', exact: true }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'Canvas de prova', exact: true }).click();
+  await expect(cards).toHaveCount(2);
+  await expect(title).toHaveText('Edição rápida preservada');
+  await expect(body).toHaveText('Segundo campo preservado');
+});
 test('continuous inline typing, marks, alignment, multiline, languages, undo and reload', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await seed(page); await page.setViewportSize({ width: 1440, height: 900 });

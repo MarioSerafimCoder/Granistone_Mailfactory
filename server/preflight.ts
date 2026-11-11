@@ -10,6 +10,7 @@ import { GRANISTONE_UNSUBSCRIBE_URL } from '@/data/granistone.config';
 import { campaignBackgrounds } from '@/export/design-checks';
 import { resolveBackground } from '@/lib/tokens/backgrounds';
 import { blockRegistry } from '@/blocks/registry';
+import { prepareBrand, prepareCampaignImages } from '@/lib/prepare-email';
 export function publicationInput(raw: unknown): PublicationInput {
   if (!raw || typeof raw !== 'object') throw new HttpError(400, 'Campanha inválida.');
   const value = raw as PublicationInput;
@@ -28,6 +29,7 @@ export function imageUrls(html: string) {
   return [...new Set([...html.matchAll(/(?:<img\b[^>]*\bsrc|\bbackground)="([^"]*)"/gi)].map(m => m[1].replace(/&amp;/g, '&')))];
 }
 export async function runPreflight(input: PublicationInput, env: Env) {
+  input = { ...input, campaign: prepareCampaignImages(input.campaign, env.SITE_ORIGIN), brand: prepareBrand(input.brand, env.SITE_ORIGIN) };
   const html = await renderEmail(input.campaign, input.language, input.brand);
   const checks = [...contentChecks(input.campaign, input.language, input.brand), ...htmlChecks(html, [GRANISTONE_UNSUBSCRIBE_URL])];
   const assets = new AssetRepository(env);

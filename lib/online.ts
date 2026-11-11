@@ -91,7 +91,15 @@ export const online = {
     return value as { publication: EmailPublication | null; preflight?: PreflightResult };
   },
 };
-export async function uploadLocalImage(uri: string, alt: string) {
+const imageUploads = new Map<string, Promise<MediaAsset>>();
+export function uploadLocalImage(uri: string, alt: string): Promise<MediaAsset> {
+  const existing = imageUploads.get(uri);
+  if (existing) return existing;
+  const pending = sendLocalImage(uri, alt).finally(() => imageUploads.delete(uri));
+  imageUploads.set(uri, pending);
+  return pending;
+}
+async function sendLocalImage(uri: string, alt: string) {
   if (!uri.startsWith('data:image/')) throw new Error('Escolha uma imagem do computador.');
   const blob = await (await fetch(uri)).blob();
   const ext = ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' } as Record<string, string>)[blob.type];

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { clearRecovery, loadStudio, persistStudio, saveRecovery, type StudioData } from './storage';
 import { WorkspaceSync } from './workspace-sync';
+import { localSaveQueue } from './local-save-queue';
 export type { SaveState } from './workspace-sync';
 export function useStudio() {
   const [data, setData] = useState<StudioData | null>(null);
@@ -14,15 +15,11 @@ export function useStudio() {
   const saveSequence = useRef(0);
   useEffect(() => {
     let alive = true;
-    let persistence = Promise.resolve();
-    const persist = (snapshot: StudioData) => {
-      const copy = structuredClone(snapshot);
-      persistence = persistence.catch(() => {}).then(async () => {
-        await persistStudio(copy);
-        if (engine.current?.data === snapshot) clearRecovery();
-      });
-      return persistence;
-    };
+    const enqueue = localSaveQueue(async ({ copy, snapshot }: { copy: StudioData; snapshot: StudioData }) => {
+      await persistStudio(copy);
+      if (engine.current?.data === snapshot) clearRecovery();
+    });
+    const persist = (snapshot: StudioData) => enqueue({ copy: structuredClone(snapshot), snapshot });
     const tick = async () => {
       const workspace = engine.current;
       if (!workspace) return;
@@ -55,7 +52,10 @@ export function useStudio() {
     const workspace = engine.current; if (!workspace) return false;
     clearTimeout(timer.current);
     const sequence = ++saveSequence.current;
-    pendingSave.current = pendingSave.current.catch(() => {}).then(() => workspace.save(next));
+    // Update the in-memory document immediately. Only IndexedDB writes are
+    // serialized by persist(); queuing edits behind disk I/O replays old props
+    // into the editor and can overwrite a newer keystroke or block operation.
+    pendingSave.current = workspace.save(next);
     void pendingSave.current.then(() => {
       if (sequence === saveSequence.current) timer.current = setTimeout(() => void workspace.sync(), immediate ? 0 : 800);
     }).catch(() => setError('Não foi possível salvar o cache local. Baixe um backup antes de fechar.'));

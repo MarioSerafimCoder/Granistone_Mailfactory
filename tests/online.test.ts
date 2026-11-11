@@ -37,6 +37,27 @@ function validInput(origin: string, image: string): PublicationInput {
   campaign.content.en = { ...campaign.content.pt, subject: 'Test campaign' };
   return { campaign, language: 'pt', brand: { ...defaultBrand, assetBaseUrl: origin, website: origin, facebook: origin, instagram: origin, whatsapp: origin, unsubscribeMode: 'rd-managed', unsubscribeUrl: '' } };
 }
+
+test('server preparation supplies the shipped brand origin and missing ALT before validating actual hosted images', async () => {
+  const fixture = platformFixture();
+  try {
+    const asset = await new AssetRepository(fixture.env).create(png, 'image/png', 'natural-stone.png');
+    assert.equal(asset.alt, 'natural stone');
+    const input = validInput(fixture.env.SITE_ORIGIN, new URL(asset.url).pathname);
+    input.brand.assetBaseUrl = '';
+    input.campaign.content.pt.heroAlt = '';
+    const report = await runPreflight(input, fixture.env);
+    assert.equal(report.hasErrors, false, JSON.stringify(report.checks.filter(c => c.severity === 'error')));
+    assert.ok(report.html.includes(`src="${asset.url}"`));
+    assert.match(report.html, /alt="Imagem principal/);
+    assert.equal(input.campaign.content.pt.heroAlt, '', 'preflight must not mutate the revision being checked');
+    const publication = await new PublicationRepository(fixture.env).publish(input, crypto.randomUUID());
+    assert.ok(publication.publication);
+    for (const url of [...publication.publication!.html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(m => m[1])) {
+      assert.equal((await worker.fetch(new Request(url), fixture.env)).status, 200);
+    }
+  } finally { fixture.close(); }
+});
 test('upload validates signatures, size, corrupt files and paths; transparent PNG remains PNG', () => {
   const image = optimizeImage(png, 'image/png', 'logo.png');
   assert.equal(image.mimeType, 'image/png'); assert.ok(image.width <= 1600); assert.ok(image.fileSize > 0);

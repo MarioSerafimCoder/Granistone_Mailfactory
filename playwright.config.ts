@@ -12,7 +12,7 @@ export default defineConfig({
   },
   reporter: 'list',
   webServer: {
-    command: 'pnpm start',
+    command: 'pnpm db:migrate:local && pnpm start',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

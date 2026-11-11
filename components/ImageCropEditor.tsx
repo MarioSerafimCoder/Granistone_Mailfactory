@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Check, Crop, RotateCcw } from 'lucide-react';
 import { baseCropRect, cropControlsFromRect, cropHandles, cropOutputSize, cropRectFromControls, fitCropRectToRatio, moveCropRect, resizeCropRect, type CropHandle, type CropRect } from '@/lib/image-crop';
 import { online } from '@/lib/online';
@@ -31,6 +31,10 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
   const [loaded, setLoaded] = useState<{ src: string; image: HTMLImageElement }>();
   const canvas = useRef<HTMLCanvasElement>(null);
   const drag = useRef<Drag | null>(null);
+  const callbacks = useRef({ onApply, onClose });
+  const request = useRef(0);
+  useLayoutEffect(() => { callbacks.current = { onApply, onClose }; }, [onApply, onClose]);
+  useEffect(() => () => { request.current++; }, [src]);
   const source = loaded?.src === src ? loaded.image : undefined;
   const sourceWidth = source?.naturalWidth ?? 1;
   const sourceHeight = source?.naturalHeight ?? 1;
@@ -114,6 +118,7 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
 
   async function save() {
     if (!source || !canvas.current || busy) return;
+    const sequence = ++request.current;
     setBusy(true); setError('');
     try {
       const output = canvas.current;
@@ -124,7 +129,8 @@ export default function ImageCropEditor({ src, alt, width, height, onApply, onCl
       const blob = await new Promise<Blob | null>(resolve => output.toBlob(resolve, mime, .94));
       if (!blob) throw new Error('Não foi possível gerar o recorte.');
       const asset = await online.assets.upload(blob, { fileName: `recorte-${outputSize.width}x${outputSize.height}.${transparent ? 'png' : 'jpg'}`, name: `${alt || 'Imagem'} · recorte`, alt, category: 'outro' });
-      onApply(asset.url); onClose();
+      if (sequence !== request.current) return;
+      callbacks.current.onApply(asset.url); callbacks.current.onClose();
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Não foi possível salvar o recorte. Tente novamente.'); }
     finally { setBusy(false); }
   }

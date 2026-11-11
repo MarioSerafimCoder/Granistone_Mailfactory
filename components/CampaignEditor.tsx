@@ -409,7 +409,7 @@ export default function CampaignEditor({
       </div>
       {saveTemplate && <SavedDesignDialog initial={{ kind: 'template', payload: blueprintFromCampaign(campaign) }} onClose={() => setSaveTemplate(false)} onSaved={() => setNotice('Template salvo na biblioteca compartilhada.')} />}
       {converting && <Modal title="Converter em blocos livres" onClose={() => setConverting(false)}><p>A estrutura será reorganizada em seções independentes. Revise a nova composição no preview. O conteúdo original continuará preservado na campanha e no histórico.</p><div className="modal-actions"><button className="button" onClick={() => setConverting(false)}>Cancelar</button><button className="button primary" onClick={() => { update({ sections: convertSections(campaign) }); setConverting(false); setTab('content'); }}>Converter estrutura</button></div></Modal>}
-      {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} campaignRevision={campaignRevision} saveState={saveState} onChange={onChange} onClose={() => setPublishOpen(false)} />}
+      {publishOpen && <PublishDialog campaign={campaign} brand={brand} language={language} campaignRevision={campaignRevision} saveState={saveState} onChange={update} onClose={() => setPublishOpen(false)} />}
       {translateTarget && <TranslateDialog
         campaign={campaign}
         target={translateTarget}

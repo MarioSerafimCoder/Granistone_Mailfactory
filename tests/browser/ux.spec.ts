@@ -11,6 +11,31 @@ async function create(page: Page, title: string) {
   await page.getByLabel('Nome da campanha', { exact: true }).fill(title);
   await page.getByRole('button', { name: 'Criar campanha', exact: true }).click();
 }
+
+test('uploaded images get public links and publication automatically fills ALT and branding', async ({ page }) => {
+  await authenticate(page);
+  await page.goto('/');
+  await create(page, `Imagens automáticas ${Date.now()}`);
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+  await expect(page.locator('.edit-lease-bar')).toContainText('Em edição');
+  await page.getByRole('button', { name: 'Editar Imagem principal', exact: true }).click();
+  const inspector = page.getByRole('complementary', { name: 'Propriedades do elemento' });
+  await inspector.getByRole('button', { name: 'Computador', exact: true }).click();
+  await inspector.getByLabel('Carregar imagem principal', { exact: true }).setInputFiles('public/brand/granistone-logo.png');
+  await expect(inspector.getByRole('link', { name: 'Abrir imagem online' })).toHaveAttribute('href', /^https:\/\/studio\.example\.com\/assets\/[a-f0-9]{64}$/, { timeout: 15000 });
+  await inspector.getByLabel('Texto alternativo · imagem principal', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Recolher propriedades' }).click();
+  await expect(page.locator('.save-indicator')).toHaveText('Salvo na nuvem');
+  await page.getByRole('button', { name: 'Revisar e publicar', exact: true }).click();
+  const review = page.getByRole('dialog', { name: 'Revisar e publicar' });
+  await expect(review.getByText(/Configure uma URL HTTPS pública/)).toHaveCount(0);
+  await expect(review.getByText(/Preencha o texto alternativo/)).toHaveCount(0);
+  await review.getByRole('button', { name: 'Preparar publicação' }).click();
+  const publish = page.getByRole('dialog', { name: 'Publicar e-mail · PT' });
+  await expect(publish.getByText('Tudo pronto para publicar.', { exact: true })).toBeVisible({ timeout: 15000 });
+  await publish.getByRole('button', { name: 'Publicar versão', exact: true }).click();
+  await expect(publish.getByText(/Versão 1 publicada/)).toBeVisible();
+});
 test('history requires confirmation, list shows author, and language status follows the tab', async ({ page }) => {
   await authenticate(page);
   await page.goto('/');
@@ -60,7 +85,7 @@ test('HTTPS image entry and guided publication remain clear at desktop and narro
   await expect(publish.getByRole('heading', { name: 'STATUS' })).toBeVisible();
   await expect(publish.getByRole('heading', { name: 'PRÉ-FLIGHT' })).toBeVisible();
   await expect(publish.getByRole('heading', { name: 'VERSÕES PUBLICADAS' })).toBeVisible();
-  await publish.getByRole('button', { name: 'Preparar para RD Station' }).click();
+  // Opening the dialog now prepares and validates automatically.
   await expect(publish.getByText('Ver detalhes do pré-flight')).toBeVisible();
   await expect(publish.getByRole('button', { name: 'Publicar versão' })).toBeDisabled();
   await publish.getByRole('button', { name: 'Fechar' }).click();

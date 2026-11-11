@@ -44,7 +44,7 @@ export class AssetRepository {
     const asset: MediaAsset = { id, name: clean(metadata.name || fileName, 160), fileName: `${id}.${image.mimeType === 'image/png' ? 'png' : 'jpg'}`,
       mimeType: image.mimeType, fileSize: image.fileSize, width: image.width, height: image.height,
       orientation: image.width === image.height ? 'square' : image.width > image.height ? 'horizontal' : 'vertical',
-      category: assetCategories.includes(metadata.category!) ? metadata.category! : 'outro', alt: clean(metadata.alt, 500),
+      category: assetCategories.includes(metadata.category!) ? metadata.category! : 'outro', alt: clean(metadata.alt || metadata.name || fileName.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '), 500),
       url: `${this.env.SITE_ORIGIN}/assets/${id}`, createdAt: now, updatedAt: now };
     await this.env.BUCKET.put(objectKey, image.bytes, { httpMetadata: { contentType: image.mimeType, cacheControl: 'public, max-age=31536000, immutable' } });
     await this.env.DB.prepare('INSERT INTO assets (id,object_key,hash,metadata,category,name,created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(hash) DO UPDATE SET deleted_at=NULL').bind(id, objectKey, hash, JSON.stringify(asset), asset.category, asset.name, now).run();

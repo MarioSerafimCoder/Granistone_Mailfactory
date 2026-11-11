@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { prepareBrand } from '@/lib/prepare-email';
 import {
   LayoutGrid,
   Mail,
@@ -58,6 +59,8 @@ export default function Studio() {
   const [pendingNavigation, setPendingNavigation] = useState<{ view: 'campaigns' | 'templates' | 'library'; campaignId?: string; message: string; localSaved: boolean }>();
   const onlineEditor = workspace?.editor ?? false;
   const session = workspace?.session;
+  const storedBrand = data?.brand;
+  const emailBrand = useMemo(() => storedBrand ? prepareBrand(storedBrand, session?.origin ?? '') : undefined, [storedBrand, session?.origin]);
   const onlineMember = session?.member ?? onlineEditor;
   const canEdit = !session?.authenticated || onlineEditor;
   const active = data?.campaigns.find((c) => c.id === activeId);
@@ -297,7 +300,7 @@ export default function Studio() {
             campaign={active}
             campaignRevision={workspace?.meta.revisions[active.id]}
             activity={workspace?.meta.activity?.[active.id]}
-            brand={data.brand}
+            brand={emailBrand!}
             saveState={workspace?.campaignState(active.id) ?? saveState}
             readOnly={!campaignLease.editing || leaving}
             leaseControls={workspace?.meta.revisions[active.id] ? <EditLeaseBar compact lease={campaignLease} type="campaign" id={active.id} onBegin={() => workspace.refresh()} onFinish={async () => { await flushLocal(); await workspace.flush(); if (workspace.meta.pending[active.id] || workspace.meta.conflicts[active.id]) { setFeedback('As alterações estão pendentes. Retome a conexão ou recupere uma cópia.'); throw new Error('Salvamento pendente.'); } }} onCopy={copyActive} /> : undefined}
@@ -310,9 +313,10 @@ export default function Studio() {
             onSwitchCampaign={id => void navigate('campaigns', id)}
             onChange={(campaign) => {
               if (!campaignLease.editing || leaving) return;
+              const current = workspace?.data ?? data;
               save({
-                ...data,
-                campaigns: data.campaigns.map((c) => (c.id === campaign.id ? campaign : c)),
+                ...current,
+                campaigns: current.campaigns.map((c) => (c.id === campaign.id ? campaign : c)),
               }, campaign.status !== active.status);
             }}
           />

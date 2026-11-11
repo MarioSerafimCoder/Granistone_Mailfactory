@@ -17,7 +17,7 @@ export default function SectionFields({ section, language, onChange, showDesign 
   const edit = (key: string, value: string) => onChange({ ...section, content: { ...section.content, [language]: { ...c, [key]: value } } });
   const settings = (patch: Partial<Section['settings']>) => onChange({ ...section, settings: { ...section.settings, ...patch } });
   return <div className="section-fields">
-    {section.richBody?.[language] && <RichEditor value={section.richBody[language]} onChange={body => onChange({ ...section, content: { ...section.content, [language]: { ...c, text: plainText(body) } }, richBody: { ...section.richBody, [language]: body } })} />}
+    {section.richBody?.[language] && <RichEditor key={`${section.id}:${language}`} value={section.richBody[language]} onChange={body => onChange({ ...section, content: { ...section.content, [language]: { ...c, text: plainText(body) } }, richBody: { ...section.richBody, [language]: body } })} />}
     {fields.filter(f => f.kind !== 'alt' && !(f.key === 'text' && section.richBody?.[language])).map(field => field.kind === 'image' ? <ImagePicker key={field.key} label={field.label} value={c[field.key]} alt={c[field.key === 'image2' ? 'alt2' : 'alt'] || ''} recommended={recommended} onAlt={value => edit(field.key === 'image2' ? 'alt2' : 'alt', value)} onChange={(value, alt) => {
       const content = structuredClone(section.content);
       for (const lang of ['pt', 'en', 'es'] as const) content[lang][field.key] = value;

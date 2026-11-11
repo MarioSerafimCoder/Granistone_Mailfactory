@@ -7,6 +7,7 @@ import { blockRegistry, createSection } from '@/blocks/registry';
 import { convertSections, duplicateSection, moveSection, moveSectionTo } from '@/blocks/model';
 import { defaultDesign } from '@/lib/tokens/backgrounds';
 import { contentChecks } from '@/export/preflight';
+import { prepareCampaignImages } from '@/lib/prepare-email';
 import { changeTemplate, languages } from '@/campaigns/model';
 import { GranistoneHeader, GranistoneFooter } from '@/components/email/brand';
 import type { SaveState } from '@/lib/use-studio';
@@ -48,6 +49,7 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
   const stage = useRef<HTMLDivElement>(null);
   const pointer = useRef<{ pointerId: number; id: string; x: number; y: number; lastX: number; lastY: number; target?: { id: string; after: boolean } } | undefined>(undefined);
   const sections = campaign.sections;
+  const reviewCampaign = useMemo(() => prepareCampaignImages(campaign, brand.assetBaseUrl), [campaign, brand.assetBaseUrl]);
   const editableSections = useMemo(() => sections ?? convertSections(campaign), [campaign, sections]);
   const section = sections?.find(s => s.id === selected?.id);
   const design = campaign.design ?? defaultDesign();
@@ -204,7 +206,7 @@ export default function VisualWorkspace({ campaign, brand, language, readOnly, o
     </div>
     {saving && !readOnly && <SavedDesignDialog initial={{ kind: 'block', payload: saving }} onClose={() => setSaving(undefined)} />}
     {saved && <Modal title="Blocos Granistone" onClose={() => setSaved(false)} wide><SavedDesignLibrary kind="block" onUse={design => { if (design.kind === 'block') insert(design.payload); }} /></Modal>}
-    {review && <Modal title="Revisar e publicar" onClose={onReviewClose} wide><p>Confira conteúdo e idiomas. O pré-flight completo verifica imagens, links e HTML antes da publicação.</p>{languages(campaign).map(lang => <section key={lang}><h3>{lang.toUpperCase()}</h3>{contentChecks(campaign, lang, brand).filter(c => c.severity !== 'pass').map(check => <p key={check.id} className={check.severity === 'error' ? 'alert' : 'muted'}>{check.message} {check.sectionId && <button className="text-button" onClick={() => {
+    {review && <Modal title="Revisar e publicar" onClose={onReviewClose} wide><p>Confira conteúdo e idiomas. As descrições ausentes e os endereços da marca são preparados automaticamente. Imagens locais serão hospedadas na preparação da publicação.</p>{languages(campaign).map(lang => <section key={lang}><h3>{lang.toUpperCase()}</h3>{contentChecks(reviewCampaign, lang, brand).filter(c => c.severity !== 'pass').map(check => <p key={check.id} className={check.severity === 'error' ? 'alert' : 'muted'}>{check.message} {check.sectionId && <button className="text-button" onClick={() => {
       onLanguage(lang); onReviewClose();
       const s = sections?.find(s => s.id === check.sectionId), field = blockRegistry[s?.type ?? 'centeredText'].fields.find(f => f.key === check.field);
       const image = field?.kind === 'image' || field?.kind === 'alt';

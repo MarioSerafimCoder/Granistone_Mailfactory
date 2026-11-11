@@ -1,7 +1,7 @@
 import type { SharedCampaign, SyncMetadata } from '@/types/workspace';
 import type { StudioData } from './storage';
 import { online, OnlineError } from './online';
-import { hostLocalImages } from './workspace-images';
+import { hostLocalImages, mergeHostedImages } from './workspace-images';
 import { defaultBrand } from '@/data/brand';
 import type { WorkspaceSession } from '@/types/collaboration';
 import { activeLease, withLease } from './edit-leases';
@@ -114,10 +114,10 @@ export class WorkspaceSync {
           if (pending.operation === 'delete' && !pending.revision) { delete this.meta.pending[id]; continue; }
           const snapshot = current;
           const hosted = pending.operation === 'save' ? await this.images(snapshot!) : undefined;
-          // Keep typing during uploads; only replace the exact snapshot uploaded.
+          // Keep all edits made during the upload, rebasing only image URLs.
           pending = this.meta.pending[id];
           pending.sent = { operation: hosted ? 'save' : 'delete', campaign: hosted };
-          if (hosted && equal(this.data.campaigns.find(c => c.id === id), snapshot)) this.data.campaigns = this.data.campaigns.map(c => c.id === id ? hosted : c);
+          if (hosted) this.data.campaigns = this.data.campaigns.map(c => c.id === id ? mergeHostedImages(c, snapshot!, hosted) : c);
           await this.commit();
           pending = this.meta.pending[id];
         }
@@ -151,7 +151,7 @@ export class WorkspaceSync {
         if (!this.meta.brandSent) {
           const snapshot = this.data.brand;
           const hosted = await this.images(snapshot);
-          if (equal(snapshot, this.data.brand)) this.data.brand = hosted;
+          this.data.brand = mergeHostedImages(this.data.brand, snapshot, hosted);
           this.meta.brandSent = hosted; await this.commit();
         }
         try {
